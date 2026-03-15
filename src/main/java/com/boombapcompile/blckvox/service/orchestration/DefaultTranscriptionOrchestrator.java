@@ -129,7 +129,7 @@ public class DefaultTranscriptionOrchestrator implements TranscriptionOrchestrat
             metricsPublisher.recordSuccess(ENGINE_RECONCILED, duration, strategy);
 
             long processingMs = TimeUtils.nanosToMillis(duration);
-            double ratio = audioDurationMs > 0 ? processingMs / audioDurationMs : 0.0;
+            double ratio = processingMs / audioDurationMs;
             metricsPublisher.recordProcessingRatio(ENGINE_RECONCILED, ratio);
 
             logTranscriptionWithAudio(ENGINE_RECONCILED, processingMs, audioDurationMs, ratio,
@@ -168,7 +168,7 @@ public class DefaultTranscriptionOrchestrator implements TranscriptionOrchestrat
             metricsPublisher.recordSuccess(engineName, duration, null);
 
             long processingMs = TimeUtils.nanosToMillis(duration);
-            double ratio = audioDurationMs > 0 ? processingMs / audioDurationMs : 0.0;
+            double ratio = processingMs / audioDurationMs;
             metricsPublisher.recordProcessingRatio(engineName, ratio);
 
             logTranscriptionWithAudio(engineName, processingMs, audioDurationMs, ratio,
@@ -181,7 +181,7 @@ public class DefaultTranscriptionOrchestrator implements TranscriptionOrchestrat
             TranscriptionResult failedResult = TranscriptionResult.failure(engineName, te.getMessage());
             publishResult(failedResult, engineName);
         } catch (RuntimeException re) {
-            String engineName = engine != null ? engine.getEngineName() : "unknown";
+            String engineName = engine.getEngineName();
             metricsPublisher.recordFailure(engineName, "unexpected_error");
             LOG.error("Unexpected error during transcription", re);
             TranscriptionResult failedResult = TranscriptionResult.failure(engineName, re.getMessage());

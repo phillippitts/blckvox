@@ -55,10 +55,10 @@ public final class SimplePreferenceReconciler extends AbstractReconciler {
      * @return first if non-empty, otherwise second, otherwise null
      */
     private EngineResult pickNonEmpty(EngineResult first, EngineResult second) {
-        if (first != null && first.text() != null && !first.text().isBlank()) {
+        if (first != null && !first.text().isBlank()) {
             return first;
         }
-        if (second != null && second.text() != null && !second.text().isBlank()) {
+        if (second != null && !second.text().isBlank()) {
             return second;
         }
         return first != null ? first : second; // both empty or one null -> default to first if not null

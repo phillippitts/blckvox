@@ -16,7 +16,6 @@ import com.boombapcompile.blckvox.service.stt.TranscriptionOutput;
 import com.boombapcompile.blckvox.service.stt.util.ConcurrencyGuard;
 import com.boombapcompile.blckvox.service.stt.util.ConcurrencyScaler;
 import com.boombapcompile.blckvox.service.stt.util.DynamicConcurrencyGuard;
-import com.boombapcompile.blckvox.service.stt.util.EngineEventPublisher;
 import com.boombapcompile.blckvox.util.TimeUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -130,19 +129,11 @@ public final class WhisperSttEngine extends AbstractSttEngine
 
     @Override
     protected void doInitialize() {
-        try {
-            // Allow reinitialization after close() for watchdog restart support
-            closed = false;
-            // Fail-fast validation already ran at startup
-            LOG.info("Whisper engine initialized: bin={}, model={}, timeout={}s, lang={}, threads={}",
-                    cfg.binaryPath(), cfg.modelPath(), cfg.timeoutSeconds(), cfg.language(), cfg.threads());
-        } catch (Throwable t) {
-            Map<String, String> ctx = new HashMap<>();
-            ctx.put("binaryPath", cfg.binaryPath());
-            ctx.put("modelPath", cfg.modelPath());
-            EngineEventPublisher.publishFailure(publisher, SttEngineNames.WHISPER, "initialize failure", t, ctx);
-            throw new TranscriptionException("Whisper initialization failed", SttEngineNames.WHISPER, t);
-        }
+        // Allow reinitialization after close() for watchdog restart support
+        closed = false;
+        // Fail-fast validation already ran at startup
+        LOG.info("Whisper engine initialized: bin={}, model={}, timeout={}s, lang={}, threads={}",
+                cfg.binaryPath(), cfg.modelPath(), cfg.timeoutSeconds(), cfg.language(), cfg.threads());
     }
 
     @Override

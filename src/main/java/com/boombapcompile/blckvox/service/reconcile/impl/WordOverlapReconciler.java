@@ -73,13 +73,13 @@ public final class WordOverlapReconciler extends AbstractReconciler {
     }
 
     /**
-     * Returns the length of a string, or 0 if null.
+     * Returns the length of a string.
      *
-     * @param s string to measure
-     * @return length of string, or 0 if null
+     * @param s string to measure (never null — guaranteed by EngineResult)
+     * @return length of string
      */
     private static int len(String s) {
-        return s == null ? 0 : s.length();
+        return s.length();
     }
 
     /**
@@ -91,12 +91,8 @@ public final class WordOverlapReconciler extends AbstractReconciler {
      */
     private static Set<String> union(List<String> tokens1, List<String> tokens2) {
         Set<String> result = new HashSet<>();
-        if (tokens1 != null) {
-            result.addAll(tokens1);
-        }
-        if (tokens2 != null) {
-            result.addAll(tokens2);
-        }
+        result.addAll(tokens1);
+        result.addAll(tokens2);
         return result;
     }
 
@@ -113,7 +109,7 @@ public final class WordOverlapReconciler extends AbstractReconciler {
         if (union.isEmpty()) {
             return 0.0;
         }
-        if (tokens == null || tokens.isEmpty()) {
+        if (tokens.isEmpty()) {
             return 0.0;
         }
 

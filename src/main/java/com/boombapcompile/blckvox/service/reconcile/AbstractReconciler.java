@@ -84,8 +84,8 @@ public abstract class AbstractReconciler implements TranscriptReconciler {
      */
     protected final TranscriptionResult toResult(EngineResult result) {
         return TranscriptionResult.of(
-                result == null ? "" : result.text(),
-                result == null ? 0.0 : result.confidence(),
+                result.text(),
+                result.confidence(),
                 SttEngineNames.RECONCILED
         );
     }

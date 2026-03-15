@@ -50,12 +50,12 @@ public final class ConfidenceReconciler extends AbstractReconciler {
     }
 
     /**
-     * Checks if text is non-empty (not null and not blank).
+     * Checks if text is non-empty (not blank).
      *
-     * @param text text to check
+     * @param text text to check (never null — guaranteed by EngineResult)
      * @return true if text is non-empty
      */
     private boolean isNonEmpty(String text) {
-        return text != null && !text.isBlank();
+        return !text.isBlank();
     }
 }

@@ -6,22 +6,11 @@ package com.boombapcompile.blckvox.exception;
  */
 public class InvalidAudioException extends BlckvoxException {
 
-    private final int audioSize;
-    private final String reason;
-
     public InvalidAudioException(String reason) {
         super("Invalid audio data: " + reason);
-        this.audioSize = 0;
-        this.reason = reason;
     }
 
     public InvalidAudioException(int audioSize, String reason) {
         super("Invalid audio data (" + audioSize + " bytes): " + reason);
-        this.audioSize = audioSize;
-        this.reason = reason;
-    }
-
-    public String getReason() {
-        return reason;
     }
 }

@@ -50,7 +50,7 @@ public class ApplicationStateTracker {
             return;
         }
         Set<ApplicationState> allowed = VALID_TRANSITIONS.get(previous);
-        if (allowed != null && !allowed.contains(newState)) {
+        if (!allowed.contains(newState)) {
             throw new InvalidStateTransitionException(previous.name(), newState.name());
         }
         this.state = newState;

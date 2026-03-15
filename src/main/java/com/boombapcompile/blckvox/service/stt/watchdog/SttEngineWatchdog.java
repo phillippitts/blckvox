@@ -227,13 +227,10 @@ public class SttEngineWatchdog {
 
         LOG.error("SAFETY MODE: All STT engines disabled — force-enabling best available engine");
 
+        // Stream is guaranteed non-empty: guarded by size >= 2 check above
         String bestEngine = enginesByName.keySet().stream()
                 .max(Comparator.comparingDouble(confidenceMonitor::averageConfidence))
-                .orElse(null);
-
-        if (bestEngine == null) {
-            return;
-        }
+                .orElseThrow();
 
         double avgConf = confidenceMonitor.averageConfidence(bestEngine);
         state.put(bestEngine, EngineState.DEGRADED);

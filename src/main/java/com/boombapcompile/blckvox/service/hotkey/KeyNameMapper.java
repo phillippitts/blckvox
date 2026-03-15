@@ -79,8 +79,7 @@ public final class KeyNameMapper {
 
     public static boolean isValidModifier(String mod) {
         String m = normalizeModifier(mod);
-        return ALLOWED_MODIFIERS.contains(m) || m.equals("META") || m.equals("SHIFT")
-                || m.equals("CONTROL") || m.equals("ALT");
+        return ALLOWED_MODIFIERS.contains(m);
     }
 
     /**
@@ -100,8 +99,7 @@ public final class KeyNameMapper {
                 continue;
             }
             String nm = normalizeModifier(n);
-            if (ALLOWED_MODIFIERS.contains(nm) || nm.equals("META") || nm.equals("SHIFT")
-                    || nm.equals("CONTROL") || nm.equals("ALT")) {
+            if (ALLOWED_MODIFIERS.contains(nm)) {
                 rmods.add(nm);
             } else {
                 rkey = normalizeKey(n);

@@ -160,13 +160,13 @@ public class ThreadPoolConfig {
                 try {
                     // Clear existing worker context first to prevent stale entries leaking
                     ThreadContext.clearAll();
-                    if (contextMap != null && !contextMap.isEmpty()) {
+                    if (!contextMap.isEmpty()) {
                         ThreadContext.putAll(contextMap);
                     }
                     runnable.run();
                 } finally {
                     ThreadContext.clearAll();
-                    if (previous != null && !previous.isEmpty()) {
+                    if (!previous.isEmpty()) {
                         ThreadContext.putAll(previous);
                     }
                 }
