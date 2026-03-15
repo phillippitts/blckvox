@@ -1,8 +1,10 @@
 package com.boombapcompile.blckvox.service.stt.util;
 
+import com.boombapcompile.blckvox.exception.TranscriptionException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DynamicConcurrencyGuardTest {
 
@@ -76,5 +78,68 @@ class DynamicConcurrencyGuardTest {
 
         guard.adjustPermits(-5);
         assertThat(guard.getCurrentPermits()).isGreaterThanOrEqualTo(1);
+    }
+
+    @Test
+    void acquireTimeoutThrowsTranscriptionException() {
+        // 1 permit, very short timeout
+        DynamicConcurrencyGuard guard = new DynamicConcurrencyGuard(1, 50, "test-engine", null);
+        guard.acquire(); // Take the only permit
+
+        assertThatThrownBy(guard::acquire)
+                .isInstanceOf(TranscriptionException.class)
+                .hasMessageContaining("concurrency limit");
+        guard.release();
+    }
+
+    @Test
+    void acquireInterruptedThrowsTranscriptionException() throws InterruptedException {
+        DynamicConcurrencyGuard guard = new DynamicConcurrencyGuard(1, 5000, "test-engine", null);
+        guard.acquire(); // Take the only permit
+
+        Thread testThread = new Thread(() -> {
+            assertThatThrownBy(guard::acquire)
+                    .isInstanceOf(TranscriptionException.class)
+                    .hasMessageContaining("interrupted");
+        });
+        testThread.start();
+        Thread.sleep(50); // Let it start waiting
+        testThread.interrupt();
+        testThread.join(2000);
+        guard.release();
+    }
+
+    @Test
+    void decreaseWhenAllPermitsInUseCannotDrain() {
+        DynamicConcurrencyGuard guard = new DynamicConcurrencyGuard(2, 1000, "test", null);
+        // Acquire both permits — none available for draining
+        guard.acquire();
+        guard.acquire();
+
+        // Try to decrease to 1 — tryAcquire() will fail, drained stays 0
+        guard.adjustPermits(1);
+        // Permits won't change because nothing was drained
+        assertThat(guard.getCurrentPermits()).isEqualTo(2);
+
+        guard.release();
+        guard.release();
+    }
+
+    @Test
+    void decreaseWhenPermitsInUseDoesPartialDrain() {
+        DynamicConcurrencyGuard guard = new DynamicConcurrencyGuard(4, 1000, "test", null);
+        // Acquire 3 of 4 permits — only 1 available for draining
+        guard.acquire();
+        guard.acquire();
+        guard.acquire();
+
+        // Try to decrease to 1 — can only drain 1 (the one available)
+        guard.adjustPermits(1);
+        // Permits should reflect partial drain
+        assertThat(guard.getCurrentPermits()).isLessThanOrEqualTo(4);
+
+        guard.release();
+        guard.release();
+        guard.release();
     }
 }

@@ -137,6 +137,86 @@ class DefaultRecordingServiceTest {
         assertThat(service.getState()).isEqualTo(ApplicationState.IDLE);
     }
 
+    @Test
+    void toggleRecordingStartsWhenIdle() {
+        boolean toggled = service.toggleRecording();
+
+        assertThat(toggled).isTrue();
+        assertThat(service.isRecording()).isTrue();
+    }
+
+    @Test
+    void toggleRecordingStopsWhenRecording() {
+        service.startRecording();
+        events.clear();
+
+        boolean toggled = service.toggleRecording();
+
+        assertThat(toggled).isTrue();
+        assertThat(service.getState()).isEqualTo(ApplicationState.TRANSCRIBING);
+    }
+
+    @Test
+    void toggleRecordingWithNullAudioTransitionsToIdle() {
+        captureOrchestrator.audioData = null;
+        service.startRecording();
+        events.clear();
+
+        boolean toggled = service.toggleRecording();
+
+        assertThat(toggled).isFalse();
+        assertThat(service.getState()).isEqualTo(ApplicationState.IDLE);
+    }
+
+    @Test
+    void toggleRecordingWithStopCaptureThrowReturnsIdle() {
+        captureOrchestrator.shouldThrowOnStop = true;
+        service.startRecording();
+        events.clear();
+
+        boolean toggled = service.toggleRecording();
+
+        assertThat(toggled).isFalse();
+        assertThat(service.getState()).isEqualTo(ApplicationState.IDLE);
+    }
+
+    @Test
+    void cancelRecordingWhenNotRecordingIsNoop() {
+        service.cancelRecording();
+        assertThat(service.getState()).isEqualTo(ApplicationState.IDLE);
+        assertThat(captureOrchestrator.cancelled).isFalse();
+    }
+
+    @Test
+    void startRecordingReturnsFalseWhenAlreadyCapturing() {
+        // Simulate race condition: state is IDLE but capture is already in progress
+        captureOrchestrator.capturing = true;
+        boolean started = service.startRecording();
+
+        assertThat(started).isFalse();
+        assertThat(service.getState()).isEqualTo(ApplicationState.IDLE);
+    }
+
+    @Test
+    void startRecordingReturnsFalseWhenCaptureStartFails() {
+        captureOrchestrator.failStart = true;
+        boolean started = service.startRecording();
+
+        assertThat(started).isFalse();
+        assertThat(service.getState()).isEqualTo(ApplicationState.IDLE);
+    }
+
+    @Test
+    void onTranscriptionCompletedWhenNotTranscribingIsNoop() {
+        // In IDLE state, receiving completion event should not change state
+        service.onTranscriptionCompleted(
+                new TranscriptionCompletedEvent(
+                        TranscriptionResult.of("hello", 1.0, "vosk"),
+                        Instant.now(), "vosk"));
+
+        assertThat(service.getState()).isEqualTo(ApplicationState.IDLE);
+    }
+
     // --- Test fakes ---
 
     private static class FakeCaptureOrchestrator implements CaptureOrchestrator {
@@ -144,12 +224,13 @@ class DefaultRecordingServiceTest {
         boolean capturing = false;
         boolean cancelled = false;
         boolean shouldThrowOnStop = false;
+        boolean failStart = false;
         UUID sessionId;
 
         @Override
         public UUID startCapture() {
-            if (capturing) {
-                return null;
+            if (capturing || failStart) {
+                return failStart ? null : null;
             }
             capturing = true;
             sessionId = UUID.randomUUID();

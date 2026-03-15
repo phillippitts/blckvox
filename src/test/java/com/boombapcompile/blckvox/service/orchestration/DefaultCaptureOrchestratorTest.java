@@ -180,6 +180,36 @@ class DefaultCaptureOrchestratorTest {
     }
 
     @Test
+    void shouldHandleCancelWithNullSessionIdWhenNoActiveSession() {
+        FakeAudioCaptureService captureService = new FakeAudioCaptureService();
+        CaptureStateMachine stateMachine = new CaptureStateMachine();
+        DefaultCaptureOrchestrator orchestrator = new DefaultCaptureOrchestrator(captureService, stateMachine);
+
+        // No active session, cancel with null → cancelCapture returns null → no captureService.cancel
+        orchestrator.cancelCapture(null);
+
+        assertThat(orchestrator.isCapturing()).isFalse();
+        assertThat(captureService.cancelSessionCallCount).isEqualTo(0);
+    }
+
+    @Test
+    void shouldReturnNullAudioWhenReadAllReturnsNull() {
+        FakeAudioCaptureService captureService = new FakeAudioCaptureService();
+        captureService.setAudioData(null); // readAll will return null
+        CaptureStateMachine stateMachine = new CaptureStateMachine();
+        DefaultCaptureOrchestrator orchestrator = new DefaultCaptureOrchestrator(captureService, stateMachine);
+
+        UUID sessionId = orchestrator.startCapture();
+        assertThat(sessionId).isNotNull();
+
+        byte[] audio = orchestrator.stopCapture(sessionId);
+
+        // pcm == null branch in readCapturedAudio LOG
+        assertThat(audio).isNull();
+        assertThat(orchestrator.isCapturing()).isFalse();
+    }
+
+    @Test
     void shouldReturnCapturingStateFromStateMachine() {
         // Arrange
         FakeAudioCaptureService captureService = new FakeAudioCaptureService();

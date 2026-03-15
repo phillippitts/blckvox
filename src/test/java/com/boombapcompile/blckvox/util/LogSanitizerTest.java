@@ -74,4 +74,41 @@ class LogSanitizerTest {
         // Control chars are now sanitized: \t→\\t, \n→\\n, \r→\\r
         assertThat(LogSanitizer.truncate("\t\n\r", 4)).isEqualTo("\\t\\n");
     }
+
+    @Test
+    void sanitizeNull() {
+        assertThat(LogSanitizer.sanitize(null)).isEmpty();
+    }
+
+    @Test
+    void sanitizeReplacesNewline() {
+        assertThat(LogSanitizer.sanitize("a\nb")).isEqualTo("a\\nb");
+    }
+
+    @Test
+    void sanitizeReplacesCarriageReturn() {
+        assertThat(LogSanitizer.sanitize("a\rb")).isEqualTo("a\\rb");
+    }
+
+    @Test
+    void sanitizeReplacesTab() {
+        assertThat(LogSanitizer.sanitize("a\tb")).isEqualTo("a\\tb");
+    }
+
+    @Test
+    void sanitizeReplacesOtherControlChars() {
+        // \u0001 = SOH control character
+        assertThat(LogSanitizer.sanitize("a\u0001b")).isEqualTo("a\\x01b");
+    }
+
+    @Test
+    void sanitizeStripsAnsiEscapes() {
+        assertThat(LogSanitizer.sanitize("hello\u001B[31mred\u001B[0mnormal"))
+                .isEqualTo("hellorednormal");
+    }
+
+    @Test
+    void sanitizePreservesRegularText() {
+        assertThat(LogSanitizer.sanitize("Hello World 123!")).isEqualTo("Hello World 123!");
+    }
 }

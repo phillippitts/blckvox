@@ -202,6 +202,65 @@ class DefaultTranscriptionOrchestratorTest {
         assertThat(event.engineUsed()).isEqualTo("reconciled");
     }
 
+    @Test
+    void shouldPublishFailureWhenSingleEngineThrowsRuntimeException() {
+        reconciliation.enabled = false;
+
+        SttEngine runtimeFailingEngine = new SttEngine() {
+            @Override public void initialize() { }
+            @Override public TranscriptionResult transcribe(byte[] audioData) {
+                throw new RuntimeException("unexpected NPE");
+            }
+            @Override public String getEngineName() { return "vosk"; }
+            @Override public boolean isHealthy() { return true; }
+            @Override public void close() { }
+        };
+        SttEngine healthyWhisper = new OrchestrationTestDoubles.FakeEngine("whisper", "whisper ok");
+        EngineSelectionStrategy selector = createEngineSelectorWith(runtimeFailingEngine, healthyWhisper);
+
+        DefaultTranscriptionOrchestrator orchestrator = new DefaultTranscriptionOrchestrator(
+                orchestrationProps(200), publisher, reconciliation, selector, metrics);
+
+        orchestrator.transcribe(loudPcm());
+
+        assertThat(publisher.events).hasSize(1);
+        TranscriptionCompletedEvent event = publisher.events.get(0);
+        assertThat(event.result().isFailure()).isTrue();
+    }
+
+    @Test
+    void shouldPublishFailureWithUnknownEngineWhenSelectionFails() {
+        reconciliation.enabled = false;
+
+        // Create a selector that throws TranscriptionException before engine assignment
+        SttEngine fakeVosk = new OrchestrationTestDoubles.FakeEngine("vosk", "text");
+        SttEngine fakeWhisper = new OrchestrationTestDoubles.FakeEngine("whisper", "text");
+        SttWatchdogProperties watchdogProps = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+        // Use a real watchdog where both engines are disabled
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(
+                List.of(fakeVosk, fakeWhisper), watchdogProps, publisher) {
+            @Override
+            public boolean isEngineEnabled(String engine) {
+                return false; // both disabled → selectEngine() throws
+            }
+        };
+        OrchestrationProperties orchProps = orchestrationProps(200);
+        EngineSelectionStrategy selector = new EngineSelectionStrategy(
+                fakeVosk, fakeWhisper, watchdog, orchProps);
+
+        DefaultTranscriptionOrchestrator orchestrator = new DefaultTranscriptionOrchestrator(
+                orchProps, publisher, reconciliation, selector, metrics);
+
+        orchestrator.transcribe(loudPcm());
+
+        assertThat(publisher.events).hasSize(1);
+        TranscriptionCompletedEvent event = publisher.events.get(0);
+        assertThat(event.result().isFailure()).isTrue();
+        // Engine should be "unknown" since engine was null when exception was thrown
+        assertThat(event.engineUsed()).isEqualTo("unknown");
+    }
+
     // --- Helpers ---
 
     private DefaultTranscriptionOrchestrator createOrchestrator(

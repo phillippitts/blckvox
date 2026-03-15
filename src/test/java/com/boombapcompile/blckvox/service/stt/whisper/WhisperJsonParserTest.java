@@ -297,4 +297,121 @@ class WhisperJsonParserTest {
         List<String> tokens = WhisperJsonParser.extractTokens(json);
         assertThat(tokens).containsExactly("hello", "world");
     }
+
+    @Test
+    void extractTextSkipsNullSegmentObjectsInSimpleMode() {
+        // JSON array with null-like entries (JSONObject.optJSONObject returns null for non-objects)
+        String json = """
+            {
+              "segments": [
+                {"text": "Hello"},
+                "not-an-object",
+                {"text": "World"}
+              ]
+            }
+            """;
+        String text = WhisperJsonParser.extractText(json);
+        assertThat(text).isEqualTo("Hello World");
+    }
+
+    @Test
+    void extractTextWithPauseDetectionSkipsNullSegments() {
+        String json = """
+            {
+              "segments": [
+                {"text": "Hello", "start": 0.0, "end": 1.0},
+                "not-an-object",
+                {"text": "World", "start": 1.5, "end": 2.5}
+              ]
+            }
+            """;
+        String text = WhisperJsonParser.extractTextWithPauseDetection(json, 1000);
+        assertThat(text).isEqualTo("Hello World");
+    }
+
+    @Test
+    void extractTokensSkipsNullSegments() {
+        String json = """
+            {
+              "segments": [
+                {"words": [{"word": "Hello"}]},
+                "not-a-segment",
+                {"words": [{"word": "World"}]}
+              ]
+            }
+            """;
+        List<String> tokens = WhisperJsonParser.extractTokens(json);
+        assertThat(tokens).containsExactly("hello", "world");
+    }
+
+    @Test
+    void extractTokensSkipsNullWordObjects() {
+        String json = """
+            {
+              "segments": [
+                {"words": [
+                  {"word": "Hello"},
+                  "not-a-word-object",
+                  {"word": "World"}
+                ]}
+              ]
+            }
+            """;
+        List<String> tokens = WhisperJsonParser.extractTokens(json);
+        assertThat(tokens).containsExactly("hello", "world");
+    }
+
+    @Test
+    void extractTextPauseDetectionSegmentMissingEndTimestamp() {
+        // First segment has no "end" → prevEnd stays -1, second segment treated as no-gap
+        String json = """
+            {
+              "segments": [
+                {"text": "Hello", "start": 0.0},
+                {"text": "World", "start": 5.0, "end": 6.0}
+              ]
+            }
+            """;
+        String text = WhisperJsonParser.extractTextWithPauseDetection(json, 1000);
+        // No pause detection because prevEnd is -1 after first segment (no end timestamp)
+        assertThat(text).isEqualTo("Hello World");
+    }
+
+    @Test
+    void extractTextSegmentsAsNonArrayValue() {
+        // "segments" key exists but value is not an array
+        String json = """
+            {
+              "segments": "not-an-array"
+            }
+            """;
+        String text = WhisperJsonParser.extractText(json);
+        assertThat(text).isEmpty();
+    }
+
+    @Test
+    void extractTextPauseDetectionSegmentsAsNonArrayValue() {
+        String json = """
+            {
+              "segments": "not-an-array"
+            }
+            """;
+        String text = WhisperJsonParser.extractTextWithPauseDetection(json, 1000);
+        assertThat(text).isEmpty();
+    }
+
+    @Test
+    void extractTokensSegmentsWithNullWordsArray() {
+        // Segment has "words" key but it's not an array
+        String json = """
+            {
+              "segments": [
+                {"words": "not-an-array", "text": "fallback text"}
+              ]
+            }
+            """;
+        List<String> tokens = WhisperJsonParser.extractTokens(json);
+        // words is not an array → no tokens from words → falls back to text tokenization
+        assertThat(tokens).containsExactly("fallback", "text");
+    }
 }

@@ -23,6 +23,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class WavWriterTest {
 
     @Test
+    void shouldThrowIllegalStateExceptionWhenWriteFails(@org.junit.jupiter.api.io.TempDir Path tempDir) {
+        byte[] pcm = new byte[32_000];
+        // Non-existent parent directory → IOException → IllegalStateException
+        Path badPath = tempDir.resolve("nonexistent").resolve("file.wav");
+
+        assertThatThrownBy(() -> WavWriter.writePcm16LeMono16kHz(pcm, badPath))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Failed to write WAV file")
+                .hasCauseInstanceOf(IOException.class);
+    }
+
+    @Test
     void shouldWriteValidWavHeaderAndPayload() throws IOException {
         // 1 second of silence at 16kHz mono 16-bit = 32,000 bytes
         byte[] pcm = new byte[REQUIRED_BYTE_RATE];

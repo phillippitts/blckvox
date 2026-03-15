@@ -238,6 +238,64 @@ class AudioSilenceDetectorTest {
         assertThat(AudioSilenceDetector.isSilentMaxWindow(pcm, 200)).isTrue();
     }
 
+    // --- isSilent() basic tests ---
+
+    @Test
+    void isSilentReturnsTrueForNull() {
+        assertThat(AudioSilenceDetector.isSilent(null, 800)).isTrue();
+    }
+
+    @Test
+    void isSilentReturnsTrueForEmpty() {
+        assertThat(AudioSilenceDetector.isSilent(new byte[0], 800)).isTrue();
+    }
+
+    @Test
+    void isSilentReturnsTrueForSingleByte() {
+        assertThat(AudioSilenceDetector.isSilent(new byte[1], 800)).isTrue();
+    }
+
+    @Test
+    void isSilentReturnsTrueForSilentAudio() {
+        byte[] pcm = generateSilence(durationToSamples(500));
+        assertThat(AudioSilenceDetector.isSilent(pcm, 800)).isTrue();
+    }
+
+    @Test
+    void isSilentReturnsFalseForLoudAudio() {
+        byte[] pcm = generateLoud(durationToSamples(500));
+        assertThat(AudioSilenceDetector.isSilent(pcm, 800)).isFalse();
+    }
+
+    // --- calculateOverallRMS() basic tests ---
+
+    @Test
+    void overallRmsReturnsZeroForNull() {
+        assertThat(AudioSilenceDetector.calculateOverallRMS(null)).isEqualTo(0);
+    }
+
+    @Test
+    void overallRmsReturnsZeroForEmpty() {
+        assertThat(AudioSilenceDetector.calculateOverallRMS(new byte[0])).isEqualTo(0);
+    }
+
+    @Test
+    void overallRmsReturnsZeroForSingleByte() {
+        assertThat(AudioSilenceDetector.calculateOverallRMS(new byte[1])).isEqualTo(0);
+    }
+
+    @Test
+    void overallRmsReturnsZeroForSilence() {
+        byte[] pcm = generateSilence(durationToSamples(500));
+        assertThat(AudioSilenceDetector.calculateOverallRMS(pcm)).isEqualTo(0);
+    }
+
+    @Test
+    void overallRmsIsHighForLoudAudio() {
+        byte[] pcm = generateLoud(durationToSamples(500));
+        assertThat(AudioSilenceDetector.calculateOverallRMS(pcm)).isGreaterThan(9000);
+    }
+
     // --- Helpers ---
 
     /** Converts duration in ms to number of 16-bit samples at SAMPLE_RATE. */

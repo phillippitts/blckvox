@@ -2,9 +2,12 @@ package com.boombapcompile.blckvox.service.stt.parallel;
 
 import com.boombapcompile.blckvox.domain.TranscriptionResult;
 import com.boombapcompile.blckvox.exception.TranscriptionException;
+import com.boombapcompile.blckvox.service.stt.DetailedTranscriptionEngine;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
+import com.boombapcompile.blckvox.service.stt.TranscriptionOutput;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -98,6 +101,117 @@ class DefaultParallelSttServiceTest {
                 .isInstanceOf(NullPointerException.class);
     }
 
+    @Test
+    void timeoutReturnPartialResultsWhenOneEngineFinishes() {
+        // Vosk finishes fast, whisper hangs past timeout
+        SttEngine vosk = new StubEngine("vosk", 10, false);
+        SttEngine whisper = new StubEngine("whisper", 5000, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+
+        var pair = svc.transcribeBoth(new byte[3200], 200);
+        // Vosk should succeed, whisper may or may not be done
+        assertThat(pair.vosk()).isNotNull();
+    }
+
+    @Test
+    void timeoutWithBothHangingThrowsTranscriptionException() {
+        SttEngine vosk = new StubEngine("vosk", 5000, false);
+        SttEngine whisper = new StubEngine("whisper", 5000, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+
+        assertThatThrownBy(() -> svc.transcribeBoth(new byte[3200], 100))
+                .isInstanceOf(TranscriptionException.class)
+                .hasMessageContaining("Both engines failed");
+    }
+
+    @Test
+    void detailedTranscriptionEngineUsesTranscribeDetailed() {
+        DetailedStubEngine vosk = new DetailedStubEngine("vosk", List.of("hello", "world"));
+        SttEngine whisper = new StubEngine("whisper", 10, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+
+        var pair = svc.transcribeBoth(new byte[3200], 2000);
+        assertThat(pair.vosk()).isNotNull();
+        assertThat(pair.vosk().tokens()).containsExactly("hello", "world");
+    }
+
+    @Test
+    void detailedEngineWithEmptyTokensFallsBackToTokenizer() {
+        DetailedStubEngine vosk = new DetailedStubEngine("vosk", List.of());
+        SttEngine whisper = new StubEngine("whisper", 10, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+
+        var pair = svc.transcribeBoth(new byte[3200], 2000);
+        assertThat(pair.vosk()).isNotNull();
+        // TokenizerUtil will tokenize "vosk-text" -> ["vosk", "text"]
+        assertThat(pair.vosk().tokens()).containsExactly("vosk", "text");
+    }
+
+    @Test
+    void basicSttEngineUsesTokenizerForTokens() {
+        SttEngine vosk = new StubEngine("vosk", 10, false);
+        SttEngine whisper = new StubEngine("whisper", 10, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+
+        var pair = svc.transcribeBoth(new byte[3200], 2000);
+        assertThat(pair.vosk()).isNotNull();
+        // StubEngine returns "vosk-text", tokenized to ["vosk", "text"]
+        assertThat(pair.vosk().tokens()).containsExactly("vosk", "text");
+    }
+
+    @Test
+    void transcriptionExceptionFromEngineReturnsNull() {
+        SttEngine vosk = new StubEngine("vosk", 10, true); // throws TranscriptionException
+        SttEngine whisper = new StubEngine("whisper", 10, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+
+        var pair = svc.transcribeBoth(new byte[3200], 2000);
+        assertThat(pair.vosk()).isNull();
+        assertThat(pair.whisper()).isNotNull();
+    }
+
+    @Test
+    void detailedEngineWithRawJsonPreservesIt() {
+        DetailedTranscriptionEngine vosk = new DetailedTranscriptionEngine() {
+            @Override public TranscriptionOutput transcribeDetailed(byte[] audioData) {
+                return TranscriptionOutput.of(
+                        TranscriptionResult.of("hi", 0.95, "vosk"),
+                        List.of("hi"), "{\"text\":\"hi\"}");
+            }
+            @Override public void initialize() {}
+            @Override public TranscriptionResult transcribe(byte[] audioData) {
+                return TranscriptionResult.of("hi", 0.95, "vosk");
+            }
+            @Override public String getEngineName() { return "vosk"; }
+            @Override public boolean isHealthy() { return true; }
+            @Override public void close() {}
+        };
+        SttEngine whisper = new StubEngine("whisper", 10, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+
+        var pair = svc.transcribeBoth(new byte[3200], 2000);
+        assertThat(pair.vosk()).isNotNull();
+        assertThat(pair.vosk().rawJson()).isEqualTo("{\"text\":\"hi\"}");
+    }
+
+    @Test
+    void constructorFallsBackToDefaultTimeoutWhenZero() {
+        SttEngine vosk = new StubEngine("vosk", 10, false);
+        SttEngine whisper = new StubEngine("whisper", 10, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        // Zero timeout should fallback to 10000
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 0);
+        var pair = svc.transcribeBoth(new byte[3200], 5000);
+        assertThat(pair.vosk()).isNotNull();
+    }
+
     static class RuntimeExceptionEngine implements SttEngine {
         private final String name;
         RuntimeExceptionEngine(String name) { this.name = name; }
@@ -144,5 +258,29 @@ class DefaultParallelSttServiceTest {
         @Override
         public void close() {
         }
+    }
+
+    static class DetailedStubEngine implements DetailedTranscriptionEngine {
+        private final String name;
+        private final List<String> tokens;
+
+        DetailedStubEngine(String name, List<String> tokens) {
+            this.name = name;
+            this.tokens = tokens;
+        }
+
+        @Override
+        public TranscriptionOutput transcribeDetailed(byte[] audioData) {
+            TranscriptionResult tr = TranscriptionResult.of(name + "-text", 0.9, name);
+            return TranscriptionOutput.of(tr, tokens, null);
+        }
+
+        @Override public void initialize() {}
+        @Override public TranscriptionResult transcribe(byte[] audioData) {
+            return TranscriptionResult.of(name + "-text", 0.9, name);
+        }
+        @Override public String getEngineName() { return name; }
+        @Override public boolean isHealthy() { return true; }
+        @Override public void close() {}
     }
 }

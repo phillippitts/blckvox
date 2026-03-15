@@ -409,7 +409,85 @@ class HotkeyRecordingAdapterTest {
         }
     }
 
+    @Test
+    void toggleModePressStartsThenStops() {
+        FakeCapture cap = new FakeCapture();
+        cap.pcm = FakeAudioCaptureService.generateNonSilentPcm(3200);
+        SttEngine vosk = new StubEngine("vosk");
+        SttEngine whisper = new StubEngine("whisper");
+        FakeWatchdog wd = new FakeWatchdog(true, true);
+        OrchestrationProperties props = new OrchestrationProperties(
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+        List<Object> events = new ArrayList<>();
+        ApplicationEventPublisher pub = events::add;
+        CaptureStateMachine csm = new CaptureStateMachine();
+        HotkeyRecordingAdapter adapter = HotkeyRecordingAdapterBuilder.builder()
+                .captureService(cap)
+                .voskEngine(vosk)
+                .whisperEngine(whisper)
+                .watchdog(wd)
+                .orchestrationProperties(props)
+                .hotkeyProperties(toggleHotkeyProps())
+                .publisher(pub)
+                .captureStateMachine(csm)
+                .engineSelector(new EngineSelectionStrategy(vosk, whisper, wd, props))
+                .build();
+
+        // First press starts recording
+        adapter.onHotkeyPressed(new HotkeyPressedEvent(Instant.now()));
+        assertThat(csm.isActive()).isTrue();
+
+        // Second press stops and transcribes
+        adapter.onHotkeyPressed(new HotkeyPressedEvent(Instant.now()));
+        assertThat(csm.isActive()).isFalse();
+
+        boolean published = events.stream().anyMatch(e -> e instanceof TranscriptionCompletedEvent);
+        assertThat(published).isTrue();
+    }
+
+    @Test
+    void toggleModeIgnoresReleaseEvent() {
+        FakeCapture cap = new FakeCapture();
+        cap.pcm = FakeAudioCaptureService.generateNonSilentPcm(3200);
+        SttEngine vosk = new StubEngine("vosk");
+        SttEngine whisper = new StubEngine("whisper");
+        FakeWatchdog wd = new FakeWatchdog(true, true);
+        OrchestrationProperties props = new OrchestrationProperties(
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+        List<Object> events = new ArrayList<>();
+        ApplicationEventPublisher pub = events::add;
+        CaptureStateMachine csm = new CaptureStateMachine();
+        HotkeyRecordingAdapter adapter = HotkeyRecordingAdapterBuilder.builder()
+                .captureService(cap)
+                .voskEngine(vosk)
+                .whisperEngine(whisper)
+                .watchdog(wd)
+                .orchestrationProperties(props)
+                .hotkeyProperties(toggleHotkeyProps())
+                .publisher(pub)
+                .captureStateMachine(csm)
+                .engineSelector(new EngineSelectionStrategy(vosk, whisper, wd, props))
+                .build();
+
+        // Start via toggle press
+        adapter.onHotkeyPressed(new HotkeyPressedEvent(Instant.now()));
+        assertThat(csm.isActive()).isTrue();
+
+        // Release should be ignored in toggle mode — session still active
+        adapter.onHotkeyReleased(new HotkeyReleasedEvent(Instant.now()));
+        assertThat(csm.isActive()).isTrue();
+
+        // No transcription completed yet
+        long completedCount = events.stream()
+                .filter(e -> e instanceof TranscriptionCompletedEvent).count();
+        assertThat(completedCount).isZero();
+    }
+
     private static HotkeyProperties fakeHotkeyProps() {
         return new HotkeyProperties(TriggerType.MODIFIER_COMBO, "J", 300, List.of("META"), List.of(), false);
+    }
+
+    private static HotkeyProperties toggleHotkeyProps() {
+        return new HotkeyProperties(TriggerType.MODIFIER_COMBO, "J", 300, List.of("META"), List.of(), true);
     }
 }

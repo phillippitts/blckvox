@@ -106,7 +106,254 @@ class AudioValidatorTest {
                 .hasMessageContaining("not aligned to block size");
     }
 
+    @Test
+    void shouldRejectNullData() {
+        assertThatThrownBy(() -> validator.validate(null))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("null");
+    }
+
+    @Test
+    void shouldRejectOversizedPayload() {
+        // Max is 100MB; create a byte array slightly over
+        AudioValidationProperties smallProps = new AudioValidationProperties(250, 300_000, 100);
+        AudioValidator smallValidator = new AudioValidator(smallProps);
+        byte[] big = new byte[101];
+        assertThatThrownBy(() -> smallValidator.validate(big))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("too large");
+    }
+
+    @Test
+    void wavShouldRejectUnsupportedAudioFormat() {
+        // Format 3 = IEEE float, not PCM
+        byte[] wav = makeMinimalWavWithFormat(3, 16_000, 1, 16);
+        assertThatThrownBy(() -> validator.validate(wav))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("Unsupported audio format");
+    }
+
+    @Test
+    void wavShouldRejectWrongBlockAlign() {
+        // blockAlign=4 instead of 2 for mono 16-bit
+        byte[] wav = makeMinimalWavWithBlockAlign(16_000, 1, 16, 4);
+        assertThatThrownBy(() -> validator.validate(wav))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("block align");
+    }
+
+    @Test
+    void wavShouldRejectWrongByteRate() {
+        // byteRate=64000 instead of 32000
+        byte[] wav = makeMinimalWavWithByteRate(16_000, 1, 16, 64_000);
+        assertThatThrownBy(() -> validator.validate(wav))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("byte rate");
+    }
+
+    @Test
+    void wavShouldRejectTooSmallForRiffHeader() {
+        byte[] tooSmall = new byte[]{
+                'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'A', 'V', 'E'};
+        // 12 bytes = valid RIFF header but no chunks → Missing fmt
+        assertThatThrownBy(() -> validator.validate(tooSmall))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("Missing fmt chunk");
+    }
+
+    @Test
+    void wavShouldRejectInvalidChunkSize() {
+        // WAV with negative chunk size
+        byte[] wav = new byte[28];
+        wav[0] = 'R'; wav[1] = 'I'; wav[2] = 'F'; wav[3] = 'F';
+        putLEInt(wav, 4, 20);
+        wav[8] = 'W'; wav[9] = 'A'; wav[10] = 'V'; wav[11] = 'E';
+        // chunk with size pointing beyond array
+        wav[12] = 'f'; wav[13] = 'm'; wav[14] = 't'; wav[15] = ' ';
+        putLEInt(wav, 16, 999); // chunk size way too large
+        assertThatThrownBy(() -> validator.validate(wav))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("Invalid chunk size");
+    }
+
+    @Test
+    void wavShouldRejectNegativeChunkSize() {
+        byte[] wav = new byte[28];
+        wav[0] = 'R'; wav[1] = 'I'; wav[2] = 'F'; wav[3] = 'F';
+        putLEInt(wav, 4, 20);
+        wav[8] = 'W'; wav[9] = 'A'; wav[10] = 'V'; wav[11] = 'E';
+        wav[12] = 'f'; wav[13] = 'm'; wav[14] = 't'; wav[15] = ' ';
+        putLEInt(wav, 16, -1); // negative chunk size
+        assertThatThrownBy(() -> validator.validate(wav))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("Invalid chunk size");
+    }
+
+    @Test
+    void isWavReturnsFalseForPartialRiffHeader() {
+        // 32000 bytes (valid PCM length) but first byte is 'R' — exercises isWav partial match
+        byte[] data = new byte[32_000];
+        data[0] = 'R'; // matches first byte but not second
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void isWavReturnsFalseWhenWaveSignatureMismatch() {
+        // Has "RIFF" but not "WAVE" at bytes 8-11
+        byte[] data = new byte[32_000];
+        data[0] = 'R'; data[1] = 'I'; data[2] = 'F'; data[3] = 'F';
+        putLEInt(data, 4, 31992);
+        data[8] = 'A'; data[9] = 'V'; data[10] = 'I'; data[11] = ' '; // AVI, not WAVE
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void wavShouldRejectFmtChunkTooSmall() {
+        // fmt chunk of only 8 bytes (min is 16)
+        byte[] wav = makeWavWithSmallFmt();
+        assertThatThrownBy(() -> validator.validate(wav))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("fmt chunk too small");
+    }
+
+    @Test
+    void pcmShouldRejectOddByteCount() {
+        byte[] pcm = new byte[32_001]; // Odd - not aligned to 2 bytes
+        assertThatThrownBy(() -> validator.validate(pcm))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("not aligned to block size");
+    }
+
+    @Test
+    void pcmShouldRejectTooLong() {
+        // Over 300 seconds = over 9,600,000 bytes at 32kB/s
+        AudioValidationProperties strictProps = new AudioValidationProperties(250, 1000, 100 * 1024 * 1024);
+        AudioValidator strictValidator = new AudioValidator(strictProps);
+        byte[] longPcm = new byte[64_000]; // ~2 seconds - exceeds 1s max
+        assertThatThrownBy(() -> strictValidator.validate(longPcm))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("too long");
+    }
+
+    @Test
+    void wavWithOddSizedChunkShouldPadToEvenBoundary() {
+        // WAV with a LIST chunk of odd size (should be padded)
+        byte[] wav = makeWavWithOddChunk(16_000, 1, 16);
+        assertThatCode(() -> validator.validate(wav)).doesNotThrowAnyException();
+    }
+
     // --- Helpers ---
+
+    private static byte[] makeMinimalWavWithFormat(int audioFormat, int sampleRate, int channels, int bitsPerSample) {
+        int payloadBytes = 40_000;
+        int header = 44;
+        byte[] out = new byte[header + payloadBytes];
+        out[0] = 'R'; out[1] = 'I'; out[2] = 'F'; out[3] = 'F';
+        putLEInt(out, 4, 36 + payloadBytes);
+        out[8] = 'W'; out[9] = 'A'; out[10] = 'V'; out[11] = 'E';
+        out[12] = 'f'; out[13] = 'm'; out[14] = 't'; out[15] = ' ';
+        putLEInt(out, 16, 16);
+        putLEShort(out, 20, audioFormat);
+        putLEShort(out, 22, channels);
+        putLEInt(out, 24, sampleRate);
+        int blockAlign = (bitsPerSample / 8) * channels;
+        int byteRate = sampleRate * blockAlign;
+        putLEInt(out, 28, byteRate);
+        putLEShort(out, 32, blockAlign);
+        putLEShort(out, 34, bitsPerSample);
+        out[36] = 'd'; out[37] = 'a'; out[38] = 't'; out[39] = 'a';
+        putLEInt(out, 40, payloadBytes);
+        return out;
+    }
+
+    private static byte[] makeMinimalWavWithBlockAlign(int sampleRate, int channels, int bitsPerSample, int blockAlign) {
+        int payloadBytes = 40_000;
+        int header = 44;
+        byte[] out = new byte[header + payloadBytes];
+        out[0] = 'R'; out[1] = 'I'; out[2] = 'F'; out[3] = 'F';
+        putLEInt(out, 4, 36 + payloadBytes);
+        out[8] = 'W'; out[9] = 'A'; out[10] = 'V'; out[11] = 'E';
+        out[12] = 'f'; out[13] = 'm'; out[14] = 't'; out[15] = ' ';
+        putLEInt(out, 16, 16);
+        putLEShort(out, 20, 1); // PCM
+        putLEShort(out, 22, channels);
+        putLEInt(out, 24, sampleRate);
+        putLEInt(out, 28, sampleRate * blockAlign); // byte rate uses custom blockAlign
+        putLEShort(out, 32, blockAlign);
+        putLEShort(out, 34, bitsPerSample);
+        out[36] = 'd'; out[37] = 'a'; out[38] = 't'; out[39] = 'a';
+        putLEInt(out, 40, payloadBytes);
+        return out;
+    }
+
+    private static byte[] makeMinimalWavWithByteRate(int sampleRate, int channels, int bitsPerSample, int byteRate) {
+        int payloadBytes = 40_000;
+        int header = 44;
+        byte[] out = new byte[header + payloadBytes];
+        out[0] = 'R'; out[1] = 'I'; out[2] = 'F'; out[3] = 'F';
+        putLEInt(out, 4, 36 + payloadBytes);
+        out[8] = 'W'; out[9] = 'A'; out[10] = 'V'; out[11] = 'E';
+        out[12] = 'f'; out[13] = 'm'; out[14] = 't'; out[15] = ' ';
+        putLEInt(out, 16, 16);
+        putLEShort(out, 20, 1); // PCM
+        putLEShort(out, 22, channels);
+        putLEInt(out, 24, sampleRate);
+        putLEInt(out, 28, byteRate);
+        int blockAlign = (bitsPerSample / 8) * channels;
+        putLEShort(out, 32, blockAlign);
+        putLEShort(out, 34, bitsPerSample);
+        out[36] = 'd'; out[37] = 'a'; out[38] = 't'; out[39] = 'a';
+        putLEInt(out, 40, payloadBytes);
+        return out;
+    }
+
+    private static byte[] makeWavWithSmallFmt() {
+        int fmtSize = 8; // Too small (min is 16)
+        int payloadBytes = 40_000;
+        int totalSize = 12 + 8 + fmtSize + 8 + payloadBytes;
+        byte[] out = new byte[totalSize];
+        int offset = 0;
+        out[offset++] = 'R'; out[offset++] = 'I'; out[offset++] = 'F'; out[offset++] = 'F';
+        putLEInt(out, offset, totalSize - 8); offset += 4;
+        out[offset++] = 'W'; out[offset++] = 'A'; out[offset++] = 'V'; out[offset++] = 'E';
+        out[offset++] = 'f'; out[offset++] = 'm'; out[offset++] = 't'; out[offset++] = ' ';
+        putLEInt(out, offset, fmtSize); offset += 4;
+        offset += fmtSize; // skip content
+        out[offset++] = 'd'; out[offset++] = 'a'; out[offset++] = 't'; out[offset++] = 'a';
+        putLEInt(out, offset, payloadBytes);
+        return out;
+    }
+
+    private static byte[] makeWavWithOddChunk(int sampleRate, int channels, int bitsPerSample) {
+        int payloadBytes = 40_000;
+        int oddChunkSize = 13; // Odd size - should be padded to even boundary
+        int totalSize = 12 + 8 + 16 + 8 + oddChunkSize + 1 + 8 + payloadBytes; // +1 for padding
+        byte[] out = new byte[totalSize];
+        int offset = 0;
+        out[offset++] = 'R'; out[offset++] = 'I'; out[offset++] = 'F'; out[offset++] = 'F';
+        putLEInt(out, offset, totalSize - 8); offset += 4;
+        out[offset++] = 'W'; out[offset++] = 'A'; out[offset++] = 'V'; out[offset++] = 'E';
+        // fmt chunk
+        out[offset++] = 'f'; out[offset++] = 'm'; out[offset++] = 't'; out[offset++] = ' ';
+        putLEInt(out, offset, 16); offset += 4;
+        putLEShort(out, offset, 1); offset += 2;
+        putLEShort(out, offset, channels); offset += 2;
+        putLEInt(out, offset, sampleRate); offset += 4;
+        int blockAlign = (bitsPerSample / 8) * channels;
+        int byteRate = sampleRate * blockAlign;
+        putLEInt(out, offset, byteRate); offset += 4;
+        putLEShort(out, offset, blockAlign); offset += 2;
+        putLEShort(out, offset, bitsPerSample); offset += 2;
+        // Odd-sized unknown chunk (e.g. metadata)
+        out[offset++] = 'X'; out[offset++] = 'T'; out[offset++] = 'R'; out[offset++] = 'A';
+        putLEInt(out, offset, oddChunkSize); offset += 4;
+        offset += oddChunkSize; // skip content
+        offset += 1; // padding byte for even boundary
+        // data chunk
+        out[offset++] = 'd'; out[offset++] = 'a'; out[offset++] = 't'; out[offset++] = 'a';
+        putLEInt(out, offset, payloadBytes);
+        return out;
+    }
 
     private static byte[] makeMinimalWav(int sampleRate, int channels, int bitsPerSample) {
         int payloadBytes = 40_000; // Default payload size for test WAV files

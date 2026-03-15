@@ -88,4 +88,53 @@ class RestartBudgetTrackerTest {
         assertThat(tracker.tryLockRestart("vosk")).isTrue();
         tracker.unlockRestart("vosk");
     }
+
+    @Test
+    void isInCooldownReturnsFalseAfterCooldownExpires() {
+        // Use 0-minute cooldown so it expires immediately
+        SttWatchdogProperties zeroCooldownProps = new SttWatchdogProperties(
+                true, 60, 3, 0, false, 60000L, 0.3, 10, 5);
+        RestartBudgetTracker tracker = new RestartBudgetTracker(zeroCooldownProps);
+        tracker.register("vosk");
+
+        tracker.disable("vosk");
+        // With 0-minute cooldown, Instant.now().isBefore(until) is false immediately
+        assertThat(tracker.isInCooldown("vosk")).isFalse();
+    }
+
+    @Test
+    void getCooldownUntilReturnsNullWhenNotDisabled() {
+        RestartBudgetTracker tracker = new RestartBudgetTracker(props);
+        tracker.register("vosk");
+
+        assertThat(tracker.getCooldownUntil("vosk")).isNull();
+    }
+
+    @Test
+    void independentEngineTracking() {
+        RestartBudgetTracker tracker = new RestartBudgetTracker(props);
+        tracker.register("vosk");
+        tracker.register("whisper");
+
+        tracker.recordRestart("vosk");
+        tracker.recordRestart("vosk");
+
+        assertThat(tracker.getRestartCount("vosk")).isEqualTo(2);
+        assertThat(tracker.getRestartCount("whisper")).isZero();
+    }
+
+    @Test
+    void disableAndClearOnRecoveryAreIndependent() {
+        RestartBudgetTracker tracker = new RestartBudgetTracker(props);
+        tracker.register("vosk");
+        tracker.register("whisper");
+
+        tracker.disable("vosk");
+        tracker.recordRestart("whisper");
+
+        // Clear vosk shouldn't affect whisper
+        tracker.clearOnRecovery("vosk");
+        assertThat(tracker.isInCooldown("vosk")).isFalse();
+        assertThat(tracker.getRestartCount("whisper")).isEqualTo(1);
+    }
 }

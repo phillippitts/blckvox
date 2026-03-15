@@ -113,4 +113,42 @@ class SimplePreferenceReconcilerTest {
 
         assertThat(result.text()).isEqualTo("whisper text");
     }
+
+    @Test
+    void blankSecondaryWithBlankPrimaryDefaultsToPrimaryWhisper() {
+        var reconciler = new SimplePreferenceReconciler(OrchestrationProperties.PrimaryEngine.WHISPER);
+        var vosk = new EngineResult("  ", 0.0, List.of(), 100L, "vosk", null);
+        var whisper = new EngineResult("  ", 0.0, List.of(), 200L, "whisper", null);
+
+        var result = reconciler.reconcile(vosk, whisper);
+
+        // Both blank → falls through pickNonEmpty → returns first (whisper for WHISPER primary)
+        assertThat(result).isNotNull();
+        assertThat(result.confidence()).isEqualTo(0.0);
+        assertThat(result.engineName()).isEqualTo("reconciled");
+    }
+
+    @Test
+    void fallsBackToVoskWhenBothBlankAndPrimaryIsVosk() {
+        var reconciler = new SimplePreferenceReconciler(OrchestrationProperties.PrimaryEngine.VOSK);
+        var vosk = new EngineResult("  ", 0.5, List.of(), 100L, "vosk", null);
+        var whisper = new EngineResult("  ", 0.3, List.of(), 200L, "whisper", null);
+
+        var result = reconciler.reconcile(vosk, whisper);
+
+        // Both blank → pickNonEmpty returns first (vosk, since primary=VOSK) → confidence from vosk
+        assertThat(result.confidence()).isEqualTo(0.5);
+    }
+
+    @Test
+    void blankPrimaryFallsBackToNonBlankSecondary() {
+        var reconciler = new SimplePreferenceReconciler(OrchestrationProperties.PrimaryEngine.WHISPER);
+        var vosk = new EngineResult("vosk result", 0.9, List.of("vosk"), 100L, "vosk", null);
+        var whisper = new EngineResult("   ", 0.0, List.of(), 200L, "whisper", null);
+
+        var result = reconciler.reconcile(vosk, whisper);
+
+        // Primary (whisper) is blank → secondary (vosk) used
+        assertThat(result.text()).isEqualTo("vosk result");
+    }
 }

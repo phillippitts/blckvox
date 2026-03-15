@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -333,6 +334,280 @@ class SttEngineWatchdogTest {
 
         // Existing engine state unchanged
         assertThat(watchdog.getState("vosk")).isEqualTo(SttEngineWatchdog.EngineState.HEALTHY);
+    }
+
+    @Test
+    void restartFailureKeepsEngineDegraded() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+        // Engine that closes fine but fails to re-initialize
+        InitFailingEngine engine = new InitFailingEngine("vosk");
+        List<Object> publishedEvents = new ArrayList<>();
+        ApplicationEventPublisher publisher = publishedEvents::add;
+
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
+
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "fail",
+                null, java.util.Map.of()));
+
+        // Restart attempted but initialize() fails → stays DEGRADED
+        assertThat(watchdog.getState("vosk")).isEqualTo(SttEngineWatchdog.EngineState.DEGRADED);
+        // No recovery event should have been published
+        assertThat(publishedEvents).filteredOn(e -> e instanceof EngineRecoveredEvent).isEmpty();
+    }
+
+    @Test
+    void singleEngineSkipsSafetyMode() {
+        // Safety mode requires size >= 2; with a single engine it should not trigger
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 1, 10, false, 60_000L, 0.3, 10, 5);
+        RecordingEngine engine = new RecordingEngine("vosk");
+        ApplicationEventPublisher publisher = event -> { };
+
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
+
+        // Disable the engine
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "fail1",
+                null, java.util.Map.of()));
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "fail2",
+                null, java.util.Map.of()));
+
+        // Engine should be DISABLED — safety mode not triggered for single engine
+        assertThat(watchdog.getState("vosk")).isEqualTo(SttEngineWatchdog.EngineState.DISABLED);
+        assertThat(watchdog.isEngineEnabled("vosk")).isFalse();
+    }
+
+    @Test
+    void closeThrowsDuringRestartContinuesToInitialize() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+        CloseFailingEngine engine = new CloseFailingEngine("vosk");
+        List<Object> publishedEvents = new ArrayList<>();
+        ApplicationEventPublisher publisher = publishedEvents::add;
+
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
+
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "fail",
+                null, java.util.Map.of()));
+
+        // close() throws but initialize() succeeds → recovery event published
+        assertThat(engine.initCount).isEqualTo(1);
+        assertThat(publishedEvents).filteredOn(e -> e instanceof EngineRecoveredEvent).hasSize(1);
+    }
+
+    // --- Event record tests ---
+
+    @Test
+    void engineFailureEventNullAtDefaultsToNow() {
+        var event = new EngineFailureEvent("vosk", null, "fail", null, Map.of());
+        assertThat(event.at()).isNotNull();
+        assertThat(event.engine()).isEqualTo("vosk");
+    }
+
+    @Test
+    void engineFailureEventPreservesNonNullAt() {
+        Instant custom = Instant.parse("2025-01-01T00:00:00Z");
+        var event = new EngineFailureEvent("vosk", custom, "fail", null, Map.of());
+        assertThat(event.at()).isEqualTo(custom);
+    }
+
+    @Test
+    void engineRecoveredEventNullAtDefaultsToNow() {
+        var event = new EngineRecoveredEvent("vosk", null);
+        assertThat(event.at()).isNotNull();
+        assertThat(event.engine()).isEqualTo("vosk");
+    }
+
+    @Test
+    void engineRecoveredEventPreservesNonNullAt() {
+        Instant custom = Instant.parse("2025-01-01T00:00:00Z");
+        var event = new EngineRecoveredEvent("vosk", custom);
+        assertThat(event.at()).isEqualTo(custom);
+    }
+
+    // --- ConfidenceMonitor edge cases ---
+
+    @Test
+    void confidenceMonitorFormattedSummaryWithData() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+        RecordingEngine engine = new RecordingEngine("vosk");
+        ApplicationEventPublisher publisher = event -> { };
+
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
+
+        // Record some confidence data
+        for (int i = 0; i < 5; i++) {
+            TranscriptionResult result = TranscriptionResult.of("text", 0.8, "vosk");
+            watchdog.onTranscriptionCompleted(
+                    new TranscriptionCompletedEvent(result, Instant.now(), "vosk"));
+        }
+
+        String summary = watchdog.getConfidenceMonitor().formattedSummary("vosk");
+        assertThat(summary).contains("conf=");
+        assertThat(summary).contains("/5");
+    }
+
+    @Test
+    void confidenceMonitorRecordForUntrackedEngineReturnsNull() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+        // "unknown" was never registered
+        assertThat(monitor.record("unknown", 0.5)).isNull();
+    }
+
+    @Test
+    void confidenceMonitorAverageConfidenceForEmptyReturnsZero() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+        monitor.register("vosk");
+        assertThat(monitor.averageConfidence("vosk")).isEqualTo(0.0);
+    }
+
+    @Test
+    void confidenceMonitorAverageConfidenceForUnknownReturnsZero() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+        assertThat(monitor.averageConfidence("unknown")).isEqualTo(0.0);
+    }
+
+    @Test
+    void confidenceMonitorFormattedSummaryForUnknownReturnsEmpty() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+        assertThat(monitor.formattedSummary("unknown")).isEmpty();
+    }
+
+    @Test
+    void confidenceMonitorFormattedSummaryForEmptyWindowReturnsEmpty() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+        monitor.register("vosk");
+        assertThat(monitor.formattedSummary("vosk")).isEmpty();
+    }
+
+    @Test
+    void confidenceMonitorClearOnRecoveryForUnknownDoesNotThrow() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+        assertThatCode(() -> monitor.clearOnRecovery("unknown")).doesNotThrowAnyException();
+    }
+
+    @Test
+    void packagePrivateConstructorRegistersEngines() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+        RestartBudgetTracker budget = new RestartBudgetTracker(props);
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+
+        RecordingEngine engine = new RecordingEngine("vosk");
+        budget.register("vosk");
+        monitor.register("vosk");
+
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(
+                List.of(engine), event -> { }, budget, monitor);
+
+        assertThat(watchdog.getState("vosk")).isEqualTo(SttEngineWatchdog.EngineState.HEALTHY);
+        assertThat(watchdog.isEngineEnabled("vosk")).isTrue();
+    }
+
+    @Test
+    void safetyModeWithFailingRestartKeepsEngineDegraded() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 1, 10, false, 60_000L, 0.3, 10, 5);
+        // Use InitFailingEngine so tryRestart() fails in safety mode
+        InitFailingEngine vosk = new InitFailingEngine("vosk");
+        RecordingEngine whisper = new RecordingEngine("whisper");
+        List<Object> publishedEvents = new ArrayList<>();
+        ApplicationEventPublisher publisher = publishedEvents::add;
+
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(vosk, whisper), props, publisher);
+
+        // Record confidence data so safety mode can pick a best engine
+        for (int i = 0; i < 5; i++) {
+            watchdog.onTranscriptionCompleted(new TranscriptionCompletedEvent(
+                    TranscriptionResult.of("text", 0.8, "vosk"), Instant.now(), "vosk"));
+            watchdog.onTranscriptionCompleted(new TranscriptionCompletedEvent(
+                    TranscriptionResult.of("text", 0.5, "whisper"), Instant.now(), "whisper"));
+        }
+
+        // Disable vosk (two failures with budget=1)
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "f1", null, Map.of()));
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "f2", null, Map.of()));
+
+        // Disable whisper → triggers safety mode
+        // Safety mode picks vosk (higher confidence) but tryRestart fails (InitFailingEngine)
+        watchdog.onFailure(new EngineFailureEvent("whisper", Instant.now(), "f1", null, Map.of()));
+        watchdog.onFailure(new EngineFailureEvent("whisper", Instant.now(), "f2", null, Map.of()));
+
+        // vosk should be DEGRADED (safety mode set it to DEGRADED, tryRestart failed)
+        assertThat(watchdog.getState("vosk")).isEqualTo(SttEngineWatchdog.EngineState.DEGRADED);
+        // No recovery event for vosk since restart failed
+        assertThat(publishedEvents.stream()
+                .filter(e -> e instanceof EngineRecoveredEvent re && re.engine().equals("vosk"))
+                .count()).isZero();
+    }
+
+    @Test
+    void onFailureEarlyReturnWhenAlreadyDisabled() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 1, 10, false, 60_000L, 0.3, 10, 5);
+        RecordingEngine engine = new RecordingEngine("vosk");
+        ApplicationEventPublisher publisher = event -> { };
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
+
+        // Disable the engine
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "f1", null, Map.of()));
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "f2", null, Map.of()));
+        assertThat(watchdog.getState("vosk")).isEqualTo(SttEngineWatchdog.EngineState.DISABLED);
+
+        int initsBefore = engine.initCount;
+        // Third failure hits the early return at isEngineEnabled check
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "f3", null, Map.of()));
+        // No new restart attempts
+        assertThat(engine.initCount).isEqualTo(initsBefore);
+    }
+
+    // --- Test doubles ---
+
+    static class InitFailingEngine implements SttEngine {
+        final String name;
+        int initCount = 0;
+        int closedCount = 0;
+
+        InitFailingEngine(String name) { this.name = name; }
+
+        @Override public void initialize() {
+            initCount++;
+            throw new RuntimeException("init failed");
+        }
+        @Override public TranscriptionResult transcribe(byte[] audioData) {
+            return TranscriptionResult.of("", 1.0, name);
+        }
+        @Override public String getEngineName() { return name; }
+        @Override public boolean isHealthy() { return false; }
+        @Override public void close() { closedCount++; }
+    }
+
+    static class CloseFailingEngine implements SttEngine {
+        final String name;
+        int initCount = 0;
+
+        CloseFailingEngine(String name) { this.name = name; }
+
+        @Override public void initialize() { initCount++; }
+        @Override public TranscriptionResult transcribe(byte[] audioData) {
+            return TranscriptionResult.of("", 1.0, name);
+        }
+        @Override public String getEngineName() { return name; }
+        @Override public boolean isHealthy() { return true; }
+        @Override public void close() { throw new RuntimeException("close failed"); }
     }
 
     // --- Test double ---

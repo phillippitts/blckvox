@@ -15,11 +15,15 @@ class ClipboardTypingAdapterTest {
 
     static class FakeClipboard extends Clipboard {
         String contents;
+        boolean throwOnSet;
 
         FakeClipboard() {
             super("fake");
         }
         @Override public synchronized void setContents(Transferable contents, ClipboardOwner owner) {
+            if (throwOnSet) {
+                throw new IllegalStateException("clipboard broken");
+            }
             try {
                 this.contents = (String) contents.getTransferData(java.awt.datatransfer.DataFlavor.stringFlavor);
             } catch (UnsupportedFlavorException | IOException e) {
@@ -69,5 +73,138 @@ class ClipboardTypingAdapterTest {
         // Clipboard restore is async (200ms delay) to allow paste to complete
         Thread.sleep(400);
         assertThat(facade.clipboard.contents).isEqualTo("orig");
+    }
+
+    @Test
+    void nullTextDefaultsToEmptyString() {
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, false, true,
+                TypingProperties.NewlineMode.LF, false, false, "os-default", 200
+        );
+        FakeFacade facade = new FakeFacade();
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+        boolean ok = adapter.type(null);
+        assertThat(ok).isTrue();
+        assertThat(facade.clipboard.contents).isEmpty();
+    }
+
+    @Test
+    void crlfNormalizationMode() {
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, false, true,
+                TypingProperties.NewlineMode.CRLF, false, false, "os-default", 200
+        );
+        FakeFacade facade = new FakeFacade();
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+        boolean ok = adapter.type("line1\nline2\rline3");
+        assertThat(ok).isTrue();
+        assertThat(facade.clipboard.contents).isEqualTo("line1\r\nline2\r\nline3");
+    }
+
+    @Test
+    void noneNormalizationMode() {
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, false, true,
+                TypingProperties.NewlineMode.NONE, false, false, "os-default", 200
+        );
+        FakeFacade facade = new FakeFacade();
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+        boolean ok = adapter.type("line1\r\nline2\n");
+        assertThat(ok).isTrue();
+        // NONE mode: no normalization, text kept as-is
+        assertThat(facade.clipboard.contents).isEqualTo("line1\r\nline2\n");
+    }
+
+    @Test
+    void trimTrailingNewlineDisabled() {
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, false, true,
+                TypingProperties.NewlineMode.LF, false, false, "os-default", 200
+        );
+        FakeFacade facade = new FakeFacade();
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+        boolean ok = adapter.type("hello\n");
+        assertThat(ok).isTrue();
+        // trimTrailingNewline=false → trailing newline preserved
+        assertThat(facade.clipboard.contents).isEqualTo("hello\n");
+    }
+
+    @Test
+    void clipboardOnlyFallbackSkipsPasteAndRestore() {
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, true, true,
+                TypingProperties.NewlineMode.LF, true, false, "os-default", 200
+        );
+        FakeFacade facade = new FakeFacade();
+        facade.clipboard.setContents(new java.awt.datatransfer.StringSelection("prior"), null);
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+        boolean ok = adapter.type("new text");
+        assertThat(ok).isTrue();
+        // clipboardOnlyFallback=true → no restore, text stays on clipboard
+        assertThat(facade.clipboard.contents).isEqualTo("new text");
+    }
+
+    @Test
+    void restoreClipboardDisabledDoesNotSavePrior() throws InterruptedException {
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, false, false,
+                TypingProperties.NewlineMode.LF, true, false, "os-default", 200
+        );
+        FakeFacade facade = new FakeFacade();
+        facade.clipboard.setContents(new java.awt.datatransfer.StringSelection("prior"), null);
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+        boolean ok = adapter.type("new text");
+        assertThat(ok).isTrue();
+        // restoreClipboard=false → clipboard NOT restored
+        Thread.sleep(300);
+        assertThat(facade.clipboard.contents).isNotEqualTo("prior");
+    }
+
+    @Test
+    void exceptionDuringSetContentsReturnsFalse() {
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, false, true,
+                TypingProperties.NewlineMode.LF, false, false, "os-default", 200
+        );
+        FakeFacade facade = new FakeFacade();
+        facade.clipboard.throwOnSet = true;
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+        boolean ok = adapter.type("text");
+        assertThat(ok).isFalse();
+    }
+
+    @Test
+    void canTypeAlwaysReturnsTrue() {
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, false, true,
+                TypingProperties.NewlineMode.LF, false, false, "os-default", 200
+        );
+        FakeFacade facade = new FakeFacade();
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+        assertThat(adapter.canType()).isTrue();
+    }
+
+    @Test
+    void nameReturnsClipboard() {
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, false, true,
+                TypingProperties.NewlineMode.LF, false, false, "os-default", 200
+        );
+        FakeFacade facade = new FakeFacade();
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+        assertThat(adapter.name()).isEqualTo("clipboard");
+    }
+
+    @Test
+    void trimTrailingNewlineRemovesMultipleTrailingNewlinesAndCr() {
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, false, true,
+                TypingProperties.NewlineMode.LF, true, false, "os-default", 200
+        );
+        FakeFacade facade = new FakeFacade();
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+        boolean ok = adapter.type("hello\n\r\n\n");
+        assertThat(ok).isTrue();
+        assertThat(facade.clipboard.contents).isEqualTo("hello");
     }
 }
