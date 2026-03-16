@@ -483,6 +483,24 @@ class HotkeyRecordingAdapterTest {
         assertThat(completedCount).isZero();
     }
 
+    @Test
+    void toggleModeReturnsFalseWhenRecordingServiceFails() {
+        // Directly construct adapter with a RecordingService whose toggleRecording returns false.
+        // This covers HotkeyRecordingAdapter line 54: LOG.warn("Toggle recording failed")
+        RecordingService failingRecording = new RecordingService() {
+            @Override public boolean startRecording() { return false; }
+            @Override public boolean stopRecording() { return false; }
+            @Override public void cancelRecording() { }
+            @Override public ApplicationState getState() { return ApplicationState.IDLE; }
+            @Override public boolean isRecording() { return false; }
+            @Override public boolean toggleRecording() { return false; }
+        };
+
+        HotkeyRecordingAdapter adapter = new HotkeyRecordingAdapter(failingRecording, toggleHotkeyProps());
+        // Should not throw — just logs a warning
+        adapter.onHotkeyPressed(new HotkeyPressedEvent(Instant.now()));
+    }
+
     private static HotkeyProperties fakeHotkeyProps() {
         return new HotkeyProperties(TriggerType.MODIFIER_COMBO, "J", 300, List.of("META"), List.of(), false);
     }

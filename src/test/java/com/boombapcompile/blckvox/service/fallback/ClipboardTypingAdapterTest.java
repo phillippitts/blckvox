@@ -196,6 +196,66 @@ class ClipboardTypingAdapterTest {
     }
 
     @Test
+    void unsupportedFlavorExceptionDuringSavePriorIsIgnored() {
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, true, false,
+                TypingProperties.NewlineMode.LF, false, false, "os-default", 200
+        );
+        // Clipboard where getData throws UnsupportedFlavorException
+        Clipboard failClip = new Clipboard("failing") {
+            @Override
+            public synchronized Transferable getContents(Object requestor) {
+                return new java.awt.datatransfer.Transferable() {
+                    @Override
+                    public java.awt.datatransfer.DataFlavor[] getTransferDataFlavors() {
+                        return new java.awt.datatransfer.DataFlavor[]{java.awt.datatransfer.DataFlavor.stringFlavor};
+                    }
+                    @Override
+                    public boolean isDataFlavorSupported(java.awt.datatransfer.DataFlavor flavor) {
+                        return true;
+                    }
+                    @Override
+                    public Object getTransferData(java.awt.datatransfer.DataFlavor flavor)
+                            throws UnsupportedFlavorException {
+                        throw new UnsupportedFlavorException(flavor);
+                    }
+                };
+            }
+            @Override
+            public synchronized void setContents(Transferable contents, ClipboardOwner owner) {
+                // accept new contents
+            }
+        };
+        ClipboardTypingAdapter.ClipboardFacade facade = () -> failClip;
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+        // Should succeed even though saving prior clipboard threw
+        boolean ok = adapter.type("test text");
+        assertThat(ok).isTrue();
+    }
+
+    @Test
+    void restoreClipboardExceptionInVirtualThreadIsIgnored() throws InterruptedException {
+        // restoreClipboard=true, clipboardOnlyFallback=false → restore runs in virtual thread
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, true, false,
+                TypingProperties.NewlineMode.LF, false, false, "os-default", 200
+        );
+        FakeFacade facade = new FakeFacade();
+        facade.clipboard.setContents(new java.awt.datatransfer.StringSelection("prior"), null);
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+
+        boolean ok = adapter.type("new text");
+        assertThat(ok).isTrue();
+
+        // Set throwOnSet=true before the virtual thread attempts clipboard restore (200ms delay)
+        facade.clipboard.throwOnSet = true;
+
+        // Wait for the virtual thread to attempt restoration (and silently catch the Exception)
+        Thread.sleep(400);
+        // No exception should propagate — the catch(Exception) in the lambda handles it
+    }
+
+    @Test
     void trimTrailingNewlineRemovesMultipleTrailingNewlinesAndCr() {
         TypingProperties props = new TypingProperties(
                 800, 0, 0, false, true,

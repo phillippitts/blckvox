@@ -217,6 +217,61 @@ class AudioValidatorTest {
     }
 
     @Test
+    void isWavReturnsFalseForDataShorterThan12Bytes() {
+        // 10 bytes: length < 12 → isWav length check fails → PCM path → too short
+        byte[] data = new byte[10];
+        assertThatThrownBy(() -> validator.validate(data))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("too short");
+    }
+
+    @Test
+    void isWavReturnsFalseWhenRiPartialMatch() {
+        // R, I match but a[2] != 'F' → PCM path
+        byte[] data = new byte[32_000];
+        data[0] = 'R'; data[1] = 'I'; data[2] = 'X';
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void isWavReturnsFalseWhenRifPartialMatch() {
+        // R, I, F match but a[3] != 'F' → PCM path
+        byte[] data = new byte[32_000];
+        data[0] = 'R'; data[1] = 'I'; data[2] = 'F'; data[3] = 'X';
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void isWavReturnsFalseWhenRiffWButNotA() {
+        // RIFF + W matches but a[9] != 'A' → PCM path
+        byte[] data = new byte[32_000];
+        data[0] = 'R'; data[1] = 'I'; data[2] = 'F'; data[3] = 'F';
+        putLEInt(data, 4, 31992);
+        data[8] = 'W'; data[9] = 'X';
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void isWavReturnsFalseWhenRiffWaButNotV() {
+        // RIFF + WA matches but a[10] != 'V' → PCM path
+        byte[] data = new byte[32_000];
+        data[0] = 'R'; data[1] = 'I'; data[2] = 'F'; data[3] = 'F';
+        putLEInt(data, 4, 31992);
+        data[8] = 'W'; data[9] = 'A'; data[10] = 'X';
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void isWavReturnsFalseWhenRiffWavButNotE() {
+        // RIFF + WAV matches but a[11] != 'E' → PCM path
+        byte[] data = new byte[32_000];
+        data[0] = 'R'; data[1] = 'I'; data[2] = 'F'; data[3] = 'F';
+        putLEInt(data, 4, 31992);
+        data[8] = 'W'; data[9] = 'A'; data[10] = 'V'; data[11] = 'X';
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
     void pcmShouldRejectOddByteCount() {
         byte[] pcm = new byte[32_001]; // Odd - not aligned to 2 bytes
         assertThatThrownBy(() -> validator.validate(pcm))

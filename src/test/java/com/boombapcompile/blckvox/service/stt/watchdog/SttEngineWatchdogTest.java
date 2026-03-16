@@ -555,6 +555,74 @@ class SttEngineWatchdogTest {
     }
 
     @Test
+    void isEngineEnabledReturnsFalseWhenInCooldownButNotDisabledState() {
+        // Tests the `!budgetTracker.isInCooldown(engine)` returning false
+        // when state is not DISABLED (i.e., line 113 returns false)
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+        RestartBudgetTracker budget = new RestartBudgetTracker(props);
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+
+        RecordingEngine engine = new RecordingEngine("vosk");
+        budget.register("vosk");
+        monitor.register("vosk");
+
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(
+                List.of(engine), event -> { }, budget, monitor);
+
+        // State is HEALTHY, but manually put in cooldown via budget tracker
+        budget.disable("vosk");
+
+        // isEngineEnabled: state=HEALTHY (not DISABLED) → reaches line 113
+        // budgetTracker.isInCooldown("vosk") → true → returns false
+        assertThat(watchdog.getState("vosk")).isEqualTo(SttEngineWatchdog.EngineState.HEALTHY);
+        assertThat(watchdog.isEngineEnabled("vosk")).isFalse();
+    }
+
+    @Test
+    void attemptRestartSkipsWhenLockAlreadyHeld() throws InterruptedException {
+        // Tests the `tryLockRestart` returning false branch (line 180)
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+        RestartBudgetTracker budget = new RestartBudgetTracker(props);
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+
+        RecordingEngine engine = new RecordingEngine("vosk");
+        budget.register("vosk");
+        monitor.register("vosk");
+
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(
+                List.of(engine), event -> { }, budget, monitor);
+
+        // Hold the lock from a different thread (ReentrantLock is thread-exclusive for tryLock)
+        java.util.concurrent.CountDownLatch lockAcquired = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+        Thread lockHolder = new Thread(() -> {
+            budget.tryLockRestart("vosk");
+            lockAcquired.countDown();
+            try {
+                release.await(5, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (InterruptedException ignored) {}
+            budget.unlockRestart("vosk");
+        });
+        lockHolder.start();
+        lockAcquired.await(2, java.util.concurrent.TimeUnit.SECONDS);
+
+        try {
+            // Fire failure → attemptRestart → tryLockRestart returns false → early return
+            watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "fail",
+                    null, Map.of()));
+
+            // No restart should have been attempted
+            assertThat(engine.initCount).isZero();
+            assertThat(engine.closedCount).isZero();
+        } finally {
+            release.countDown();
+            lockHolder.join(3000);
+        }
+    }
+
+    @Test
     void onFailureEarlyReturnWhenAlreadyDisabled() {
         SttWatchdogProperties props = new SttWatchdogProperties(
                 true, 60, 1, 10, false, 60_000L, 0.3, 10, 5);

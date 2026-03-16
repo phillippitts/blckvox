@@ -3,6 +3,8 @@ package com.boombapcompile.blckvox.service.fallback;
 import com.boombapcompile.blckvox.config.properties.TypingProperties;
 import com.boombapcompile.blckvox.service.fallback.event.AllTypingFallbacksFailedEvent;
 import com.boombapcompile.blckvox.service.fallback.event.TypingFallbackEvent;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -143,6 +145,39 @@ class StrategyChainTypingServiceTest {
 
         assertThat(ok).isFalse();
         assertThat(events).anyMatch(e -> e instanceof AllTypingFallbacksFailedEvent);
+    }
+
+    @Test
+    void unknownAdapterIsIgnoredInOrdering() {
+        // Covers the false branch of `else if ("notify".equalsIgnoreCase(a.name()))`
+        // when adapter name doesn't match robot, clipboard, or notify
+        TypingAdapter unknown = adapter("other", true, true);
+        TypingAdapter clipboard = adapter("clipboard", true, true);
+        StrategyChainTypingService svc = new StrategyChainTypingService(
+                List.of(unknown, clipboard), PROPS, e -> { });
+
+        // "other" adapter is silently dropped; only clipboard is in the chain
+        boolean ok = svc.paste("test");
+        assertThat(ok).isTrue();
+    }
+
+    @Test
+    void allAdaptersFailWithDebugLogsPreview() {
+        // Enable DEBUG on StrategyChainTypingService to hit LOG.isDebugEnabled() true branch
+        Configurator.setLevel(StrategyChainTypingService.class, Level.DEBUG);
+        try {
+            List<Object> events = new ArrayList<>();
+            TypingAdapter failRobot = adapter("robot", true, false);
+            StrategyChainTypingService svc = new StrategyChainTypingService(
+                    List.of(failRobot), PROPS, events::add);
+
+            boolean ok = svc.paste("some text to preview");
+
+            assertThat(ok).isFalse();
+            assertThat(events).anyMatch(e -> e instanceof AllTypingFallbacksFailedEvent);
+        } finally {
+            Configurator.setLevel(StrategyChainTypingService.class, Level.INFO);
+        }
     }
 
     private static TypingAdapter adapter(String name, boolean canType, boolean typeResult) {

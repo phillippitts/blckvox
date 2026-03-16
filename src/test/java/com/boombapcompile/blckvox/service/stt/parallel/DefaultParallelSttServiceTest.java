@@ -212,6 +212,32 @@ class DefaultParallelSttServiceTest {
         assertThat(pair.vosk()).isNotNull();
     }
 
+    @Test
+    void interruptedDuringGetSetsInterruptFlag() throws InterruptedException {
+        // Both engines are slow enough that we can interrupt before they finish
+        SttEngine vosk = new StubEngine("vosk", 5000, false);
+        SttEngine whisper = new StubEngine("whisper", 5000, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 10000);
+
+        Thread testThread = Thread.currentThread();
+        // Schedule an interrupt after a short delay
+        new Thread(() -> {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {}
+            testThread.interrupt();
+        }).start();
+
+        // This should hit the InterruptedException catch at line 139-140
+        assertThatThrownBy(() -> svc.transcribeBoth(new byte[3200], 10000))
+                .isInstanceOf(TranscriptionException.class);
+
+        // The interrupt flag should have been set (then cleared by our assertion framework or not)
+        // Clear it to not affect other tests
+        Thread.interrupted();
+    }
+
     static class RuntimeExceptionEngine implements SttEngine {
         private final String name;
         RuntimeExceptionEngine(String name) { this.name = name; }

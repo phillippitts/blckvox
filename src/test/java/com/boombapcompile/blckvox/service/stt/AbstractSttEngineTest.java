@@ -245,4 +245,30 @@ class AbstractSttEngineTest {
         assertThatThrownBy(engine::initialize).isInstanceOf(RuntimeException.class);
         assertThat(engine.isHealthy()).isFalse();
     }
+
+    @Test
+    void ensureInitializedThrowsWhenInitializedButClosed() {
+        // Covers the `closed` branch in `!initialized || closed` at line 248
+        // Need initialized=true && closed=true so !initialized is false,
+        // forcing evaluation of the `closed` operand
+        TestableEngine engine = new TestableEngine();
+        engine.initialize();
+        engine.closed = true; // simulate without going through close()
+
+        assertThatThrownBy(() -> engine.transcribe(new byte[10]))
+                .isInstanceOf(TranscriptionException.class)
+                .hasMessageContaining("not initialized");
+    }
+
+    @Test
+    void isHealthyReturnsFalseWhenInitializedButClosed() {
+        // Covers the `!closed` false branch in `initialized && !closed` at line 140
+        // Need initialized=true && closed=true so initialized is true,
+        // forcing evaluation of the `!closed` operand
+        TestableEngine engine = new TestableEngine();
+        engine.initialize();
+        engine.closed = true;
+
+        assertThat(engine.isHealthy()).isFalse();
+    }
 }

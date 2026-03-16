@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -138,6 +139,70 @@ class WhisperProcessManagerTest {
         assertThat(result).isEmpty();
     }
 
+    @Test
+    void closeWithActiveExecutionsCleansThem() throws Exception {
+        // Process that blocks on waitFor to keep the execution "active"
+        CountDownLatch processStarted = new CountDownLatch(1);
+        CountDownLatch allowComplete = new CountDownLatch(1);
+
+        ProcessFactory factory = (cmd, workDir) -> new Process() {
+            private volatile boolean destroyed;
+            @Override public OutputStream getOutputStream() { return OutputStream.nullOutputStream(); }
+            @Override public InputStream getInputStream() { return new ByteArrayInputStream("result".getBytes(StandardCharsets.UTF_8)); }
+            @Override public InputStream getErrorStream() { return new ByteArrayInputStream(new byte[0]); }
+            @Override public int waitFor() throws InterruptedException {
+                allowComplete.await(10, TimeUnit.SECONDS);
+                return 0;
+            }
+            @Override public boolean waitFor(long timeout, TimeUnit unit) throws InterruptedException {
+                processStarted.countDown();
+                return allowComplete.await(timeout, unit);
+            }
+            @Override public int exitValue() {
+                if (allowComplete.getCount() != 0) throw new IllegalThreadStateException();
+                return 0;
+            }
+            @Override public void destroy() { destroyed = true; allowComplete.countDown(); }
+            @Override public Process destroyForcibly() { destroyed = true; allowComplete.countDown(); return this; }
+            @Override public boolean isAlive() { return !destroyed && allowComplete.getCount() > 0; }
+        };
+
+        WhisperProcessManager manager = new WhisperProcessManager(factory);
+
+        // Start transcription in background — it will block on waitFor
+        Thread transcribeThread = new Thread(() -> {
+            try {
+                manager.transcribe(wavFile(), config());
+            } catch (Exception ignored) {}
+        });
+        transcribeThread.start();
+
+        // Wait for process to start (active execution added to set)
+        assertThat(processStarted.await(3, TimeUnit.SECONDS)).isTrue();
+        Thread.sleep(50); // Small delay for activeExecutions.add() to complete
+
+        // close() iterates activeExecutions and cleans up
+        manager.close();
+
+        // Release the process and join the thread
+        allowComplete.countDown();
+        transcribeThread.join(5000);
+    }
+
+    @Test
+    void interruptedDuringWaitSetsInterruptFlagAndThrows() throws Exception {
+        ProcessFactory factory = (cmd, workDir) -> new InterruptingWaitProcess();
+        WhisperProcessManager manager = new WhisperProcessManager(factory);
+
+        assertThatThrownBy(() -> manager.transcribe(wavFile(), config()))
+                .isInstanceOf(TranscriptionException.class)
+                .hasMessageContaining("I/O failure");
+
+        // InterruptedException handler should have set the interrupt flag
+        assertThat(Thread.currentThread().isInterrupted()).isTrue();
+        Thread.interrupted(); // Clear flag so it doesn't affect other tests
+    }
+
     // --- Fake Process implementations ---
 
     /**
@@ -166,6 +231,23 @@ class WhisperProcessManagerTest {
         @Override public int exitValue() { return exitCode; }
         @Override public void destroy() { destroyed = true; }
         @Override public Process destroyForcibly() { destroyed = true; return this; }
+        @Override public boolean isAlive() { return false; }
+    }
+
+    /**
+     * A Process whose waitFor throws InterruptedException.
+     */
+    private static final class InterruptingWaitProcess extends Process {
+        @Override public OutputStream getOutputStream() { return OutputStream.nullOutputStream(); }
+        @Override public InputStream getInputStream() { return new ByteArrayInputStream(new byte[0]); }
+        @Override public InputStream getErrorStream() { return new ByteArrayInputStream(new byte[0]); }
+        @Override public int waitFor() throws InterruptedException { throw new InterruptedException("test"); }
+        @Override public boolean waitFor(long timeout, TimeUnit unit) throws InterruptedException {
+            throw new InterruptedException("simulated interrupt");
+        }
+        @Override public int exitValue() { return 0; }
+        @Override public void destroy() {}
+        @Override public Process destroyForcibly() { return this; }
         @Override public boolean isAlive() { return false; }
     }
 

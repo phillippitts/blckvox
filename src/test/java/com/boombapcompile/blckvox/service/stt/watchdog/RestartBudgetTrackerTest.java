@@ -124,6 +124,21 @@ class RestartBudgetTrackerTest {
     }
 
     @Test
+    void pruneOldRemovesExpiredEntries() throws InterruptedException {
+        // Use 0-minute window so entries expire immediately
+        SttWatchdogProperties zeroWindowProps = new SttWatchdogProperties(
+                true, 0, 3, 10, false, 60000L, 0.3, 10, 5);
+        RestartBudgetTracker tracker = new RestartBudgetTracker(zeroWindowProps);
+        tracker.register("vosk");
+
+        tracker.recordRestart("vosk");
+        Thread.sleep(1); // Ensure entry is slightly in the past
+        // With windowMinutes=0, cutoff = Instant.now(), so entry is before cutoff
+        assertThat(tracker.getRestartCount("vosk")).isZero();
+        assertThat(tracker.allowsRestart("vosk")).isTrue();
+    }
+
+    @Test
     void disableAndClearOnRecoveryAreIndependent() {
         RestartBudgetTracker tracker = new RestartBudgetTracker(props);
         tracker.register("vosk");

@@ -131,6 +131,18 @@ class HotkeyRecordingAdapterBuilderTest {
         assertThat(adapter).isNotNull();
     }
 
+    @Test
+    void buildWithParallelAndReconcilerButNoPropertiesUsesDisabled() {
+        // parallelSttService and transcriptReconciler set, but reconciliationProperties is null
+        // Covers the third operand false branch in the && chain at line 155
+        HotkeyRecordingAdapter adapter = fullyPopulatedBuilder()
+                .parallelSttService((pcm, timeout) ->
+                        new ParallelSttService.EnginePair(null, null))
+                .transcriptReconciler((v, w) -> TranscriptionResult.of("r", 0.9, "reconciled"))
+                .build();
+        assertThat(adapter).isNotNull();
+    }
+
     // ---- helpers ----
 
     private static HotkeyRecordingAdapterBuilder fullyPopulatedBuilder() {

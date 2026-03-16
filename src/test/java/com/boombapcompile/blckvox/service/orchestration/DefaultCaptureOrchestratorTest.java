@@ -210,6 +210,37 @@ class DefaultCaptureOrchestratorTest {
     }
 
     @Test
+    void shouldHandleRaceConditionWhenAnotherSessionStartsBetweenChecks() {
+        // This tests the race condition path at lines 60-63:
+        // isActive() returns false, captureService.startSession() succeeds,
+        // but stateMachine.startCapture() returns false because another session registered.
+        CaptureStateMachine stateMachine = new CaptureStateMachine();
+        final UUID[] returnedSessionId = new UUID[1];
+
+        // AudioCaptureService that registers a competing session as a side effect
+        AudioCaptureService racingCapture = new AudioCaptureService() {
+            int cancelCount = 0;
+            @Override
+            public UUID startSession() {
+                UUID id = UUID.randomUUID();
+                returnedSessionId[0] = id;
+                // Simulate a race: another thread registered a session on the state machine
+                stateMachine.startCapture(UUID.randomUUID());
+                return id;
+            }
+            @Override public void stopSession(UUID sessionId) {}
+            @Override public void cancelSession(UUID sessionId) { cancelCount++; }
+            @Override public byte[] readAll(UUID sessionId) { return new byte[0]; }
+        };
+
+        DefaultCaptureOrchestrator orchestrator = new DefaultCaptureOrchestrator(racingCapture, stateMachine);
+
+        // startCapture() calls: isActive()=false, startSession(), startCapture()=false (race), cancelSession()
+        UUID result = orchestrator.startCapture();
+        assertThat(result).isNull();
+    }
+
+    @Test
     void shouldReturnCapturingStateFromStateMachine() {
         // Arrange
         FakeAudioCaptureService captureService = new FakeAudioCaptureService();

@@ -143,6 +143,21 @@ class ProcessLifecycleManagerTest {
     }
 
     @Test
+    void cleanupWithDeadProcessSkipsDestroy() throws Exception {
+        FakeProcess process = new FakeProcess("stdout", "stderr");
+        process.alive = false; // process already terminated
+        ProcessFactory factory = (cmd, dir) -> process;
+        ProcessLifecycleManager mgr = new ProcessLifecycleManager(factory);
+
+        ProcessLifecycleManager.ProcessExecution exec =
+                mgr.startProcess(List.of("test"), Path.of("/tmp"), 4096, 4096);
+        mgr.cleanup(exec);
+
+        // process was not alive → destroyProcess should not be called
+        assertThat(process.destroyCalled).isFalse();
+    }
+
+    @Test
     void destroyProcessLogsWarningWhenStillAliveAfterForcible() {
         FakeProcess process = new FakeProcess("", "");
         process.alive = true;
@@ -170,6 +185,15 @@ class ProcessLifecycleManagerTest {
         assertThat(Thread.currentThread().isInterrupted()).isTrue();
         // Clear the flag so it doesn't affect other tests
         Thread.interrupted();
+    }
+
+    @Test
+    void destroyProcessHandlesThrowableDuringDestroy() {
+        ThrowingDestroyProcess process = new ThrowingDestroyProcess();
+        ProcessLifecycleManager mgr = new ProcessLifecycleManager((cmd, dir) -> process);
+
+        // Should not propagate the RuntimeException from destroy()
+        assertThatCode(() -> mgr.destroyProcess(process)).doesNotThrowAnyException();
     }
 
     // --- Fake Process ---
@@ -227,6 +251,22 @@ class ProcessLifecycleManagerTest {
             }
             return this;
         }
+    }
+
+    /**
+     * A process whose destroy() throws RuntimeException,
+     * covering the catch(Throwable) path in destroyProcess.
+     */
+    private static class ThrowingDestroyProcess extends Process {
+        @Override public InputStream getInputStream() { return new ByteArrayInputStream(new byte[0]); }
+        @Override public InputStream getErrorStream() { return new ByteArrayInputStream(new byte[0]); }
+        @Override public OutputStream getOutputStream() { return OutputStream.nullOutputStream(); }
+        @Override public int exitValue() { return 0; }
+        @Override public int waitFor() { return 0; }
+        @Override public boolean isAlive() { return true; } // must be alive so destroyProcess enters the block
+        @Override public void destroy() { throw new RuntimeException("destroy boom"); }
+        @Override public Process destroyForcibly() { return this; }
+        @Override public boolean waitFor(long timeout, java.util.concurrent.TimeUnit unit) { return true; }
     }
 
     /**

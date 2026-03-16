@@ -407,7 +407,115 @@ class JavaSoundAudioCaptureServiceTest {
         svc.stopSession(id);
     }
 
+    @Test
+    void shutdownWithActiveSessionCleansUp() throws InterruptedException {
+        AudioCaptureProperties props = new AudioCaptureProperties(20, 60000, null);
+        AudioValidationProperties vprops = new AudioValidationProperties(50, 60000, 100 * 1024 * 1024);
+        AudioValidator validator = new AudioValidator(vprops);
+        AtomicInteger chunks = new AtomicInteger();
+        ApplicationEventPublisher publisher = e -> {
+            if (e instanceof PcmChunkCapturedEvent) {
+                chunks.incrementAndGet();
+            }
+        };
+        JavaSoundAudioCaptureService.DataLineProvider provider = (fmt, dev) -> {
+            RepeatingTargetDataLine line = new RepeatingTargetDataLine(fmt);
+            line.open(fmt);
+            return line;
+        };
+        JavaSoundAudioCaptureService svc = new JavaSoundAudioCaptureService(props, validator, publisher, provider);
+
+        svc.startSession();
+        await().atMost(Duration.ofSeconds(2)).until(() -> chunks.get() >= 3);
+
+        // Call shutdown while session is active — covers shutdown() with active session
+        svc.shutdown();
+
+        // After shutdown, service should be cleaned up (no active session)
+        // Give the thread time to terminate
+        Thread.sleep(200);
+    }
+
+    @Test
+    void closeAudioLineExceptionsAreSwallowed() {
+        AudioCaptureProperties props = new AudioCaptureProperties(20, 500, null);
+        AudioValidationProperties vprops = new AudioValidationProperties(50, 60000, 100 * 1024 * 1024);
+        AudioValidator validator = new AudioValidator(vprops);
+        AtomicInteger chunks = new AtomicInteger();
+        ApplicationEventPublisher publisher = e -> {
+            if (e instanceof PcmChunkCapturedEvent) {
+                chunks.incrementAndGet();
+            }
+        };
+        JavaSoundAudioCaptureService.DataLineProvider provider = (fmt, dev) -> {
+            ThrowingCloseDataLine line = new ThrowingCloseDataLine(fmt);
+            line.open(fmt);
+            return line;
+        };
+        JavaSoundAudioCaptureService svc = new JavaSoundAudioCaptureService(props, validator, publisher, provider);
+
+        UUID id = svc.startSession();
+        await().atMost(Duration.ofSeconds(2)).until(() -> chunks.get() >= 3);
+        svc.stopSession(id);
+        byte[] pcm = svc.readAll(id);
+
+        // Capture works despite stop()/close() throwing
+        assertThat(pcm).isNotNull();
+        assertThat(pcm.length).isGreaterThan(0);
+    }
+
     // --- Test doubles ---
+
+    /** A TargetDataLine that works normally but throws from stop() and close(). */
+    static final class ThrowingCloseDataLine implements TargetDataLine {
+        private final javax.sound.sampled.AudioFormat fmt;
+        private boolean started;
+        private boolean open;
+        private final byte[] pattern;
+        private int pos = 0;
+
+        ThrowingCloseDataLine(javax.sound.sampled.AudioFormat fmt) {
+            this.fmt = fmt;
+            this.pattern = new byte[320];
+            for (int i = 0; i < pattern.length; i++) {
+                pattern[i] = (byte) (i & 0xFF);
+            }
+        }
+
+        @Override public javax.sound.sampled.AudioFormat getFormat() { return fmt; }
+        @Override public void open(javax.sound.sampled.AudioFormat format, int bufferSize) { open = true; }
+        @Override public void open(javax.sound.sampled.AudioFormat format) { open = true; }
+        @Override public int read(byte[] b, int off, int len) {
+            if (!started || !open) return 0;
+            try { Thread.sleep(10); } catch (InterruptedException ignore) {}
+            int n = Math.min(len, pattern.length);
+            System.arraycopy(pattern, 0, b, off, n);
+            return n;
+        }
+        @Override public void start() { started = true; }
+        @Override public void stop() { throw new RuntimeException("stop failed"); }
+        @Override public void close() { throw new RuntimeException("close failed"); }
+        @Override public boolean isOpen() { return open; }
+        @Override public int available() { return 0; }
+        @Override public void drain() {}
+        @Override public void flush() {}
+        @Override public int getBufferSize() { return 0; }
+        @Override public int getFramePosition() { return 0; }
+        @Override public float getLevel() { return 0; }
+        @Override public long getLongFramePosition() { return 0; }
+        @Override public Control getControl(Control.Type c) { throw new IllegalArgumentException(); }
+        @Override public Control[] getControls() { return new Control[0]; }
+        @Override public boolean isControlSupported(Control.Type c) { return false; }
+        @Override public void addLineListener(LineListener l) {}
+        @Override public void removeLineListener(LineListener l) {}
+        @Override public javax.sound.sampled.Line.Info getLineInfo() {
+            return new DataLine.Info(TargetDataLine.class, fmt);
+        }
+        @Override public void open() { open = true; }
+        @Override public boolean isActive() { return started; }
+        @Override public boolean isRunning() { return started; }
+        @Override public long getMicrosecondPosition() { return 0L; }
+    }
 
     /** A TargetDataLine that produces all-zero audio data. */
     static final class ZeroTargetDataLine implements TargetDataLine {

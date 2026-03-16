@@ -286,6 +286,26 @@ class WhisperJsonParserTest {
     }
 
     @Test
+    void extractTextWithPauseDetectionNoSegmentsFallsToText() {
+        // silenceGapMs > 0 but JSON has no "segments" key → falls through to obj.has("text")
+        String json = """
+            {
+              "text": "top level only"
+            }
+            """;
+        String text = WhisperJsonParser.extractTextWithPauseDetection(json, 1000);
+        assertThat(text).isEqualTo("top level only");
+    }
+
+    @Test
+    void extractTextWithPauseDetectionNoSegmentsNoText() {
+        // silenceGapMs > 0, no "segments", no "text" → empty
+        String json = "{}";
+        String text = WhisperJsonParser.extractTextWithPauseDetection(json, 1000);
+        assertThat(text).isEmpty();
+    }
+
+    @Test
     void extractTokensHandlesWordsFromMultipleSegments() {
         String json = """
             {
