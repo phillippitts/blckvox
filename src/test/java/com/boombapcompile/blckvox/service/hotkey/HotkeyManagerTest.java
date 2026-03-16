@@ -1,6 +1,6 @@
 package com.boombapcompile.blckvox.service.hotkey;
 
-import com.boombapcompile.blckvox.config.hotkey.TriggerType;
+import com.boombapcompile.blckvox.config.properties.TriggerType;
 import com.boombapcompile.blckvox.config.properties.HotkeyProperties;
 import com.boombapcompile.blckvox.service.hotkey.event.HotkeyPermissionDeniedEvent;
 import com.boombapcompile.blckvox.service.hotkey.event.HotkeyPressedEvent;
@@ -153,6 +153,31 @@ class HotkeyManagerTest {
         // no conflict events should be published for an unrecognized key with empty reserved
         assertThat(events).noneMatch(e -> e.getClass().getSimpleName().contains("Conflict"));
         mgr.stop();
+    }
+
+    @Test
+    void shutdownWhenNotRunningIsNoop() {
+        HotkeyProperties props = defaultProps();
+        List<Object> events = new ArrayList<>();
+        FakeHook hook = new FakeHook();
+        HotkeyManager mgr = new HotkeyManager(hook, new HotkeyTriggerFactory(), props, events::add);
+
+        // shutdown calls stop() which should be a noop when not running
+        mgr.shutdown();
+        assertThat(mgr.isRunning()).isFalse();
+    }
+
+    @Test
+    void shutdownAfterStartStopsAndCleansUp() {
+        HotkeyProperties props = defaultProps();
+        List<Object> events = new ArrayList<>();
+        FakeHook hook = new FakeHook();
+        HotkeyManager mgr = new HotkeyManager(hook, new HotkeyTriggerFactory(), props, events::add);
+
+        mgr.start();
+        assertThat(mgr.isRunning()).isTrue();
+        mgr.shutdown();
+        assertThat(mgr.isRunning()).isFalse();
     }
 
     private static HotkeyProperties defaultProps() {

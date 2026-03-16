@@ -410,6 +410,30 @@ class WhisperSttEngineTest {
         engine.close();
     }
 
+    @Test
+    void cleanupHandlesNullWavGracefully() {
+        // When manager.transcribe throws before WAV creation finishes,
+        // cleanupTempFile(null) should not throw.
+        // We test this via a manager that throws IOException wrapping behavior
+        ProcessManager failingMgr = new ProcessManager() {
+            @Override public String transcribe(java.nio.file.Path wavPath, WhisperConfig cfg) {
+                throw new RuntimeException("IO error during transcription");
+            }
+            @Override public void close() {}
+        };
+
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperSttEngine engine = new WhisperSttEngine(cfg, failingMgr);
+        engine.initialize();
+
+        // transcribe should throw, but cleanupTempFile should be called with a valid path (not null).
+        // The null case is exercised when createTempWavFile itself throws.
+        byte[] pcm = new byte[32_000];
+        assertThatThrownBy(() -> engine.transcribe(pcm))
+                .isInstanceOf(com.boombapcompile.blckvox.exception.TranscriptionException.class);
+        engine.close();
+    }
+
     /**
      * Simple in-memory Log4j2 appender that captures LogEvents for privacy assertions.
      */

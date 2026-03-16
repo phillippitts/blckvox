@@ -1,6 +1,6 @@
 package com.boombapcompile.blckvox.service.orchestration;
 
-import com.boombapcompile.blckvox.config.hotkey.TriggerType;
+import com.boombapcompile.blckvox.config.properties.TriggerType;
 import com.boombapcompile.blckvox.config.properties.HotkeyProperties;
 import com.boombapcompile.blckvox.config.properties.OrchestrationProperties;
 import com.boombapcompile.blckvox.config.properties.ReconciliationProperties;

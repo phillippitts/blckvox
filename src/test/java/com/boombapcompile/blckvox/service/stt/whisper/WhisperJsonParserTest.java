@@ -434,4 +434,74 @@ class WhisperJsonParserTest {
         // words is not an array → no tokens from words → falls back to text tokenization
         assertThat(tokens).containsExactly("fallback", "text");
     }
+
+    @Test
+    void extractTokensFromSegmentWithNoWords() {
+        String json = "{\"segments\": [{\"text\": \"hello world\"}]}";
+        List<String> tokens = WhisperJsonParser.extractTokens(json);
+        assertThat(tokens).containsExactly("hello", "world");
+    }
+
+    @Test
+    void extractTextWithPauseDetectionNullSegment() {
+        // JSONArray with a null entry — optJSONObject returns null
+        String json = "{\"segments\": [null, {\"text\": \"hello\", \"start\": 0.0, \"end\": 1.0}]}";
+        assertThat(WhisperJsonParser.extractTextWithPauseDetection(json, 500)).isEqualTo("hello");
+    }
+
+    @Test
+    void extractTokensWithNullWordEntry() {
+        // words array contains a null entry
+        String json = "{\"segments\": [{\"words\": [null, {\"word\": \"hi\"}]}]}";
+        assertThat(WhisperJsonParser.extractTokens(json)).containsExactly("hi");
+    }
+
+    @Test
+    void extractTokensWithBlankWord() {
+        String json = "{\"segments\": [{\"words\": [{\"word\": \"  \"}, {\"word\": \"hi\"}]}]}";
+        assertThat(WhisperJsonParser.extractTokens(json)).containsExactly("hi");
+    }
+
+    @Test
+    void extractTextWithNullTopLevelText() {
+        // top-level "text" key exists but value is JSON null —
+        // optString returns "" for null, which is blank, so code returns ""
+        // rather than falling through to segments.
+        String json = "{\"text\": null, \"segments\": [{\"text\": \"fallback\"}]}";
+        assertThat(WhisperJsonParser.extractText(json)).isEmpty();
+    }
+
+    @Test
+    void extractTextNullSegmentInConcatenation() {
+        // When no top-level text, segments with null entry
+        String json = "{\"segments\": [null, {\"text\": \"world\"}]}";
+        assertThat(WhisperJsonParser.extractText(json)).isEqualTo("world");
+    }
+
+    @Test
+    void extractTextBlankSegmentTextInConcatenation() {
+        String json = "{\"segments\": [{\"text\": \"  \"}, {\"text\": \"world\"}]}";
+        assertThat(WhisperJsonParser.extractText(json)).isEqualTo("world");
+    }
+
+    @Test
+    void extractTokensNullSegmentInArray() {
+        String json = "{\"segments\": [null]}";
+        assertThat(WhisperJsonParser.extractTokens(json)).isEmpty();
+    }
+
+    @Test
+    void extractTextWithPauseDetectionSingleSegmentNoTimestamps() {
+        // First and only segment with no start/end — exercises the else if (sb.length() > 0) false branch
+        // sb.length() is 0 for the first segment, so no space is added
+        String json = "{\"segments\": [{\"text\": \"hello\"}]}";
+        assertThat(WhisperJsonParser.extractTextWithPauseDetection(json, 500)).isEqualTo("hello");
+    }
+
+    @Test
+    void extractTextWithPauseDetectionSegmentWithNullWordsInTokenExtraction() {
+        // Segment has words key as null (not an array) — optJSONArray returns null
+        String json = "{\"segments\": [{\"words\": null, \"text\": \"fallback\"}]}";
+        assertThat(WhisperJsonParser.extractTokens(json)).containsExactly("fallback");
+    }
 }

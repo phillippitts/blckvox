@@ -1,6 +1,6 @@
 package com.boombapcompile.blckvox.service.hotkey;
 
-import com.boombapcompile.blckvox.config.hotkey.TriggerType;
+import com.boombapcompile.blckvox.config.properties.TriggerType;
 import com.boombapcompile.blckvox.config.properties.HotkeyProperties;
 import com.boombapcompile.blckvox.service.hotkey.trigger.DoubleTapTrigger;
 import com.boombapcompile.blckvox.service.hotkey.trigger.ModifierCombinationTrigger;

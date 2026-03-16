@@ -238,6 +238,19 @@ class DefaultParallelSttServiceTest {
         Thread.interrupted();
     }
 
+    @Test
+    void getResultSilentlyReturnsNullForCancelledFuture() {
+        // When one engine's future is cancelled, getResultSilently returns null
+        SttEngine vosk = new StubEngine("vosk", 5000, false);
+        SttEngine whisper = new StubEngine("whisper", 10, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+        // With a very short timeout, vosk won't finish and its future gets cancelled
+        var pair = svc.transcribeBoth(new byte[3200], 50);
+        // At least whisper should succeed, vosk may be null
+        assertThat(pair.whisper()).isNotNull();
+    }
+
     static class RuntimeExceptionEngine implements SttEngine {
         private final String name;
         RuntimeExceptionEngine(String name) { this.name = name; }

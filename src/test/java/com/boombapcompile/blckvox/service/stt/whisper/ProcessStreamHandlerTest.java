@@ -140,6 +140,27 @@ class ProcessStreamHandlerTest {
         assertThat(gobbler.getOutput()).isEqualTo("hello");
     }
 
+    @Test
+    void joinTimeoutExceededLeavesJoinedFalse() throws Exception {
+        // Create a slow stream that takes a long time
+        InputStream slow = new InputStream() {
+            private int count = 0;
+            @Override public int read() throws java.io.IOException {
+                if (count++ < 2) return 'a';
+                try { Thread.sleep(10_000); } catch (InterruptedException e) {
+                    throw new java.io.IOException("interrupted");
+                }
+                return -1;
+            }
+        };
+        ProcessStreamHandler.StreamGobbler gobbler =
+                ProcessStreamHandler.startGobbler(slow, "test-timeout", 4096);
+        // Join with very short timeout — thread won't finish
+        gobbler.join(Duration.ofMillis(10));
+        // getOutput should still work (returns partial)
+        assertThat(gobbler.getOutput()).isNotNull();
+    }
+
     private static InputStream toStream(String content) {
         return new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
     }

@@ -3,6 +3,7 @@ package com.boombapcompile.blckvox.config.hotkey;
 import org.junit.jupiter.api.Test;
 
 import com.boombapcompile.blckvox.config.properties.HotkeyProperties;
+import com.boombapcompile.blckvox.config.properties.TriggerType;
 
 import java.util.List;
 

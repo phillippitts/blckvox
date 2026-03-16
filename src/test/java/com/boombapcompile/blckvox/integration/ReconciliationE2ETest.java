@@ -3,7 +3,7 @@ package com.boombapcompile.blckvox.integration;
 import com.boombapcompile.blckvox.service.orchestration.TranscriptionMetricsPublisher;
 import com.boombapcompile.blckvox.config.properties.OrchestrationProperties;
 import com.boombapcompile.blckvox.config.properties.HotkeyProperties;
-import com.boombapcompile.blckvox.config.hotkey.TriggerType;
+import com.boombapcompile.blckvox.config.properties.TriggerType;
 import com.boombapcompile.blckvox.config.properties.ReconciliationProperties;
 import com.boombapcompile.blckvox.config.properties.SttWatchdogProperties;
 import com.boombapcompile.blckvox.service.hotkey.event.HotkeyPressedEvent;

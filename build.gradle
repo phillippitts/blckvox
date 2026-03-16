@@ -5,6 +5,7 @@ plugins {
     id 'org.openjfx.javafxplugin' version '0.1.0'
     id 'checkstyle'  // Clean code enforcement
     id 'jacoco'      // Test coverage reporting
+    id 'com.github.spotbugs' version '6.1.7'  // Bytecode-level static analysis
 }
 
 group = 'com.phillippitts'
@@ -45,6 +46,10 @@ dependencies {
 
     // Utilities
     implementation 'org.json:json:20231013'                // JSON parsing for Vosk
+
+    // Metrics (JMX-based runtime observability)
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'io.micrometer:micrometer-registry-jmx'
 
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -118,6 +123,22 @@ checkstyle {
     maxWarnings = 0
 }
 
+spotbugs {
+    toolVersion = '4.9.3'
+    effort = 'MAX'
+    reportLevel = 'MEDIUM'
+    excludeFilter = file("${rootDir}/config/spotbugs/exclude-filter.xml")
+}
+
+spotbugsMain {
+    reports {
+        html { required = true }
+        xml { required = false }
+    }
+}
+
+spotbugsTest.enabled = false
+
 jacocoTestReport {
     dependsOn test
     mustRunAfter integrationTest
@@ -154,6 +175,15 @@ jacocoTestReport {
                 '**/fallback/ClipboardTypingAdapter$AwtClipboardFacade.class',
                 '**/fallback/RobotTypingAdapter.class',
                 '**/fallback/RobotTypingAdapter$AwtRobotFacade.class',
+                // Hardware-dependent audio capture (TargetDataLine, AudioSystem, real microphone)
+                '**/capture/JavaSoundAudioCaptureService.class',
+                '**/capture/JavaSoundAudioCaptureService$*.class',
+                // System-dependent (OperatingSystemMXBean CPU/memory varies by JVM/OS)
+                '**/util/SystemResourceMonitor.class',
+                // 1-arg @Autowired constructor delegates to testable multi-arg constructor
+                '**/whisper/WhisperProcessManager.class',
+                // Default constructor only
+                '**/whisper/ProcessStreamHandler.class',
             ])
         }))
     }

@@ -48,19 +48,22 @@ public final class SimplePreferenceReconciler extends AbstractReconciler {
     }
 
     /**
-     * Picks the first non-empty result, or falls back to second, or null.
+     * Picks the first non-empty result, or falls back to second.
      *
-     * @param first first choice result
-     * @param second second choice result (fallback)
-     * @return first if non-empty, otherwise second, otherwise null
+     * <p>Both parameters are guaranteed non-null by {@link AbstractReconciler},
+     * which null-guards before calling {@link #doReconcile}.
+     *
+     * @param first first choice result (never null)
+     * @param second second choice result / fallback (never null)
+     * @return first if non-empty, otherwise second if non-empty, otherwise first
      */
     private EngineResult pickNonEmpty(EngineResult first, EngineResult second) {
-        if (first != null && !first.text().isBlank()) {
+        if (!first.text().isBlank()) {
             return first;
         }
-        if (second != null && !second.text().isBlank()) {
+        if (!second.text().isBlank()) {
             return second;
         }
-        return first != null ? first : second; // both empty or one null -> default to first if not null
+        return first; // both empty — default to primary
     }
 }

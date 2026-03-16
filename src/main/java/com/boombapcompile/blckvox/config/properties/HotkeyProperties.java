@@ -1,6 +1,6 @@
 package com.boombapcompile.blckvox.config.properties;
 
-import com.boombapcompile.blckvox.config.hotkey.TriggerType;
+import com.boombapcompile.blckvox.config.properties.TriggerType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

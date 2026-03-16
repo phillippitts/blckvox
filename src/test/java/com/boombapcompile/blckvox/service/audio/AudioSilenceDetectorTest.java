@@ -296,6 +296,71 @@ class AudioSilenceDetectorTest {
         assertThat(AudioSilenceDetector.calculateOverallRMS(pcm)).isGreaterThan(9000);
     }
 
+    @Test
+    void calculateRMSWithAllZeroAudio() {
+        byte[] zeros = new byte[640]; // 20ms at 16kHz
+        assertThat(AudioSilenceDetector.calculateOverallRMS(zeros)).isEqualTo(0.0);
+    }
+
+    @Test
+    void calculateRMSWithSingleSample() {
+        // 2 bytes = 1 sample
+        byte[] single = new byte[]{(byte) 0x00, (byte) 0x40}; // sample value = 16384
+        double rms = AudioSilenceDetector.calculateOverallRMS(single);
+        assertThat(rms).isGreaterThan(0);
+    }
+
+    @Test
+    void detectSilenceBoundariesWithAudioShorterThanWindow() {
+        // 4 bytes = 2 samples, much shorter than one 20ms window (640 bytes at 16kHz)
+        byte[] tiny = new byte[]{0, 0, 0, 0};
+        List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(tiny, 500, SAMPLE_RATE);
+        // Audio is shorter than window — no windows to analyze
+        assertThat(boundaries).isEmpty();
+    }
+
+    @Test
+    void calculateMaxWindowRMSWithBufferSmallerThanWindow() {
+        // 4 bytes — smaller than one 20ms window
+        byte[] tiny = new byte[]{0, 0, 0, 0};
+        double rms = AudioSilenceDetector.calculateMaxWindowRMS(tiny);
+        assertThat(rms).isEqualTo(0.0);
+    }
+
+    @Test
+    void detectSilenceBoundariesTrailingSilenceShorterThanGap() {
+        // Build audio: loud (500ms) + short silence (200ms, less than 500ms gap)
+        // Trailing silence should NOT be reported as a boundary
+        int loudSamples = durationToSamples(500);
+        int shortSilenceSamples = durationToSamples(200);
+        byte[] audio = concat(generateLoud(loudSamples), generateSilence(shortSilenceSamples));
+        List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(audio, 500, SAMPLE_RATE);
+        assertThat(boundaries).isEmpty();
+    }
+
+    @Test
+    void calculateRMSWithOddByteCount() {
+        // 3 bytes = 1 complete sample (2 bytes) + 1 leftover byte
+        // The loop processes only complete 2-byte samples
+        byte[] odd = new byte[]{0, 0, 42};
+        double rms = AudioSilenceDetector.calculateOverallRMS(odd);
+        assertThat(rms).isEqualTo(0.0); // single zero sample
+    }
+
+    @Test
+    void detectSilenceBoundariesWithZeroGapMs() {
+        byte[] audio = generateSilence(durationToSamples(100));
+        List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(audio, 0, SAMPLE_RATE);
+        assertThat(boundaries).isEmpty(); // silenceGapMs <= 0 returns empty
+    }
+
+    @Test
+    void detectSilenceBoundariesWithZeroSampleRate() {
+        byte[] audio = generateSilence(durationToSamples(100));
+        List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(audio, 500, 0);
+        assertThat(boundaries).isEmpty(); // sampleRate <= 0 returns empty
+    }
+
     // --- Helpers ---
 
     /** Converts duration in ms to number of 16-bit samples at SAMPLE_RATE. */

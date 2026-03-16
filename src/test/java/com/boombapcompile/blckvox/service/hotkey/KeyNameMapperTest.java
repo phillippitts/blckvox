@@ -143,4 +143,10 @@ class KeyNameMapperTest {
     void normalizeModifierSpacesAndUnderscores() {
         assertThat(KeyNameMapper.normalizeModifier("left shift")).isEqualTo("LEFT_SHIFT");
     }
+
+    @Test
+    void matchesReservedKeyMatchesButModifiersDiffer() {
+        // Key matches but configured has different modifier than reserved
+        assertThat(KeyNameMapper.matchesReserved(Set.of("ALT"), "TAB", "META+TAB")).isFalse();
+    }
 }

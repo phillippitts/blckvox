@@ -267,4 +267,49 @@ class ClipboardTypingAdapterTest {
         assertThat(ok).isTrue();
         assertThat(facade.clipboard.contents).isEqualTo("hello");
     }
+
+    @Test
+    void trimTrailingCarriageReturnOnly() {
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, false, true,
+                TypingProperties.NewlineMode.LF, true, false, "os-default", 200
+        );
+        FakeFacade facade = new FakeFacade();
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+        boolean ok = adapter.type("hello\r");
+        assertThat(ok).isTrue();
+        assertThat(facade.clipboard.contents).isEqualTo("hello");
+    }
+
+    @Test
+    void clipboardNotHoldingStringFlavorSkipsSavePrior() {
+        TypingProperties props = new TypingProperties(
+                800, 0, 0, true, false,
+                TypingProperties.NewlineMode.LF, false, false, "os-default", 200
+        );
+        // Clipboard where isDataFlavorAvailable returns false
+        Clipboard noStringClip = new Clipboard("no-string") {
+            @Override public synchronized Transferable getContents(Object requestor) {
+                return new Transferable() {
+                    @Override public java.awt.datatransfer.DataFlavor[] getTransferDataFlavors() {
+                        return new java.awt.datatransfer.DataFlavor[0];
+                    }
+                    @Override public boolean isDataFlavorSupported(java.awt.datatransfer.DataFlavor f) {
+                        return false;
+                    }
+                    @Override public Object getTransferData(java.awt.datatransfer.DataFlavor f) {
+                        return null;
+                    }
+                };
+            }
+            @Override public synchronized void setContents(Transferable c, ClipboardOwner o) {
+                // accept
+            }
+        };
+        ClipboardTypingAdapter.ClipboardFacade facade = () -> noStringClip;
+        ClipboardTypingAdapter adapter = new ClipboardTypingAdapter(props, facade);
+        // Should succeed — prior is null since string flavor not available
+        boolean ok = adapter.type("test");
+        assertThat(ok).isTrue();
+    }
 }

@@ -217,6 +217,11 @@ class DefaultRecordingServiceTest {
         assertThat(service.getState()).isEqualTo(ApplicationState.IDLE);
     }
 
+    @Test
+    void isRecordingReturnsFalseWhenIdle() {
+        assertThat(service.isRecording()).isFalse();
+    }
+
     // --- Test fakes ---
 
     private static class FakeCaptureOrchestrator implements CaptureOrchestrator {

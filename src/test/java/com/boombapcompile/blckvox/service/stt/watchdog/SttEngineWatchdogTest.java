@@ -642,6 +642,34 @@ class SttEngineWatchdogTest {
         assertThat(engine.initCount).isEqualTo(initsBefore);
     }
 
+    @Test
+    void attemptRestartSkippedWhenInCooldown() {
+        // maxRestarts=1, budget period=60s — first restart uses budget, second triggers cooldown
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 1, 1, false, 60_000L, 0.3, 10, 5);
+        RecordingEngine engine = new RecordingEngine("vosk");
+        List<Object> publishedEvents = new ArrayList<>();
+        ApplicationEventPublisher publisher = publishedEvents::add;
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
+
+        // First failure — uses the budget, restarts successfully
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "fail 1",
+                null, Map.of()));
+        // Engine should have been restarted
+        assertThat(engine.initCount).isEqualTo(1);
+
+        // Second failure — budget exhausted, engine gets disabled
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "fail 2",
+                null, Map.of()));
+        assertThat(watchdog.getState("vosk")).isEqualTo(SttEngineWatchdog.EngineState.DISABLED);
+
+        // Third failure — engine is disabled, attemptRestart skipped
+        int initsBefore = engine.initCount;
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "fail 3",
+                null, Map.of()));
+        assertThat(engine.initCount).isEqualTo(initsBefore); // no new init
+    }
+
     // --- Test doubles ---
 
     static class InitFailingEngine implements SttEngine {

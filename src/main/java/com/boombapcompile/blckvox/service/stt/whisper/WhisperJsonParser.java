@@ -49,7 +49,7 @@ final class WhisperJsonParser {
             // Prefer top-level text if present
             if (obj.has("text")) {
                 String t = obj.optString("text", "");
-                if (t == null || t.isBlank()) {
+                if (t.isBlank()) {
                     return "";
                 }
                 return t.trim();

@@ -181,7 +181,7 @@ public class DefaultTranscriptionOrchestrator implements TranscriptionOrchestrat
             TranscriptionResult failedResult = TranscriptionResult.failure(engineName, te.getMessage());
             publishResult(failedResult, engineName);
         } catch (RuntimeException re) {
-            String engineName = engine.getEngineName();
+            String engineName = engine != null ? engine.getEngineName() : "unknown";
             metricsPublisher.recordFailure(engineName, "unexpected_error");
             LOG.error("Unexpected error during transcription", re);
             TranscriptionResult failedResult = TranscriptionResult.failure(engineName, re.getMessage());

@@ -196,6 +196,22 @@ class ProcessLifecycleManagerTest {
         assertThatCode(() -> mgr.destroyProcess(process)).doesNotThrowAnyException();
     }
 
+    @Test
+    void cleanupWithNullExecIsNoop() {
+        ProcessLifecycleManager manager = new ProcessLifecycleManager(
+                (command, workDir) -> { throw new IOException("should not be called"); });
+        // Should not throw
+        manager.cleanup(null);
+    }
+
+    @Test
+    void destroyProcessWithNullIsNoop() {
+        ProcessLifecycleManager manager = new ProcessLifecycleManager(
+                (command, workDir) -> { throw new IOException("should not be called"); });
+        // Should not throw
+        manager.destroyProcess(null);
+    }
+
     // --- Fake Process ---
 
     private static class FakeProcess extends Process {

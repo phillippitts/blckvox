@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Spring Boot entry point -->
+    <Match>
+        <Class name="com.boombapcompile.blckvox.BlckvoxApplication"/>
+    </Match>
+
+    <!-- JNI/native classes (Vosk native lib, JNativeHook) -->
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.stt.vosk.VoskSttEngine"/>
+    </Match>
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.hotkey.impl.JNativeHookGlobalKeyHook"/>
+    </Match>
+
+    <!-- JavaFX classes (require FX thread / Platform.startup) -->
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.livecaption.LiveCaptionWindow"/>
+    </Match>
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.livecaption.JavaFxLifecycle"/>
+    </Match>
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.livecaption.LiveCaptionManager"/>
+    </Match>
+
+    <!-- AWT facades (headless CI incompatible) -->
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.fallback.RobotTypingAdapter"/>
+    </Match>
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.tray.SystemTrayManager"/>
+    </Match>
+
+    <!-- EI_EXPOSE_REP / EI_EXPOSE_REP2: Records and Spring events intentionally
+         expose mutable fields (byte[], Throwable, Map). Defensive copying would
+         add overhead with no safety benefit for short-lived internal objects. -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+        <Or>
+            <Class name="com.boombapcompile.blckvox.service.audio.capture.PcmChunkCapturedEvent"/>
+            <Class name="com.boombapcompile.blckvox.service.hotkey.event.HotkeyConflictEvent"/>
+            <Class name="com.boombapcompile.blckvox.service.stt.watchdog.EngineFailureEvent"/>
+            <Class name="com.boombapcompile.blckvox.exception.TranscriptionExceptionBuilder"/>
+        </Or>
+    </Match>
+
+    <!-- EI_EXPOSE_REP: VoskModelProvider.getModel() intentionally shares the
+         singleton Model instance; cloning a native JNI object is not possible. -->
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.stt.vosk.VoskModelProvider"/>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+
+    <!-- EI_EXPOSE_REP2: HotkeyManager stores Spring-injected GlobalKeyHook;
+         defensive copying a collaborator interface is meaningless. -->
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.hotkey.HotkeyManager"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- REC_CATCH_EXCEPTION: getResultSilently() intentionally catches all
+         exceptions from CompletableFuture.get() as a defensive fallback. -->
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.stt.parallel.DefaultParallelSttService"/>
+        <Bug pattern="REC_CATCH_EXCEPTION"/>
+    </Match>
+
+    <!-- EI_EXPOSE_REP2: TranscriptionMetricsPublisher stores Spring-injected
+         MeterRegistry; defensive copying a registry is not meaningful. -->
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.orchestration.TranscriptionMetricsPublisher"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+</FindBugsFilter>

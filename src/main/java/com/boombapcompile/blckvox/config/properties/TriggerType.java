@@ -1,4 +1,4 @@
-package com.boombapcompile.blckvox.config.hotkey;
+package com.boombapcompile.blckvox.config.properties;
 
 /**
  * Enumerates supported global hotkey trigger types.

@@ -59,4 +59,20 @@ class TokenizerUtilTest {
         assertThatThrownBy(() -> result.add("x"))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
+
+    @Test
+    void tokenizeLeadingDelimiterProducesBlankPartThatIsFiltered() {
+        // Split on non-alpha at start produces empty first element, exercising isBlank() true branch on line 39
+        assertThat(TokenizerUtil.tokenize("123hello")).containsExactly("hello");
+    }
+
+    @Test
+    void tokenizeEmptyString() {
+        assertThat(TokenizerUtil.tokenize("")).isEmpty();
+    }
+
+    @Test
+    void tokenizeWhitespaceOnly() {
+        assertThat(TokenizerUtil.tokenize("\t\n ")).isEmpty();
+    }
 }

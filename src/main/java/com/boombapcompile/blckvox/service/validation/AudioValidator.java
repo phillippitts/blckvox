@@ -211,7 +211,7 @@ public class AudioValidator {
         if (offset + 4 > wav.length) {
             return "";
         }
-        return new String(new byte[]{wav[offset], wav[offset + 1], wav[offset + 2], wav[offset + 3]});
+        return new String(new byte[]{wav[offset], wav[offset + 1], wav[offset + 2], wav[offset + 3]}, java.nio.charset.StandardCharsets.US_ASCII);
     }
 
     /**

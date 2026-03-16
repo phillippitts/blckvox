@@ -565,6 +565,41 @@ class AudioValidatorTest {
         return out;
     }
 
+    @Test
+    void truncatedWavHeaderTooSmallForRiff() {
+        // WAV file smaller than RIFF header (12 bytes)
+        byte[] tiny = new byte[]{'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'A', 'V'};
+        assertThatThrownBy(() -> validator.validate(tiny))
+                .isInstanceOf(InvalidAudioException.class);
+    }
+
+    @Test
+    void wavWithValidRiffButTooSmallForChunks() {
+        // Valid RIFF header (12 bytes) but no room for any chunk headers
+        // This exercises the WAV path where validateWav is called, wav.length < RIFF_HEADER_SIZE is false,
+        // but there are no fmt/data chunks found — hits requireChunk("fmt") → missing fmt chunk
+        byte[] wav = new byte[12];
+        wav[0] = 'R'; wav[1] = 'I'; wav[2] = 'F'; wav[3] = 'F';
+        wav[8] = 'W'; wav[9] = 'A'; wav[10] = 'V'; wav[11] = 'E';
+        assertThatThrownBy(() -> validator.validate(wav))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("fmt");
+    }
+
+    @Test
+    void wavWithInvalidChunkSizeThrows() {
+        // Valid RIFF header but chunk size is negative/corrupt
+        byte[] wav = new byte[20];
+        wav[0] = 'R'; wav[1] = 'I'; wav[2] = 'F'; wav[3] = 'F';
+        wav[8] = 'W'; wav[9] = 'A'; wav[10] = 'V'; wav[11] = 'E';
+        // Chunk at offset 12: ID = "fmt ", size = very large (0xFFFFFFFF = -1 as signed int)
+        wav[12] = 'f'; wav[13] = 'm'; wav[14] = 't'; wav[15] = ' ';
+        wav[16] = (byte)0xFF; wav[17] = (byte)0xFF; wav[18] = (byte)0xFF; wav[19] = (byte)0xFF;
+        assertThatThrownBy(() -> validator.validate(wav))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("chunk size");
+    }
+
     private static void putLEShort(byte[] a, int off, int v) {
         a[off] = (byte) (v & 0xFF);
         a[off + 1] = (byte) ((v >>> 8) & 0xFF);

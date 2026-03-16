@@ -1,6 +1,7 @@
 package com.boombapcompile.blckvox.config.hotkey;
 
 import com.boombapcompile.blckvox.config.properties.HotkeyProperties;
+import com.boombapcompile.blckvox.config.properties.TriggerType;
 
 import com.boombapcompile.blckvox.service.hotkey.KeyNameMapper;
 import jakarta.annotation.PostConstruct;
