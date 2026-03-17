@@ -58,7 +58,7 @@ class EngineSelectionStrategyTest {
         SttEngineWatchdog watchdog = mock(SttEngineWatchdog.class);
         when(watchdog.isEngineEnabled(anyString())).thenReturn(true);
         OrchestrationProperties props = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
         EngineSelectionStrategy strategy = new EngineSelectionStrategy(vosk, whisper, watchdog, props);
 
@@ -72,7 +72,7 @@ class EngineSelectionStrategyTest {
         SttEngineWatchdog watchdog = mock(SttEngineWatchdog.class);
         when(watchdog.isEngineEnabled(anyString())).thenReturn(true);
         OrchestrationProperties props = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
         EngineSelectionStrategy strategy = new EngineSelectionStrategy(vosk, whisper, watchdog, props);
 
@@ -86,7 +86,7 @@ class EngineSelectionStrategyTest {
         SttEngineWatchdog watchdog = mock(SttEngineWatchdog.class);
         when(watchdog.isEngineEnabled(anyString())).thenReturn(true);
         OrchestrationProperties props = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
         EngineSelectionStrategy strategy = new EngineSelectionStrategy(vosk, whisper, watchdog, props);
 
@@ -102,7 +102,7 @@ class EngineSelectionStrategyTest {
         SttEngineWatchdog watchdog = mock(SttEngineWatchdog.class);
         when(watchdog.isEngineEnabled(anyString())).thenReturn(true);
         OrchestrationProperties props = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.WHISPER, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.WHISPER, 1000, 200, 120);
 
         EngineSelectionStrategy strategy = new EngineSelectionStrategy(vosk, whisper, watchdog, props);
 
@@ -117,7 +117,7 @@ class EngineSelectionStrategyTest {
         when(watchdog.isEngineEnabled(SttEngineNames.VOSK)).thenReturn(false);
         when(watchdog.isEngineEnabled(SttEngineNames.WHISPER)).thenReturn(true);
         OrchestrationProperties props = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
         EngineSelectionStrategy strategy = new EngineSelectionStrategy(vosk, whisper, watchdog, props);
 

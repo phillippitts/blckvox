@@ -48,9 +48,10 @@ public class ThreadPoolConfig {
      *   <li>Queue: default 50 tasks - prevents unbounded memory growth</li>
      * </ul>
      *
-     * <p>Rejection policy: {@link ThreadPoolExecutor.CallerRunsPolicy}
-     * When the pool and queue are full, the caller thread executes the task,
-     * providing backpressure instead of failing fast.
+     * <p>Rejection policy: Abort with logging.
+     * When the pool and queue are full, the task is rejected with a
+     * {@link java.util.concurrent.RejectedExecutionException} to prevent
+     * blocking the calling thread (which may be an event executor thread).
      *
      * <p>Thread naming: configured via {@code threadpool.stt.thread-name-prefix}
      * for easy identification in logs and profilers.
@@ -70,7 +71,12 @@ public class ThreadPoolConfig {
         executor.setQueueCapacity(sttProps.getQueueCapacity());
         executor.setThreadNamePrefix(sttProps.getThreadNamePrefix());
         executor.setKeepAliveSeconds(sttProps.getKeepAliveSeconds());
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setRejectedExecutionHandler((r, e) -> {
+            LOG.warn("sttExecutor rejected task — pool ({}/{}) and queue ({}) are full",
+                    e.getPoolSize(), e.getMaximumPoolSize(), e.getQueue().size());
+            throw new java.util.concurrent.RejectedExecutionException(
+                    "sttExecutor pool and queue are full");
+        });
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);
 
@@ -95,9 +101,9 @@ public class ThreadPoolConfig {
      *   <li>Queue: 10 tasks - bounded to prevent memory exhaustion from runaway events</li>
      * </ul>
      *
-     * <p>Rejection policy: {@link ThreadPoolExecutor.CallerRunsPolicy}
-     * When pool and queue are full, the event bus thread executes the task, providing
-     * backpressure instead of dropping events.
+     * <p>Rejection policy: Discard-oldest with metrics.
+     * When pool and queue are full, the oldest queued task is discarded and replaced
+     * by the new task, preventing the event bus thread from blocking.
      *
      * <p>Thread naming: {@code event-pool-N} for easy identification in logs.
      *

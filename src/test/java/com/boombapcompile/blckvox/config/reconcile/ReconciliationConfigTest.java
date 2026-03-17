@@ -19,7 +19,7 @@ class ReconciliationConfigTest {
         ReconciliationProperties props = new ReconciliationProperties(
                 true, ReconciliationProperties.Strategy.SIMPLE, 0.6, 0.7);
         OrchestrationProperties orchProps = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
         TranscriptReconciler reconciler = config.transcriptReconciler(props, orchProps);
         assertThat(reconciler).isInstanceOf(SimplePreferenceReconciler.class);
@@ -30,7 +30,7 @@ class ReconciliationConfigTest {
         ReconciliationProperties props = new ReconciliationProperties(
                 true, ReconciliationProperties.Strategy.CONFIDENCE, 0.6, 0.7);
         OrchestrationProperties orchProps = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
         TranscriptReconciler reconciler = config.transcriptReconciler(props, orchProps);
         assertThat(reconciler).isInstanceOf(ConfidenceReconciler.class);
@@ -41,7 +41,7 @@ class ReconciliationConfigTest {
         ReconciliationProperties props = new ReconciliationProperties(
                 true, ReconciliationProperties.Strategy.OVERLAP, 0.6, 0.7);
         OrchestrationProperties orchProps = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
         TranscriptReconciler reconciler = config.transcriptReconciler(props, orchProps);
         assertThat(reconciler).isInstanceOf(WordOverlapReconciler.class);

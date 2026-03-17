@@ -32,7 +32,7 @@ class OrchestrationConfigTest {
     private final SttEngine whisperEngine = mock(SttEngine.class);
     private final SttEngineWatchdog watchdog = mock(SttEngineWatchdog.class);
     private final OrchestrationProperties orchProps = new OrchestrationProperties(
-            OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+            OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
     private final HotkeyProperties hotkeyProps = new HotkeyProperties(
             TriggerType.MODIFIER_COMBO, "J", 300, List.of("META"), List.of(), false);
     private final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);

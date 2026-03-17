@@ -149,7 +149,7 @@ class HotkeyRecordingAdapterBuilderTest {
         SttEngine whisper = new StubEngine("whisper");
         FakeWatchdog wd = new FakeWatchdog();
         OrchestrationProperties orchProps = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
         return HotkeyRecordingAdapterBuilder.builder()
                 .captureService(new FakeCapture())

@@ -40,7 +40,7 @@ class HotkeyRecordingAdapterReconciledTest {
         SttEngine whisper = new StubEngine("whisper");
         FakeWatchdog wd = new FakeWatchdog(true, true);
         OrchestrationProperties props =
-                new OrchestrationProperties(OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                new OrchestrationProperties(OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
         ReconciliationProperties rprops =
                 new ReconciliationProperties(true,
                         ReconciliationProperties.Strategy.SIMPLE, 0.6, 0.7);
@@ -96,7 +96,7 @@ class HotkeyRecordingAdapterReconciledTest {
         SttEngine whisper = new StubEngine("whisper");
         FakeWatchdog wd = new FakeWatchdog(true, true);
         OrchestrationProperties props =
-                new OrchestrationProperties(OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                new OrchestrationProperties(OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
         ReconciliationProperties rprops =
                 new ReconciliationProperties(true,
                         ReconciliationProperties.Strategy.SIMPLE, 0.6, 0.7);
@@ -201,7 +201,7 @@ class HotkeyRecordingAdapterReconciledTest {
             int[] parallelCallCount, List<Object> events) {
         FakeWatchdog wd = new FakeWatchdog(true, true);
         OrchestrationProperties props =
-                new OrchestrationProperties(OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                new OrchestrationProperties(OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
         ReconciliationProperties rprops =
                 new ReconciliationProperties(true,
                         ReconciliationProperties.Strategy.SIMPLE,

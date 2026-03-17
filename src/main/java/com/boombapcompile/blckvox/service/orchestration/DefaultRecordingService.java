@@ -4,7 +4,10 @@ import com.boombapcompile.blckvox.service.orchestration.event.TranscriptionCompl
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -24,15 +27,19 @@ public class DefaultRecordingService implements RecordingService {
     private final CaptureOrchestrator captureOrchestrator;
     private final TranscriptionOrchestrator transcriptionOrchestrator;
     private final ApplicationStateTracker stateTracker;
+    private final int maxRecordingDurationSeconds;
 
     private UUID activeSessionId;
+    private volatile Instant recordingStartedAt;
 
     public DefaultRecordingService(CaptureOrchestrator captureOrchestrator,
                                    TranscriptionOrchestrator transcriptionOrchestrator,
-                                   ApplicationStateTracker stateTracker) {
+                                   ApplicationStateTracker stateTracker,
+                                   int maxRecordingDurationSeconds) {
         this.captureOrchestrator = Objects.requireNonNull(captureOrchestrator);
         this.transcriptionOrchestrator = Objects.requireNonNull(transcriptionOrchestrator);
         this.stateTracker = Objects.requireNonNull(stateTracker);
+        this.maxRecordingDurationSeconds = maxRecordingDurationSeconds;
     }
 
     @Override
@@ -53,6 +60,7 @@ public class DefaultRecordingService implements RecordingService {
         }
 
         activeSessionId = sessionId;
+        recordingStartedAt = Instant.now();
         stateTracker.transitionTo(ApplicationState.RECORDING);
         LOG.info("Recording started (session={})", sessionId);
         return true;
@@ -73,10 +81,12 @@ public class DefaultRecordingService implements RecordingService {
             } catch (Exception e) {
                 LOG.error("stopCapture threw for session {}", stoppedSession, e);
                 activeSessionId = null;
+                recordingStartedAt = null;
                 stateTracker.transitionTo(ApplicationState.IDLE);
                 return false;
             }
             activeSessionId = null;
+            recordingStartedAt = null;
         }
         // Transcribe outside the monitor to avoid blocking hotkey events
         return doTranscribe(pcm, stoppedSession);
@@ -88,6 +98,7 @@ public class DefaultRecordingService implements RecordingService {
             LOG.info("Cancelling recording (session={})", activeSessionId);
             captureOrchestrator.cancelCapture(activeSessionId);
             activeSessionId = null;
+            recordingStartedAt = null;
             stateTracker.transitionTo(ApplicationState.IDLE);
         }
     }
@@ -117,10 +128,12 @@ public class DefaultRecordingService implements RecordingService {
                 } catch (Exception e) {
                     LOG.error("stopCapture threw during toggle for session {}", stoppedSession, e);
                     activeSessionId = null;
+                    recordingStartedAt = null;
                     stateTracker.transitionTo(ApplicationState.IDLE);
                     return false;
                 }
                 activeSessionId = null;
+                recordingStartedAt = null;
             } else {
                 shouldStart = true;
             }
@@ -157,6 +170,24 @@ public class DefaultRecordingService implements RecordingService {
     public synchronized void onTranscriptionCompleted(TranscriptionCompletedEvent event) {
         if (stateTracker.getState() == ApplicationState.TRANSCRIBING) {
             stateTracker.transitionTo(ApplicationState.IDLE);
+        }
+    }
+
+    /**
+     * Safety net: cancels any recording that exceeds the configured maximum duration.
+     * This prevents the system from getting stuck in RECORDING state if a stop event
+     * is lost (e.g., discarded by the event executor under saturation).
+     */
+    @Scheduled(fixedRate = 5000)
+    void checkRecordingTimeout() {
+        if (maxRecordingDurationSeconds <= 0) {
+            return;
+        }
+        Instant startedAt = recordingStartedAt;
+        if (startedAt != null
+                && Duration.between(startedAt, Instant.now()).getSeconds() > maxRecordingDurationSeconds) {
+            LOG.warn("Recording exceeded max duration ({}s), auto-cancelling", maxRecordingDurationSeconds);
+            cancelRecording();
         }
     }
 }

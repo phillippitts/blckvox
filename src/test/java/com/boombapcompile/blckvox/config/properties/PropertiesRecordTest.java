@@ -114,7 +114,7 @@ class PropertiesRecordTest {
     @Test
     void orchestrationPropertiesGetters() {
         OrchestrationProperties props = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.WHISPER, 2000, 300);
+                OrchestrationProperties.PrimaryEngine.WHISPER, 2000, 300, 120);
         assertThat(props.getPrimaryEngine()).isEqualTo(OrchestrationProperties.PrimaryEngine.WHISPER);
         assertThat(props.getSilenceGapMs()).isEqualTo(2000);
         assertThat(props.getSilenceThreshold()).isEqualTo(300);

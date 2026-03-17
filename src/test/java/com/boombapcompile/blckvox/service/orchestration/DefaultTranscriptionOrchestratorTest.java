@@ -285,7 +285,7 @@ class DefaultTranscriptionOrchestratorTest {
     }
 
     private static OrchestrationProperties orchestrationProps(int silenceThreshold) {
-        return new OrchestrationProperties(PrimaryEngine.VOSK, 1000, silenceThreshold);
+        return new OrchestrationProperties(PrimaryEngine.VOSK, 1000, silenceThreshold, 120);
     }
 
     /**

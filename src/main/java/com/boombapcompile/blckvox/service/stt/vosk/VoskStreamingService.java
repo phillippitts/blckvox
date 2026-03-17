@@ -61,13 +61,13 @@ public class VoskStreamingService {
             if (accepted) {
                 String text = parseTextField(recognizer.getResult(), "text");
                 if (!text.isEmpty()) {
-                    LOG.info("[live-caption] final: '{}'", text);
+                    LOG.debug("[live-caption] final: '{}'", text);
                     publisher.publishEvent(new VoskPartialResultEvent(text, true));
                 }
             } else {
                 String partial = parseTextField(recognizer.getPartialResult(), "partial");
                 if (!partial.isEmpty()) {
-                    LOG.info("[live-caption] partial: '{}'", partial);
+                    LOG.debug("[live-caption] partial: '{}'", partial);
                     publisher.publishEvent(new VoskPartialResultEvent(partial, false));
                 }
             }

@@ -219,7 +219,7 @@ class SttEngineWatchdogTest {
         RecordingEngine whisper = new RecordingEngine("whisper");
         ApplicationEventPublisher publisher = event -> { };
         OrchestrationProperties orchProps = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
         SttEngineWatchdog watchdog = new SttEngineWatchdog(
                 List.of(vosk, whisper), props, publisher, orchProps);
@@ -240,7 +240,7 @@ class SttEngineWatchdogTest {
         LazyRecordingEngine whisper = new LazyRecordingEngine("whisper");
         ApplicationEventPublisher publisher = event -> { };
         OrchestrationProperties orchProps = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
         SttEngineWatchdog watchdog = new SttEngineWatchdog(
                 List.of(vosk, whisper), props, publisher, orchProps);

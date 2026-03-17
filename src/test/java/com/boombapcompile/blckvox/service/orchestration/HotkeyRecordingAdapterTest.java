@@ -34,7 +34,7 @@ class HotkeyRecordingAdapterTest {
         SttEngine whisper = new StubEngine("whisper");
         FakeWatchdog wd = new FakeWatchdog(true, true);
         OrchestrationProperties props = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
         List<Object> events = new ArrayList<>();
         ApplicationEventPublisher pub = events::add;
         HotkeyRecordingAdapter adapter = HotkeyRecordingAdapterBuilder.builder()
@@ -71,7 +71,7 @@ class HotkeyRecordingAdapterTest {
         SttEngine whisper = new StubEngine("whisper");
         FakeWatchdog wd = new FakeWatchdog(false, true); // vosk disabled, whisper enabled
         OrchestrationProperties props = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
         List<Object> events = new ArrayList<>();
         ApplicationEventPublisher pub = events::add;
         HotkeyRecordingAdapter adapter = HotkeyRecordingAdapterBuilder.builder()
@@ -104,7 +104,7 @@ class HotkeyRecordingAdapterTest {
         SttEngine whisper = new StubEngine("whisper");
         FakeWatchdog wd = new FakeWatchdog(false, false);
         OrchestrationProperties props = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
         List<Object> events = new ArrayList<>();
         ApplicationEventPublisher pub = events::add;
         HotkeyRecordingAdapter adapter = HotkeyRecordingAdapterBuilder.builder()
@@ -138,7 +138,7 @@ class HotkeyRecordingAdapterTest {
         SttEngine whisper = new StubEngine("whisper");
         FakeWatchdog wd = new FakeWatchdog(true, true);
         OrchestrationProperties props = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
         ApplicationEventPublisher pub = e -> { };
         HotkeyRecordingAdapter adapter = HotkeyRecordingAdapterBuilder.builder()
                 .captureService(cap)
@@ -170,7 +170,7 @@ class HotkeyRecordingAdapterTest {
         SttEngine whisper = new StubEngine("whisper");
         FakeWatchdog wd = new FakeWatchdog(true, true);
         OrchestrationProperties props = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
         List<Object> events = new ArrayList<>();
         ApplicationEventPublisher pub = events::add;
         CaptureStateMachine csm = new CaptureStateMachine();
@@ -220,7 +220,8 @@ class HotkeyRecordingAdapterTest {
         OrchestrationProperties props = new OrchestrationProperties(
                 OrchestrationProperties.PrimaryEngine.VOSK,
                 100, // 100ms silence gap threshold
-                200
+                200,
+                120
         );
         List<Object> events = new ArrayList<>();
         ApplicationEventPublisher pub = events::add;
@@ -321,7 +322,8 @@ class HotkeyRecordingAdapterTest {
         OrchestrationProperties props = new OrchestrationProperties(
                 OrchestrationProperties.PrimaryEngine.VOSK,
                 100,
-                200
+                200,
+                120
         );
         ApplicationEventPublisher pub = events::add;
 
@@ -417,7 +419,7 @@ class HotkeyRecordingAdapterTest {
         SttEngine whisper = new StubEngine("whisper");
         FakeWatchdog wd = new FakeWatchdog(true, true);
         OrchestrationProperties props = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
         List<Object> events = new ArrayList<>();
         ApplicationEventPublisher pub = events::add;
         CaptureStateMachine csm = new CaptureStateMachine();
@@ -453,7 +455,7 @@ class HotkeyRecordingAdapterTest {
         SttEngine whisper = new StubEngine("whisper");
         FakeWatchdog wd = new FakeWatchdog(true, true);
         OrchestrationProperties props = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
         List<Object> events = new ArrayList<>();
         ApplicationEventPublisher pub = events::add;
         CaptureStateMachine csm = new CaptureStateMachine();

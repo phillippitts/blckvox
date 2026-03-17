@@ -233,7 +233,7 @@ public class DefaultTranscriptionOrchestrator implements TranscriptionOrchestrat
      * @param engineName name of the engine that produced the result
      */
     private void publishResult(TranscriptionResult result, String engineName) {
-        LOG.info("[transcript] engine={}, confidence={}, text='{}'",
+        LOG.debug("[transcript] engine={}, confidence={}, text='{}'",
                 engineName, String.format("%.2f", result.confidence()), result.text());
         publisher.publishEvent(new TranscriptionCompletedEvent(result, Instant.now(), engineName));
     }

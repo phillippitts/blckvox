@@ -106,7 +106,8 @@ public class OrchestrationConfig {
     public RecordingService recordingService(CaptureOrchestrator captureOrchestrator,
                                              TranscriptionOrchestrator transcriptionOrchestrator,
                                              ApplicationStateTracker stateTracker) {
-        return new DefaultRecordingService(captureOrchestrator, transcriptionOrchestrator, stateTracker);
+        return new DefaultRecordingService(captureOrchestrator, transcriptionOrchestrator, stateTracker,
+                orchestrationProperties.getMaxRecordingDurationSeconds());
     }
 
     @Bean

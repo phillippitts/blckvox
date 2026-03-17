@@ -173,7 +173,7 @@ class WhisperSttEngineTest {
         WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         SttConcurrencyProperties concurrencyProps = new SttConcurrencyProperties(4, 2, 1000, false, 0.8, 0.85, 5000);
         OrchestrationProperties orchProps = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 0, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 0, 200, 120);
 
         WhisperSttEngine engine = new WhisperSttEngine(cfg, concurrencyProps, mgr,
                 event -> { }, "json", orchProps, null);
@@ -204,7 +204,7 @@ class WhisperSttEngineTest {
         WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         SttConcurrencyProperties concurrencyProps = new SttConcurrencyProperties(4, 2, 1000, false, 0.8, 0.85, 5000);
         OrchestrationProperties orchProps = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 500, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 500, 200, 120);
 
         WhisperSttEngine engine = new WhisperSttEngine(cfg, concurrencyProps, mgr,
                 event -> { }, "json", orchProps, null);
@@ -227,7 +227,7 @@ class WhisperSttEngineTest {
         WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         SttConcurrencyProperties concurrencyProps = new SttConcurrencyProperties(4, 2, 1000, true, 0.8, 0.85, 5000);
         OrchestrationProperties orchProps = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 0, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 0, 200, 120);
 
         // Create a ConcurrencyScaler to satisfy the dynamic scaling path
         ConcurrencyScaler scaler = new ConcurrencyScaler(concurrencyProps,
@@ -253,7 +253,7 @@ class WhisperSttEngineTest {
         // dynamicScalingEnabled=true but concurrencyScaler will be null → static ConcurrencyGuard used
         SttConcurrencyProperties concurrencyProps = new SttConcurrencyProperties(4, 2, 1000, true, 0.8, 0.85, 5000);
         OrchestrationProperties orchProps = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 0, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 0, 200, 120);
 
         WhisperSttEngine engine = new WhisperSttEngine(cfg, concurrencyProps, mgr,
                 event -> { }, "text", orchProps, null);
@@ -381,7 +381,7 @@ class WhisperSttEngineTest {
         // whisperMax=1 (single permit), acquireTimeoutMs=1 (fail fast)
         SttConcurrencyProperties concurrencyProps = new SttConcurrencyProperties(4, 1, 1, false, 0.8, 0.85, 5000);
         OrchestrationProperties orchProps = new OrchestrationProperties(
-                OrchestrationProperties.PrimaryEngine.VOSK, 0, 200);
+                OrchestrationProperties.PrimaryEngine.VOSK, 0, 200, 120);
 
         WhisperSttEngine engine = new WhisperSttEngine(cfg, concurrencyProps, mgr,
                 event -> { }, "text", orchProps, null);

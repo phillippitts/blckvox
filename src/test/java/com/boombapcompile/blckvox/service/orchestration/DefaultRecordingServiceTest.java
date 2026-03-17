@@ -25,7 +25,7 @@ class DefaultRecordingServiceTest {
         transcriptionOrchestrator = new FakeTranscriptionOrchestrator();
         events = new ArrayList<>();
         ApplicationStateTracker stateTracker = new ApplicationStateTracker(events::add);
-        service = new DefaultRecordingService(captureOrchestrator, transcriptionOrchestrator, stateTracker);
+        service = new DefaultRecordingService(captureOrchestrator, transcriptionOrchestrator, stateTracker, 120);
     }
 
     @Test

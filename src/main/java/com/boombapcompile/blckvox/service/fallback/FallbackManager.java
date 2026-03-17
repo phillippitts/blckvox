@@ -70,8 +70,8 @@ public class FallbackManager {
             return;
         }
         String text = evt.result().text();
-        LOG.info("[paste] engine={}, chars={}, text='{}'", evt.engineUsed(),
-                text.length(), text);
+        LOG.info("[paste] engine={}, chars={}", evt.engineUsed(), text.length());
+        LOG.debug("[paste] text='{}'", text);
         boolean ok = typingService.paste(text);
         if (!ok) {
             LOG.warn("All typing fallbacks failed (chars={})", text.length());

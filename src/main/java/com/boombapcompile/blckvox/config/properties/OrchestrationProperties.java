@@ -29,7 +29,14 @@ public record OrchestrationProperties(
         // Lower = more sensitive (captures quieter speech). Default: 200.
         @DefaultValue("200")
         @Min(0)
-        int silenceThreshold
+        int silenceThreshold,
+
+        // Maximum recording duration in seconds. If a recording session exceeds this limit,
+        // it is automatically cancelled. This is a safety net against lost stop events.
+        // Set to 0 to disable the timeout. Default: 120 seconds.
+        @DefaultValue("120")
+        @Min(0)
+        int maxRecordingDurationSeconds
 ) {
 
     public enum PrimaryEngine { VOSK, WHISPER }
@@ -44,5 +51,9 @@ public record OrchestrationProperties(
 
     public int getSilenceThreshold() {
         return silenceThreshold;
+    }
+
+    public int getMaxRecordingDurationSeconds() {
+        return maxRecordingDurationSeconds;
     }
 }
