@@ -13,15 +13,17 @@ Whisper.cpp is a C++ binary that must be integrated into the JVM-based blckvox a
 Run whisper.cpp as an **external subprocess** via `ProcessBuilder` rather than embedding it through JNI.
 
 **Architecture:**
-- `WhisperProcessManager` manages the subprocess lifecycle (start, monitor, destroy)
+- `WhisperProcessManager` coordinates command building, process execution, and cleanup
 - `WhisperCommandBuilder` constructs the CLI arguments for the whisper.cpp binary
+- `ProcessLifecycleManager` manages the subprocess lifecycle (start, timeout enforcement, destroy)
+- `ProcessFactory` / `DefaultProcessFactory` abstracts `ProcessBuilder` for testability
 - `ProcessStreamHandler` captures stdout/stderr with bounded buffers
 - `WhisperSttEngine` orchestrates the full transcription flow
 
 **Flow:**
 1. Temp WAV file written to disk from the captured audio buffer
 2. `WhisperCommandBuilder` assembles the CLI invocation with model path, output format, and flags
-3. `ProcessBuilder` spawns whisper.cpp as a child process
+3. `ProcessFactory` (via `DefaultProcessFactory` wrapping `ProcessBuilder`) spawns whisper.cpp as a child process
 4. `ProcessStreamHandler` captures stdout (text or JSON) and stderr
 5. `Process.waitFor()` enforces a configurable timeout with `destroyForcibly()` fallback
 6. Temp file deleted in a finally block; stdout parsed into a transcript result
@@ -58,7 +60,9 @@ Run whisper.cpp as an **external subprocess** via `ProcessBuilder` rather than e
 - **Disadvantage**: Requires running a persistent sidecar process, adds gRPC dependency and proto management
 
 ## References
-- `WhisperProcessManager` (subprocess lifecycle)
+- `WhisperProcessManager` (coordinates command building, process execution, and cleanup)
 - `WhisperCommandBuilder` (CLI argument construction)
+- `ProcessLifecycleManager` (subprocess lifecycle: start, timeout enforcement, destroy)
+- `ProcessFactory` / `DefaultProcessFactory` (`ProcessBuilder` abstraction for testability)
 - `ProcessStreamHandler` (stdout/stderr capture with bounded buffers)
 - `WhisperSttEngine` (transcription orchestration)

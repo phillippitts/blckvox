@@ -77,6 +77,14 @@ stt.whisper.output=json   # default
 - The manager adds `-oj` to the CLI and caps stdout to prevent memory spikes.
 - JSON is parsed safely; malformed JSON falls back gracefully.
 
+When `stt.whisper.output=text` (text mode), Whisper does not produce per-segment confidence
+scores. A fixed confidence value is used instead:
+```properties
+stt.whisper.text-mode-confidence=0.85   # default: 0.85 (range 0.0-1.0)
+```
+- Lower values cause the reconciler to prefer the other engine's result more often.
+- This property has no effect when `stt.whisper.output=json`.
+
 ## Troubleshooting
 - Hotkey not detected:
   - Check for OS-reserved conflict in logs; adjust `hotkey.*` properties.

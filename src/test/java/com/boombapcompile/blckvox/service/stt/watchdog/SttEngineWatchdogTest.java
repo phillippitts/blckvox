@@ -1,5 +1,6 @@
 package com.boombapcompile.blckvox.service.stt.watchdog;
 
+import com.boombapcompile.blckvox.config.properties.OrchestrationProperties;
 import com.boombapcompile.blckvox.config.properties.SttWatchdogProperties;
 import com.boombapcompile.blckvox.domain.TranscriptionResult;
 import com.boombapcompile.blckvox.service.orchestration.event.TranscriptionCompletedEvent;
@@ -208,6 +209,64 @@ class SttEngineWatchdogTest {
         watchdog.initializeEngines();
 
         assertThat(watchdog.getState("vosk")).isEqualTo(SttEngineWatchdog.EngineState.DISABLED);
+    }
+
+    @Test
+    void initializeEnginesDefersSecondaryWhenPrimaryConfigured() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L);
+        RecordingEngine vosk = new RecordingEngine("vosk");
+        RecordingEngine whisper = new RecordingEngine("whisper");
+        ApplicationEventPublisher publisher = event -> { };
+        OrchestrationProperties orchProps = new OrchestrationProperties(
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(
+                List.of(vosk, whisper), props, publisher, orchProps);
+        watchdog.initializeEngines();
+
+        // Primary (vosk) should be eagerly initialized
+        assertThat(vosk.initCount).isEqualTo(1);
+        // Secondary (whisper) should be deferred
+        assertThat(whisper.initCount).isEqualTo(0);
+    }
+
+    @Test
+    void initializeOnDemandInitializesLazyEngine() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L);
+        RecordingEngine vosk = new RecordingEngine("vosk");
+        // Use an engine that starts unhealthy until initialize() is called
+        LazyRecordingEngine whisper = new LazyRecordingEngine("whisper");
+        ApplicationEventPublisher publisher = event -> { };
+        OrchestrationProperties orchProps = new OrchestrationProperties(
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200);
+
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(
+                List.of(vosk, whisper), props, publisher, orchProps);
+        watchdog.initializeEngines();
+
+        // Whisper not yet initialized
+        assertThat(whisper.initCount).isEqualTo(0);
+        assertThat(whisper.isHealthy()).isFalse();
+
+        // Lazy init on demand
+        boolean result = watchdog.initializeOnDemand("whisper");
+        assertThat(result).isTrue();
+        assertThat(whisper.initCount).isEqualTo(1);
+        assertThat(whisper.isHealthy()).isTrue();
+    }
+
+    @Test
+    void initializeOnDemandReturnsFalseForUnknownEngine() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L);
+        RecordingEngine engine = new RecordingEngine("vosk");
+        ApplicationEventPublisher publisher = event -> { };
+
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
+
+        assertThat(watchdog.initializeOnDemand("nonexistent")).isFalse();
     }
 
     @Test
@@ -786,6 +845,42 @@ class SttEngineWatchdogTest {
         @Override
         public void close() {
             // no-op
+        }
+    }
+
+    /**
+     * Engine that starts unhealthy and becomes healthy only after initialize() is called.
+     * Used to test lazy initialization behavior.
+     */
+    static class LazyRecordingEngine implements SttEngine {
+        final String name;
+        int initCount = 0;
+        private boolean healthy = false;
+
+        LazyRecordingEngine(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void initialize() {
+            initCount++;
+            healthy = true;
+        }
+        @Override
+        public TranscriptionResult transcribe(byte[] audioData) {
+            return TranscriptionResult.of("", 1.0, name);
+        }
+        @Override
+        public String getEngineName() {
+            return name;
+        }
+        @Override
+        public boolean isHealthy() {
+            return healthy;
+        }
+        @Override
+        public void close() {
+            healthy = false;
         }
     }
 

@@ -42,6 +42,11 @@ stt.parallel.timeout-ms=120000
 
 # Primary engine for single-engine routing
 stt.orchestration.primary-engine=vosk  # vosk | whisper
+
+# Automatic paragraph breaks: insert newline when silence within audio exceeds this (ms); 0 = disabled
+stt.orchestration.silence-gap-ms=1000
+# RMS amplitude threshold for silence detection (0-32767 for 16-bit PCM); lower = more sensitive
+stt.orchestration.silence-threshold=200
 ```
 
 ### Reconciliation (Phase 4)
@@ -52,6 +57,9 @@ stt.reconciliation.enabled=true
 stt.reconciliation.strategy=overlap
 # Jaccard overlap threshold for overlap strategy
 stt.reconciliation.overlap-threshold=0.6
+# If Vosk confidence < this threshold, run Whisper too and reconcile (0.0-1.0)
+# Lower = more dual-engine (better accuracy, more resources); higher = more single-engine
+stt.reconciliation.confidence-threshold=0.7
 ```
 
 ### Concurrency & Watchdog
@@ -66,6 +74,16 @@ stt.watchdog.enabled=true
 stt.watchdog.window-minutes=60
 stt.watchdog.max-restarts-per-window=3
 stt.watchdog.cooldown-minutes=10
+# Confidence monitoring: blacklist engine if rolling avg falls below this (0.0-1.0)
+stt.watchdog.confidence-blacklist-threshold=0.3
+# Number of recent confidence scores to average
+stt.watchdog.confidence-window-size=10
+# Minimum samples required before evaluating the confidence trend
+stt.watchdog.confidence-min-samples=5
+# Exponential backoff between restart attempts
+stt.watchdog.backoff-base-delay-ms=1000
+stt.watchdog.backoff-multiplier=2.0
+stt.watchdog.backoff-max-delay-ms=60000
 ```
 
 ### Hotkeys
@@ -101,10 +119,13 @@ Runtime metrics are available via JMX (JConsole/VisualVM). Key metrics:
 |--------|------|-------------|
 | `blckvox.transcription.duration` | Timer | Transcription latency by engine and strategy |
 | `blckvox.transcription.count` | Counter | Transcription count by engine and result |
+| `blckvox.processing.ratio` | DistributionSummary | Processing-time-to-audio-duration ratio by engine |
 | `blckvox.engine.failure` | Counter | Engine failure count by engine |
 | `blckvox.engine.restart` | Counter | Engine restart count by engine |
 | `blckvox.typing.fallback` | Counter | Typing fallback count by tier |
-| `blckvox.reconciliation.confidence` | DistributionSummary | Confidence scores by engine |
+| `blckvox.typing.count` | Counter | Successful transcriptions delivered for typing, by engine |
+| `blckvox.reconciliation.confidence` | DistributionSummary | Confidence scores by engine (excludes failed and silent results) |
+| `blckvox.capture.active` | Gauge | Whether audio capture is currently active (1=active, 0=idle) |
 | `blckvox.event.executor.discard` | Counter | Event executor task discards due to queue saturation |
 
 Configuration: `management.metrics.export.jmx.enabled=true` (enabled by default).
@@ -207,7 +228,7 @@ Offloads CPU-intensive transcription work from Spring's event bus.
 | Mid-range (4-8 cores) | 2 | 4 | 20 | Larger queue for burst tolerance |
 | High-end (8+ cores) | 4 | 8 | 50 | High concurrency |
 
-- **Rejection policy:** `DiscardOldestPolicy` — discards oldest queued task to prevent blocking event bus
+- **Rejection policy:** Custom discard-oldest — discards the oldest queued task, increments the discard counter, then re-submits the new task; prevents the event bus from blocking
 - **Discard metric:** `blckvox.event.executor.discard` counter increments on each discard
 - **MDC propagation:** Same as sttExecutor
 
@@ -240,6 +261,19 @@ DEGRADED → HEALTHY : Successful restart or recovery
 DEGRADED → DISABLED : Restart budget exhausted
 DISABLED → DEGRADED : Safety mode force-enables best engine (all disabled)
 ```
+
+### Confidence Monitoring Filtering
+
+The watchdog's confidence monitor excludes two categories of results from the rolling average to prevent distorted readings:
+
+- **Failed results** (`isFailure() == true`): excluded because they report a confidence of 0.0 and would artificially drag the average below the blacklist threshold.
+- **Silent results** (empty transcription text with confidence >= 1.0): excluded because Vosk reports confidence 1.0 for silence, which would inflate the average and mask real degradation.
+
+Only results with actual transcribed text and meaningful confidence scores affect the `stt.watchdog.confidence-blacklist-threshold` evaluation.
+
+### Secondary Engine Lazy Initialization
+
+When `stt.orchestration.primary-engine` is configured, only the primary engine is initialized at startup. Secondary engines are deferred and initialized on first use (`initializeOnDemand`). This reduces startup time and memory pressure when reconciliation is disabled. If lazy initialization fails, the secondary engine transitions directly to DISABLED state.
 
 ### Troubleshooting Engine Health
 

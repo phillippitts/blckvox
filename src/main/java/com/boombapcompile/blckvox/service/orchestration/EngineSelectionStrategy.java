@@ -76,11 +76,16 @@ public final class EngineSelectionStrategy {
         String secondaryName = getSecondaryEngineName();
 
         boolean primaryHealthy = watchdog.isEngineEnabled(primaryName) && primary.isHealthy();
-        boolean secondaryHealthy = watchdog.isEngineEnabled(secondaryName) && secondary.isHealthy();
 
         if (primaryHealthy) {
             LOG.debug("Selected primary engine: {}", primaryName);
             return primary;
+        }
+
+        // Primary unhealthy — attempt lazy init of secondary if needed
+        boolean secondaryHealthy = watchdog.isEngineEnabled(secondaryName) && secondary.isHealthy();
+        if (!secondaryHealthy && watchdog.isEngineEnabled(secondaryName)) {
+            secondaryHealthy = watchdog.initializeOnDemand(secondaryName);
         }
 
         if (secondaryHealthy) {

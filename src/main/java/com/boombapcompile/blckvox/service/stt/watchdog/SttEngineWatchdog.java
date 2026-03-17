@@ -1,5 +1,6 @@
 package com.boombapcompile.blckvox.service.stt.watchdog;
 
+import com.boombapcompile.blckvox.config.properties.OrchestrationProperties;
 import com.boombapcompile.blckvox.config.properties.SttWatchdogProperties;
 import com.boombapcompile.blckvox.service.orchestration.event.TranscriptionCompletedEvent;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
@@ -40,15 +41,31 @@ public class SttEngineWatchdog {
 
     private final Map<String, SttEngine> enginesByName = new ConcurrentHashMap<>();
     private final Map<String, EngineState> state = new ConcurrentHashMap<>();
+    private final String primaryEngineName;
+
+    /**
+     * Convenience constructor without OrchestrationProperties (eager init for all engines).
+     * Used by tests and when orchestration properties are not available.
+     */
+    public SttEngineWatchdog(List<SttEngine> engines,
+                             SttWatchdogProperties props,
+                             ApplicationEventPublisher publisher) {
+        this(engines, props, publisher, null);
+    }
 
     @Autowired
     public SttEngineWatchdog(List<SttEngine> engines,
                              SttWatchdogProperties props,
-                             ApplicationEventPublisher publisher) {
+                             ApplicationEventPublisher publisher,
+                             @Autowired(required = false)
+                             OrchestrationProperties orchestrationProperties) {
         Objects.requireNonNull(props, "props");
         this.publisher = Objects.requireNonNull(publisher, "publisher");
         this.budgetTracker = new RestartBudgetTracker(props);
         this.confidenceMonitor = new ConfidenceMonitor(props);
+        this.primaryEngineName = orchestrationProperties != null
+                ? orchestrationProperties.getPrimaryEngine().name().toLowerCase()
+                : null;
 
         for (SttEngine e : engines) {
             String name = e.getEngineName();
@@ -68,6 +85,7 @@ public class SttEngineWatchdog {
         this.publisher = Objects.requireNonNull(publisher, "publisher");
         this.budgetTracker = Objects.requireNonNull(budgetTracker);
         this.confidenceMonitor = Objects.requireNonNull(confidenceMonitor);
+        this.primaryEngineName = null; // null = eager init for all (test compat)
 
         for (SttEngine e : engines) {
             String name = e.getEngineName();
@@ -82,6 +100,13 @@ public class SttEngineWatchdog {
         for (Map.Entry<String, SttEngine> entry : enginesByName.entrySet()) {
             String name = entry.getKey();
             SttEngine engine = entry.getValue();
+
+            // Lazy init: skip non-primary engines at startup (initialized on first use)
+            if (primaryEngineName != null && !name.equals(primaryEngineName)) {
+                LOG.info("Engine {} deferred for lazy initialization (primary={})", name, primaryEngineName);
+                continue;
+            }
+
             try {
                 engine.initialize();
                 LOG.info("Engine {} initialized successfully", name);
@@ -89,6 +114,33 @@ public class SttEngineWatchdog {
                 LOG.error("Failed to initialize engine {} at startup: {}", name, ex.toString());
                 updateState(name, EngineState.DISABLED);
             }
+        }
+    }
+
+    /**
+     * Initializes an engine on-demand (lazy initialization for secondary engines).
+     * Thread-safe: delegates to {@link SttEngine#initialize()} which is idempotent.
+     *
+     * @param engineName engine to initialize
+     * @return true if engine is healthy after initialization attempt
+     */
+    public boolean initializeOnDemand(String engineName) {
+        SttEngine engine = enginesByName.get(engineName);
+        if (engine == null) {
+            return false;
+        }
+        if (engine.isHealthy()) {
+            return true; // Already initialized
+        }
+        try {
+            LOG.info("Lazy-initializing engine {} on first use", engineName);
+            engine.initialize();
+            LOG.info("Engine {} lazy-initialized successfully", engineName);
+            return engine.isHealthy();
+        } catch (Exception ex) {
+            LOG.error("Failed to lazy-initialize engine {}: {}", engineName, ex.toString());
+            updateState(engineName, EngineState.DISABLED);
+            return false;
         }
     }
 

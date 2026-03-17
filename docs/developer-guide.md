@@ -54,14 +54,22 @@ public class HotkeyRecordingAdapter {
     @EventListener
     @Async("eventExecutor")
     public void onHotkeyPressed(HotkeyPressedEvent evt) {
-        // Toggle mode or push-to-talk start
+        if (hotkeyProps.isToggleMode()) {
+            // Atomic toggle: starts if idle, stops if recording
+            recordingService.toggleRecording();
+            return;
+        }
+        // Push-to-talk: press starts recording
         recordingService.startRecording();
     }
 
     @EventListener
     @Async("eventExecutor")
     public void onHotkeyReleased(HotkeyReleasedEvent evt) {
-        // Stop recording → triggers transcription + paste
+        if (hotkeyProps.isToggleMode()) {
+            return; // release ignored in toggle mode
+        }
+        // Push-to-talk: release stops recording → triggers transcription + paste
         recordingService.stopRecording();
     }
 }
@@ -151,17 +159,17 @@ Additional test doubles are defined within their test classes (e.g., `RecordingE
 | External Dependency | Seam Interface | Test Double |
 |---------------------|---------------|-------------|
 | JNativeHook (hotkeys) | `GlobalKeyHook` | Fake implementation injected |
-| Java Sound (audio) | `DataLineProvider` | Fake `TargetDataLine` |
+| Java Sound (audio) | `JavaSoundAudioCaptureService.DataLineProvider` | Fake `TargetDataLine` |
 | whisper.cpp (process) | `ProcessFactory` | `StubProcessFactory` with `TestProcess` |
-| Robot API (typing) | `AwtRobotFacade` | Fake in unit tests |
-| Clipboard (typing) | `AwtClipboardFacade` | Fake in unit tests |
+| Robot API (typing) | `RobotTypingAdapter.RobotFacade` | Fake in unit tests |
+| Clipboard (typing) | `ClipboardTypingAdapter.ClipboardFacade` | Fake in unit tests |
 
 ### Parameterized Tests
 Use `@ParameterizedTest` with `@CsvSource` for boundary value testing:
 ```java
-@ParameterizedTest(name = "corePoolSize={0}, maxPoolSize={1} should be valid")
-@CsvSource({"1, 1", "4, 8", "16, 32"})
-void boundaryValid(int core, int max) { ... }
+@ParameterizedTest(name = "SttPoolProperties: corePoolSize={0}, maxPoolSize={1}, queueCapacity={2} should be valid")
+@CsvSource({"1, 1, 1", "1, 8, 50", "4, 4, 1", "16, 32, 100"})
+void sttPoolPropertiesBoundaryValid(int core, int max, int queue) { ... }
 ```
 See `ThreadPoolPropertiesTest` and `WhisperJsonParserTest` for examples.
 
@@ -183,7 +191,7 @@ See `ThreadPoolPropertiesTest` and `WhisperJsonParserTest` for examples.
 - Add `-XX:+EnableDynamicAgentLoading` JVM arg (already configured in `build.gradle`)
 - Use `@TempDir` for file-based tests (model validation, audio)
 - Sparse files via `RandomAccessFile.setLength()` for large model stubs (>100MB)
-- For async tests, use Awaitility: `await().atMost(5, SECONDS).until(...)
+- For async tests, use Awaitility: `await().atMost(5, SECONDS).until(...)`
 
 ### Key Test Files
 - `HotkeyTriggerTests`, `HotkeyManagerTest`
@@ -233,7 +241,7 @@ The project uses the following key dependencies:
 ### Build Commands
 ```bash
 ./gradlew clean build           # Full build with tests and Checkstyle
-./gradlew check                 # Run tests + Checkstyle + integration tests
+./gradlew check                 # Run tests + Checkstyle + SpotBugs + integration tests + coverage gates
 ./gradlew test                  # Unit tests only (excludes integration/real-binary tests)
 ./gradlew integrationTest       # Integration tests only
 ./gradlew voskIntegrationTest   # Vosk model integration tests
@@ -251,7 +259,7 @@ The project uses the following key dependencies:
 ## Contribution Flow
 1. Create a small, independently testable task (feature or doc).
 2. Keep changes minimal and hermetic; add unit tests.
-3. Run `./gradlew check` locally (Checkstyle + tests).
+3. Run `./gradlew check` locally (Checkstyle + SpotBugs + tests + coverage gates).
 4. Update docs as needed (README + relevant guide).
 5. Submit PR with succinct description and references to plan tasks.
 

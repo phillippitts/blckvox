@@ -14,10 +14,10 @@ Desktop text injection is fragile due to:
 A single delivery mechanism would fail silently in restricted environments.
 
 ## Decision
-Implement a **three-tier fallback chain** via `StrategyChainTypingService`:
+Implement a **fallback chain** via `StrategyChainTypingService`:
 
 ```
-Robot (Tier 1) --> Clipboard (Tier 2) --> Notify-Only (Tier 3)
+Robot (Tier 1) --> Clipboard (Tier 2) --> Unknown Adapters (Tier 3, if any) --> Notify-Only (Last Resort)
 ```
 
 ### Tier 1: RobotTypingAdapter
@@ -42,7 +42,7 @@ Robot (Tier 1) --> Clipboard (Tier 2) --> Notify-Only (Tier 3)
 
 ### Chain Execution
 ```
-for each adapter in [Robot, Clipboard, Notify]:
+for each adapter in [Robot, Clipboard, <unknown adapters...>, Notify]:
     if adapter.canType():
         try adapter.type(text):
             if success: return
@@ -52,6 +52,10 @@ for each adapter in [Robot, Clipboard, Notify]:
             continue
 publish AllTypingFallbacksFailedEvent
 ```
+
+Note: Any Spring-registered `TypingAdapter` beans with names other than "robot", "clipboard",
+or "notify" are appended between Clipboard and Notify. An WARN log is emitted for each unknown
+adapter at startup rather than silently dropping it.
 
 ### Observability
 Each fallback publishes a `TypingFallbackEvent(tier, reason)` consumed by

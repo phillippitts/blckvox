@@ -183,6 +183,9 @@ stt.reconciliation.enabled=false
 | `stt.concurrency.whisper-max` | int | `2` | Maximum concurrent Whisper transcriptions. Whisper is CPU-intensive, keep this low. |
 | `stt.concurrency.acquire-timeout-ms` | int | `1000` | Maximum wait time (ms) to acquire concurrency permit. Prevents indefinite blocking. |
 | `stt.concurrency.dynamic-scaling-enabled` | boolean | `false` | Enable dynamic concurrency scaling based on system CPU and memory usage. |
+| `stt.concurrency.cpu-threshold-high` | double | `0.80` | CPU usage fraction (0.0-1.0) above which dynamic scaling reduces concurrency permits. Only active when `dynamic-scaling-enabled=true`. |
+| `stt.concurrency.memory-threshold-high` | double | `0.85` | Heap memory usage fraction (0.0-1.0) above which dynamic scaling reduces concurrency permits. Only active when `dynamic-scaling-enabled=true`. |
+| `stt.concurrency.scaling-interval-ms` | long | `5000` | Interval in milliseconds at which dynamic scaling re-evaluates system resource usage. Only active when `dynamic-scaling-enabled=true`. |
 
 **Tuning Guide:**
 - **Low-end CPU (2-4 cores):** `vosk-max=2`, `whisper-max=1`
@@ -202,9 +205,13 @@ stt.reconciliation.enabled=false
 | `stt.watchdog.max-restarts-per-window` | int | `3` | Maximum restarts allowed within the sliding window. Prevents restart loops. |
 | `stt.watchdog.cooldown-minutes` | int | `10` | Cooldown period after max restarts exhausted before allowing new restarts. |
 | `stt.watchdog.probe-enabled` | boolean | `false` | Enable lightweight health probe for engines. |
+| `stt.watchdog.health-summary-interval-millis` | long | `60000` | Interval in milliseconds at which the watchdog logs a health summary for all engines. |
 | `stt.watchdog.confidence-blacklist-threshold` | double | `0.3` | Average confidence below this threshold triggers engine blacklisting (0.0-1.0). |
 | `stt.watchdog.confidence-window-size` | int | `10` | Number of recent confidence scores to average for blacklisting. |
 | `stt.watchdog.confidence-min-samples` | int | `5` | Minimum samples required before evaluating confidence trend. |
+| `stt.watchdog.backoff-base-delay-ms` | long | `1000` | Base delay in milliseconds for exponential backoff between restart attempts. Set to `0` to disable backoff. |
+| `stt.watchdog.backoff-multiplier` | double | `2.0` | Multiplier applied to backoff delay on each successive restart attempt. Formula: `base * multiplier^(attempt-1)`. Must be >= 1.0. |
+| `stt.watchdog.backoff-max-delay-ms` | long | `60000` | Maximum backoff delay cap in milliseconds. Prevents backoff from growing unboundedly regardless of multiplier. |
 
 **How It Works:**
 1. Engine fails 3 times within 60 minutes -> watchdog disables it
@@ -280,6 +287,7 @@ Settings for engine internals, reconciliation algorithms, and debugging.
 | `stt.whisper.language` | String | `en` | Language code (ISO 639-1). |
 | `stt.whisper.threads` | int | `4` | Number of CPU threads for Whisper processing. |
 | `stt.whisper.max-stdout-bytes` | int | `1048576` | Maximum stdout buffer size (1MB). Protects against malicious model output. |
+| `stt.whisper.text-mode-confidence` | double | `0.85` | Default confidence score assigned when Whisper runs in `text` output mode and produces no per-token confidence data (0.0-1.0). Has no effect when `stt.whisper.output=json`. |
 | `stt.whisper.output` | String | `json` | Output format: `text` (plain text) or `json` (structured with tokens). JSON mode enables advanced reconciliation and pause detection. Note: read via `@Value` annotation in WhisperProcessManager. (Java default via @Value: `text`; shipped default: `json`) |
 
 **Supported Models:**
@@ -298,6 +306,7 @@ Settings for engine internals, reconciliation algorithms, and debugging.
 | `stt.reconciliation.enabled` | boolean | `true` | Enable dual-engine reconciliation. When `true`, runs both engines in parallel and reconciles results. (Java class default: false) |
 | `stt.reconciliation.strategy` | String | `overlap` | Reconciliation strategy. Options: `simple` (prefer primary), `confidence` (select by confidence score), `overlap` (Jaccard word overlap). (Java class default: SIMPLE) |
 | `stt.reconciliation.overlap-threshold` | double | `0.6` | Minimum Jaccard similarity threshold for `overlap` strategy (0.0 to 1.0). |
+| `stt.reconciliation.confidence-threshold` | double | `0.7` | Vosk confidence threshold for smart dual-engine escalation (0.0-1.0). When Vosk confidence falls below this value, Whisper is invoked and results are reconciled. Lower = more dual-engine usage (higher accuracy, more resources). Higher = more single-engine usage (faster, fewer resources). |
 
 **Performance Note:** Reconciliation doubles CPU usage (runs both engines) but improves accuracy by 10-25% in testing.
 
