@@ -57,7 +57,22 @@ public record SttWatchdogProperties(
         // Minimum samples required before evaluating confidence trend.
         @DefaultValue("5")
         @Positive(message = "Confidence min samples must be positive")
-        int confidenceMinSamples
+        int confidenceMinSamples,
+
+        // Base delay in ms for exponential backoff between restart attempts (0 = no backoff).
+        @DefaultValue("1000")
+        @Min(value = 0, message = "Backoff base delay must be >= 0")
+        long backoffBaseDelayMs,
+
+        // Multiplier for exponential backoff (delay = base * multiplier^(attempts-1)).
+        @DefaultValue("2.0")
+        @Min(value = 1, message = "Backoff multiplier must be >= 1")
+        double backoffMultiplier,
+
+        // Maximum backoff delay in ms (cap).
+        @DefaultValue("60000")
+        @Positive(message = "Backoff max delay must be positive")
+        long backoffMaxDelayMs
 ) {
 
     public boolean isEnabled() {
@@ -94,5 +109,17 @@ public record SttWatchdogProperties(
 
     public int getConfidenceMinSamples() {
         return confidenceMinSamples;
+    }
+
+    public long getBackoffBaseDelayMs() {
+        return backoffBaseDelayMs;
+    }
+
+    public double getBackoffMultiplier() {
+        return backoffMultiplier;
+    }
+
+    public long getBackoffMaxDelayMs() {
+        return backoffMaxDelayMs;
     }
 }

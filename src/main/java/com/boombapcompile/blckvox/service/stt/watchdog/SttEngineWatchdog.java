@@ -198,6 +198,10 @@ public class SttEngineWatchdog {
                 LOG.warn("Engine {} is in cooldown until {}", engine, budgetTracker.getCooldownUntil(engine));
                 return;
             }
+            if (budgetTracker.isBackoffActive(engine)) {
+                LOG.debug("Engine {} in backoff until {}", engine, budgetTracker.getBackoffUntil(engine));
+                return;
+            }
             if (!budgetTracker.allowsRestart(engine)) {
                 disableEngine(engine);
                 return;

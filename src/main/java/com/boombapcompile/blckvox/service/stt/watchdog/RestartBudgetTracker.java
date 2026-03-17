@@ -21,9 +21,13 @@ public class RestartBudgetTracker {
     private final int windowMinutes;
     private final int maxRestartsPerWindow;
     private final int cooldownMinutes;
+    private final long backoffBaseDelayMs;
+    private final double backoffMultiplier;
+    private final long backoffMaxDelayMs;
 
     private final ConcurrentMap<String, Deque<Instant>> restartWindow = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Instant> disabledUntil = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Instant> nextAllowedRestart = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
 
     public RestartBudgetTracker(SttWatchdogProperties props) {
@@ -31,12 +35,16 @@ public class RestartBudgetTracker {
         this.windowMinutes = props.getWindowMinutes();
         this.maxRestartsPerWindow = props.getMaxRestartsPerWindow();
         this.cooldownMinutes = props.getCooldownMinutes();
+        this.backoffBaseDelayMs = props.getBackoffBaseDelayMs();
+        this.backoffMultiplier = props.getBackoffMultiplier();
+        this.backoffMaxDelayMs = props.getBackoffMaxDelayMs();
     }
 
     /** Registers an engine for tracking. Must be called before any other method for this engine. */
     public void register(String engine) {
         restartWindow.put(engine, new ArrayDeque<>());
         locks.put(engine, new ReentrantLock());
+        nextAllowedRestart.put(engine, Instant.EPOCH);
     }
 
     /**
@@ -55,12 +63,18 @@ public class RestartBudgetTracker {
         }
     }
 
-    /** Records a restart attempt for the given engine. */
+    /** Records a restart attempt for the given engine and sets the backoff expiry. */
     public void recordRestart(String engine) {
         ReentrantLock lock = locks.get(engine);
         lock.lock();
         try {
-            restartWindow.get(engine).addLast(Instant.now());
+            Deque<Instant> window = restartWindow.get(engine);
+            window.addLast(Instant.now());
+            int attempts = window.size();
+            long delayMs = Math.min(
+                    (long) (backoffBaseDelayMs * Math.pow(backoffMultiplier, attempts - 1)),
+                    backoffMaxDelayMs);
+            nextAllowedRestart.put(engine, Instant.now().plus(Duration.ofMillis(delayMs)));
         } finally {
             lock.unlock();
         }
@@ -73,7 +87,7 @@ public class RestartBudgetTracker {
         return until;
     }
 
-    /** Clears cooldown and restart window for the engine. */
+    /** Clears cooldown, backoff, and restart window for the engine. */
     public void clearOnRecovery(String engine) {
         ReentrantLock lock = locks.get(engine);
         lock.lock();
@@ -83,6 +97,7 @@ public class RestartBudgetTracker {
             lock.unlock();
         }
         disabledUntil.remove(engine);
+        nextAllowedRestart.put(engine, Instant.EPOCH);
     }
 
     /** Returns true if the engine is currently in its cooldown period. */
@@ -94,6 +109,17 @@ public class RestartBudgetTracker {
     /** Returns the cooldown expiry timestamp, or null if not in cooldown. */
     public Instant getCooldownUntil(String engine) {
         return disabledUntil.get(engine);
+    }
+
+    /** Returns true if the engine is currently in its exponential backoff period. */
+    public boolean isBackoffActive(String engine) {
+        Instant until = nextAllowedRestart.get(engine);
+        return until != null && Instant.now().isBefore(until);
+    }
+
+    /** Returns the backoff expiry timestamp for the engine (for logging). */
+    public Instant getBackoffUntil(String engine) {
+        return nextAllowedRestart.get(engine);
     }
 
     /**
