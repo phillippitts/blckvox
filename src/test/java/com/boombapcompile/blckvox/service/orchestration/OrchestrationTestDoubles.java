@@ -22,11 +22,17 @@ final class OrchestrationTestDoubles {
     static final class FakeEngine implements SttEngine {
         private final String name;
         private final String text;
+        private final double confidence;
         private boolean initialized;
 
         FakeEngine(String name, String text) {
+            this(name, text, 1.0);
+        }
+
+        FakeEngine(String name, String text, double confidence) {
             this.name = name;
             this.text = text;
+            this.confidence = confidence;
             this.initialized = true;
         }
 
@@ -40,7 +46,7 @@ final class OrchestrationTestDoubles {
             if (!initialized) {
                 throw new TranscriptionException("not initialized", name);
             }
-            return TranscriptionResult.of(text, 1.0, name);
+            return TranscriptionResult.of(text, confidence, name);
         }
 
         @Override

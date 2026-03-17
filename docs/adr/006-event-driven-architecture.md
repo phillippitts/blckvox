@@ -15,7 +15,7 @@ Desktop application (hotkey-triggered) with:
 Follow **2-tier event-driven architecture**:
 
 ```
-src/main/java/com/phillippitts/blckvox/
+src/main/java/com/boombapcompile/blckvox/
 ├── service/           # Tier 1: Business logic (event publishers & listeners)
 │   ├── hotkey/        # HotkeyTrigger → publishes HotkeyPressedEvent
 │   ├── orchestration/ # HotkeyRecordingAdapter → RecordingService → publishes TranscriptionCompletedEvent

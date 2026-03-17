@@ -3,7 +3,10 @@ package com.boombapcompile.blckvox.service.orchestration;
 import com.boombapcompile.blckvox.config.properties.ReconciliationProperties;
 import com.boombapcompile.blckvox.domain.TranscriptionResult;
 import com.boombapcompile.blckvox.service.reconcile.TranscriptReconciler;
+import com.boombapcompile.blckvox.service.stt.EngineResult;
 import com.boombapcompile.blckvox.service.stt.parallel.ParallelSttService;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Objects;
 
@@ -24,6 +27,8 @@ import java.util.Objects;
  * @since 1.1
  */
 public final class DefaultReconciliationService implements ReconciliationService {
+
+    private static final Logger LOG = LogManager.getLogger(DefaultReconciliationService.class);
 
     // Timeout value indicating "use service default"
     private static final long USE_DEFAULT_TIMEOUT = 0L;
@@ -61,8 +66,30 @@ public final class DefaultReconciliationService implements ReconciliationService
             throw new IllegalStateException("Reconciliation is not enabled");
         }
 
-        var pair = parallel.transcribeBoth(pcm, USE_DEFAULT_TIMEOUT);
-        return reconciler.reconcile(pair.vosk(), pair.whisper());
+        double threshold = props.getConfidenceThreshold();
+
+        // Smart upgrade: run Vosk first, only add Whisper if confidence is low
+        try {
+            EngineResult voskResult = parallel.transcribeVoskOnly(pcm, USE_DEFAULT_TIMEOUT);
+            if (voskResult.confidence() >= threshold) {
+                LOG.info("Vosk confidence {} >= threshold {}, using single-engine result",
+                        String.format("%.3f", voskResult.confidence()),
+                        String.format("%.3f", threshold));
+                return TranscriptionResult.of(voskResult.text(), voskResult.confidence(),
+                        voskResult.engineName());
+            }
+
+            LOG.info("Vosk confidence {} < threshold {}, upgrading to dual-engine reconciliation",
+                    String.format("%.3f", voskResult.confidence()),
+                    String.format("%.3f", threshold));
+            var pair = parallel.transcribeWhisperOnly(pcm, USE_DEFAULT_TIMEOUT, voskResult);
+            return reconciler.reconcile(pair.vosk(), pair.whisper());
+        } catch (Exception e) {
+            // Vosk pre-check failed — fall back to full dual-engine reconciliation
+            LOG.warn("Vosk pre-check failed, falling back to full dual-engine: {}", e.getMessage());
+            var pair = parallel.transcribeBoth(pcm, USE_DEFAULT_TIMEOUT);
+            return reconciler.reconcile(pair.vosk(), pair.whisper());
+        }
     }
 
     @Override

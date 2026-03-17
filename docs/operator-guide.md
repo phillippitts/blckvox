@@ -37,9 +37,6 @@ stt.whisper.output=json
 
 ### Orchestration & Parallel
 ```properties
-# Engines to consider (informational)
-stt.enabled-engines=vosk,whisper
-
 # Parallel run timeout (ms)
 stt.parallel.timeout-ms=120000
 

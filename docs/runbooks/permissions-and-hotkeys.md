@@ -22,7 +22,7 @@ This runbook helps resolve issues with permissions (Microphone/Accessibility) an
 - Avoid reserved combos like `META+TAB` (Cmd+Tab on macOS) and `META+L` (Win+L on Windows)
 - Reconfigure in `application.properties`:
 ```properties
-hotkey.type=double-tap            # single-key | double-tap | modifier-combination
+hotkey.type=double-tap            # single-key | double-tap | modifier-combo
 hotkey.key=RIGHT_META
 # hotkey.modifiers=META,SHIFT
 # hotkey.threshold-ms=300

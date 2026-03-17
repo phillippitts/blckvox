@@ -129,11 +129,12 @@ Enables word-level tokens for `WordOverlapReconciler`. Slightly slower but more 
 
 ### Engine Orchestration
 
-Controls which engines are enabled and which engine is used as primary.
+Controls which engine is used as primary and how parallel execution works.
+
+> **Note:** Both Vosk and Whisper engines are always loaded as Spring beans. To control behavior, use `stt.orchestration.primary-engine` (which engine handles single-engine requests) and `stt.reconciliation.enabled` (whether to run both engines and reconcile).
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `stt.enabled-engines` | String | `vosk,whisper` | Comma-separated list of enabled engines. Options: `vosk`, `whisper`. At least one must be enabled. |
 | `stt.orchestration.primary-engine` | String | `vosk` | Primary engine preference. Options: `vosk` (fast, lower accuracy) or `whisper` (slower, higher accuracy). Falls back to secondary if primary is unhealthy. |
 | `stt.parallel.timeout-ms` | int | `120000` | Timeout in milliseconds for parallel dual-engine transcription (reconciliation mode only). |
 | `stt.orchestration.silence-gap-ms` | int | `1000` | Silence gap threshold in milliseconds. If silence within audio exceeds this, a paragraph break (newline) is inserted. Set to 0 to disable. |
@@ -141,18 +142,16 @@ Controls which engines are enabled and which engine is used as primary.
 
 **Example:**
 ```properties
-stt.enabled-engines=vosk,whisper
 stt.orchestration.primary-engine=vosk
 stt.parallel.timeout-ms=120000
 ```
 
-**Single-Engine Mode:**
+**Single-Engine Mode (Whisper only):**
 ```properties
-stt.enabled-engines=whisper
 stt.orchestration.primary-engine=whisper
 stt.reconciliation.enabled=false
 ```
-Disables Vosk entirely, uses only Whisper.
+Uses Whisper as the primary engine without reconciliation.
 
 ---
 
@@ -480,8 +479,7 @@ threadpool.event.queue-capacity=10
 Recommended settings for production deployment:
 
 ```properties
-# Enable all engines with reconciliation for best accuracy
-stt.enabled-engines=vosk,whisper
+# Enable reconciliation for best accuracy (both engines loaded as Spring beans)
 stt.orchestration.primary-engine=vosk
 stt.reconciliation.enabled=true
 stt.reconciliation.strategy=confidence
@@ -505,8 +503,7 @@ live-caption.enabled=true
 Recommended settings for local development and testing:
 
 ```properties
-# Single engine for faster startup
-stt.enabled-engines=vosk
+# Single engine mode (disable reconciliation)
 stt.orchestration.primary-engine=vosk
 stt.reconciliation.enabled=false
 
@@ -561,8 +558,7 @@ Configuration validation occurs at startup. Common errors:
 ### Optimizing for Speed (Low Latency)
 
 ```properties
-# Use only Vosk (fastest engine)
-stt.enabled-engines=vosk
+# Use only Vosk (fastest engine, no reconciliation)
 stt.orchestration.primary-engine=vosk
 stt.reconciliation.enabled=false
 
@@ -577,7 +573,6 @@ stt.concurrency.vosk-max=8
 
 ```properties
 # Use reconciliation with confidence strategy
-stt.enabled-engines=vosk,whisper
 stt.reconciliation.enabled=true
 stt.reconciliation.strategy=confidence
 stt.whisper.output=json
@@ -594,7 +589,6 @@ stt.whisper.threads=8
 
 ```properties
 # Primary Vosk with Whisper fallback (no reconciliation)
-stt.enabled-engines=vosk,whisper
 stt.orchestration.primary-engine=vosk
 stt.reconciliation.enabled=false
 

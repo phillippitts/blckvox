@@ -262,7 +262,6 @@ dependencies {
 spring.application.name=blckvox
 spring.main.web-application-type=none
 
-stt.enabled-engines=vosk,whisper
 stt.parallel.timeout-ms=120000
 stt.reconciliation.enabled=true
 stt.reconciliation.strategy=overlap

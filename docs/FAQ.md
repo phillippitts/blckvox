@@ -115,21 +115,22 @@ Two offline engines:
 
 ### Which engine should I use?
 
+Both engines are always loaded as Spring beans. Use `stt.orchestration.primary-engine` and `stt.reconciliation.enabled` to control behavior.
+
 **For speed:**
 ```properties
-stt.enabled-engines=vosk
 stt.orchestration.primary-engine=vosk
+stt.reconciliation.enabled=false
 ```
 
 **For accuracy:**
 ```properties
-stt.enabled-engines=whisper
 stt.orchestration.primary-engine=whisper
+stt.reconciliation.enabled=false
 ```
 
 **For best results (recommended):**
 ```properties
-stt.enabled-engines=vosk,whisper
 stt.reconciliation.enabled=true
 stt.reconciliation.strategy=confidence
 ```
@@ -386,10 +387,9 @@ stt.whisper.threads=8  # Match your CPU core count
    **Fix:** Plug in power adapter
 
 4. **Reconciliation enabled with slow engines:**
-   **Fix:** Disable reconciliation or use single engine:
+   **Fix:** Disable reconciliation:
    ```properties
    stt.reconciliation.enabled=false
-   stt.enabled-engines=vosk
    ```
 
 ### How much CPU/RAM does it use?
@@ -518,9 +518,8 @@ Not recommended. Virtual machines have unreliable global hotkey capture and audi
 
 ### How do I enable reconciliation?
 
-Edit `application.properties`:
+Both engines are loaded as Spring beans automatically. Edit `application.properties`:
 ```properties
-stt.enabled-engines=vosk,whisper
 stt.reconciliation.enabled=true
 stt.reconciliation.strategy=confidence  # or: simple, overlap
 stt.whisper.output=json  # Required for 'overlap' strategy
@@ -571,16 +570,16 @@ stt.watchdog.cooldown-minutes=10
 
 ### How do I disable an engine?
 
-**Disable Whisper (use Vosk only):**
+Both engines are always loaded as Spring beans. To use only one engine, set it as primary and disable reconciliation:
+
+**Use Vosk only:**
 ```properties
-stt.enabled-engines=vosk
 stt.orchestration.primary-engine=vosk
 stt.reconciliation.enabled=false
 ```
 
-**Disable Vosk (use Whisper only):**
+**Use Whisper only:**
 ```properties
-stt.enabled-engines=whisper
 stt.orchestration.primary-engine=whisper
 stt.reconciliation.enabled=false
 ```

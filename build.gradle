@@ -6,9 +6,10 @@ plugins {
     id 'checkstyle'  // Clean code enforcement
     id 'jacoco'      // Test coverage reporting
     id 'com.github.spotbugs' version '6.1.7'  // Bytecode-level static analysis
+    id 'org.owasp.dependencycheck' version '9.2.0'  // Dependency vulnerability scanning
 }
 
-group = 'com.phillippitts'
+group = 'com.boombapcompile'
 version = '0.0.1-SNAPSHOT'
 description = 'blckvox'
 
@@ -138,6 +139,16 @@ spotbugsMain {
 }
 
 spotbugsTest.enabled = false
+
+dependencyCheck {
+    failBuildOnCVSS = 7.0f
+    suppressionFile = "${rootDir}/config/owasp/suppression.xml"
+    formats = ['HTML', 'JSON']
+    analyzers {
+        assemblyEnabled = false
+        nodeEnabled = false
+    }
+}
 
 jacocoTestReport {
     dependsOn test

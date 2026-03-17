@@ -95,10 +95,10 @@ Compared to always running both engines:
 
 ### Observability
 
-Metrics are planned for Phase 6. Currently, reconciliation is observable via INFO-level logs:
+JMX metrics are available via Micrometer. Reconciliation is also observable via INFO-level logs:
 
 ```
-INFO  c.p.b.service.reconciliation - Reconciliation complete: strategy=overlap, selectedEngine=whisper, charCount=45
+INFO  c.b.b.service.reconcile.impl - Reconciliation complete: strategy=overlap, selectedEngine=whisper, charCount=45
 ```
 
 ## Recommendations

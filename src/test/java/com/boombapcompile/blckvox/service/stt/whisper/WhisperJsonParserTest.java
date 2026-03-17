@@ -504,4 +504,160 @@ class WhisperJsonParserTest {
         String json = "{\"segments\": [{\"words\": null, \"text\": \"fallback\"}]}";
         assertThat(WhisperJsonParser.extractTokens(json)).containsExactly("fallback");
     }
+
+    // ---- extractConfidence tests ----
+
+    @Test
+    void extractConfidenceAveragesProbFields() {
+        String json = """
+            {
+              "segments": [
+                {"words": [
+                  {"word": "hello", "prob": 0.9},
+                  {"word": "world", "prob": 0.7}
+                ]}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.8);
+    }
+
+    @Test
+    void extractConfidenceAcceptsProbabilityField() {
+        String json = """
+            {
+              "segments": [
+                {"words": [
+                  {"word": "hello", "probability": 0.6},
+                  {"word": "world", "probability": 0.8}
+                ]}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.7);
+    }
+
+    @Test
+    void extractConfidencePrefProbOverProbability() {
+        // If both "prob" and "probability" present, "prob" wins
+        String json = """
+            {
+              "segments": [
+                {"words": [
+                  {"word": "hello", "prob": 0.5, "probability": 0.9}
+                ]}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.5);
+    }
+
+    @Test
+    void extractConfidenceReturnsFallbackForNoWords() {
+        String json = """
+            {
+              "segments": [
+                {"text": "hello world"}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.85);
+    }
+
+    @Test
+    void extractConfidenceReturnsFallbackForEmptySegments() {
+        String json = "{\"segments\": []}";
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.85);
+    }
+
+    @Test
+    void extractConfidenceReturnsFallbackForNull() {
+        assertThat(WhisperJsonParser.extractConfidence(null)).isEqualTo(0.85);
+    }
+
+    @Test
+    void extractConfidenceReturnsFallbackForBlank() {
+        assertThat(WhisperJsonParser.extractConfidence("")).isEqualTo(0.85);
+        assertThat(WhisperJsonParser.extractConfidence("   ")).isEqualTo(0.85);
+    }
+
+    @Test
+    void extractConfidenceReturnsFallbackForMalformedJson() {
+        assertThat(WhisperJsonParser.extractConfidence("{ not-json")).isEqualTo(0.85);
+    }
+
+    @Test
+    void extractConfidenceReturnsFallbackForNoSegments() {
+        String json = "{\"text\": \"hello\"}";
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.85);
+    }
+
+    @Test
+    void extractConfidenceClampsAboveOne() {
+        String json = """
+            {
+              "segments": [
+                {"words": [
+                  {"word": "hello", "prob": 1.5}
+                ]}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(1.0);
+    }
+
+    @Test
+    void extractConfidenceClampsBeforeZero() {
+        String json = """
+            {
+              "segments": [
+                {"words": [
+                  {"word": "hello", "prob": -0.5}
+                ]}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.0);
+    }
+
+    @Test
+    void extractConfidenceSkipsWordsWithoutProb() {
+        // Mixed: some words have prob, some don't — average only those that have it
+        String json = """
+            {
+              "segments": [
+                {"words": [
+                  {"word": "hello", "prob": 0.6},
+                  {"word": "world"}
+                ]}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.6);
+    }
+
+    @Test
+    void extractConfidenceAcrossMultipleSegments() {
+        String json = """
+            {
+              "segments": [
+                {"words": [{"word": "a", "prob": 0.4}]},
+                {"words": [{"word": "b", "prob": 0.8}]}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json)).isCloseTo(0.6, org.assertj.core.data.Offset.offset(0.001));
+    }
+
+    @Test
+    void extractConfidenceSkipsNullSegmentsAndWords() {
+        String json = "{\"segments\": [null, {\"words\": [null, {\"word\": \"hi\", \"prob\": 0.5}]}]}";
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.5);
+    }
+
+    @Test
+    void extractConfidenceSkipsSegmentsWithNullWordsArray() {
+        String json = "{\"segments\": [{\"words\": null}]}";
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.85);
+    }
 }

@@ -45,7 +45,7 @@ class WhisperSttEngineTest {
         TranscriptionResult r = engine.transcribe(pcm1s);
         assertThat(r.text()).isEqualTo("hello world");
         assertThat(r.engineName()).isEqualTo("whisper");
-        assertThat(r.confidence()).isEqualTo(1.0);
+        assertThat(r.confidence()).isEqualTo(0.85); // non-JSON mode default
         engine.close();
     }
 
@@ -152,7 +152,7 @@ class WhisperSttEngineTest {
 
         // Should return empty text, not fail
         assertThat(r.text()).isEmpty();
-        assertThat(r.confidence()).isEqualTo(1.0);
+        assertThat(r.confidence()).isEqualTo(0.85); // non-JSON mode default
         assertThat(r.engineName()).isEqualTo("whisper");
         engine.close();
     }

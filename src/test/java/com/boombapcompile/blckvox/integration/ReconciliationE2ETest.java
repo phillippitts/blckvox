@@ -63,7 +63,7 @@ class ReconciliationE2ETest {
         FakeSttEngine whisper = new FakeSttEngine("whisper", "hello world", 0.9);
 
         ReconciliationProperties recProps = new ReconciliationProperties(
-                true, ReconciliationProperties.Strategy.OVERLAP, 0.5, 0.7);
+                true, ReconciliationProperties.Strategy.OVERLAP, 0.5, 1.0);
 
         ParallelSttService parallel = new DefaultParallelSttService(vosk, whisper,
                 new SyncExecutor(), 10000);
@@ -112,7 +112,7 @@ class ReconciliationE2ETest {
         FakeSttEngine whisper = new FakeSttEngine("whisper", "whisper text", 0.95);
 
         ReconciliationProperties recProps = new ReconciliationProperties(
-                true, ReconciliationProperties.Strategy.CONFIDENCE, 0.6, 0.7);
+                true, ReconciliationProperties.Strategy.CONFIDENCE, 0.6, 1.0);
 
         ParallelSttService parallel = new DefaultParallelSttService(vosk, whisper,
                 new SyncExecutor(), 10000);
@@ -212,7 +212,7 @@ class ReconciliationE2ETest {
         FakeSttEngine whisper = new FakeSttEngine("whisper", "whisper text", 0.95);
 
         ReconciliationProperties recProps = new ReconciliationProperties(
-                true, ReconciliationProperties.Strategy.SIMPLE, 0.6, 0.7);
+                true, ReconciliationProperties.Strategy.SIMPLE, 0.6, 1.0);
 
         ParallelSttService parallel = new DefaultParallelSttService(vosk, whisper,
                 new SyncExecutor(), 10000);

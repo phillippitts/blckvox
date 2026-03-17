@@ -224,7 +224,7 @@ flowchart TD
     Punct --> WhisperCheck{Using Whisper<br/>engine?}
     WhisperCheck -->|No| OnlyVosk[Vosk doesn't<br/>add punctuation]
     WhisperCheck -->|Yes| Enabled{Both engines<br/>enabled?}
-    Enabled -->|No| EnableBoth[Set stt.enabled-engines=<br/>vosk,whisper]
+    Enabled -->|No| EnableBoth[Set stt.reconciliation.enabled=true]
     Enabled -->|Yes| ReconcileCheck{Reconciliation<br/>using Whisper?}
     ReconcileCheck -->|No| ConfStrat[Use confidence or<br/>overlap strategy]
 
@@ -321,7 +321,7 @@ flowchart TD
 | No audio captured | Microphone permission | Grant permission when prompted |
 | No text pasted | Accessibility permission | Grant permission, restart app |
 | Wrong transcription | Background noise | Move to quiet environment |
-| Missing punctuation | Vosk-only mode | Enable Whisper: `stt.enabled-engines=vosk,whisper` |
+| Missing punctuation | Vosk-only mode | Enable reconciliation: `stt.reconciliation.enabled=true` |
 | 5+ second transcription | Both engines always run | `stt.reconciliation.enabled=true` |
 | Whisper timeout | Long audio or slow CPU | `stt.whisper.timeout-seconds=120` |
 

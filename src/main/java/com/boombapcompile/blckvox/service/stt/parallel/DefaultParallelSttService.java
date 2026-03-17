@@ -151,6 +151,58 @@ public class DefaultParallelSttService implements ParallelSttService {
         return new EnginePair(rVosk, rWhisper);
     }
 
+    @Override
+    public EngineResult transcribeVoskOnly(byte[] pcm, long timeoutMs) {
+        Objects.requireNonNull(pcm, "pcm");
+        final long toMs = timeoutMs > 0 ? timeoutMs : defaultTimeoutMs;
+
+        CompletableFuture<EngineResult> future =
+                CompletableFuture.supplyAsync(() -> runEngine(vosk, pcm), executor);
+        try {
+            future.get(toMs, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException te) {
+            LOG.warn("Vosk-only transcription timed out after {} ms", toMs);
+            future.cancel(false);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException ignored) {
+            // Handled inside runEngine
+        }
+
+        EngineResult result = getResultSilently(future);
+        if (result == null) {
+            throw new TranscriptionException("Vosk engine failed or timed out");
+        }
+        return result;
+    }
+
+    @Override
+    public EnginePair transcribeWhisperOnly(byte[] pcm, long timeoutMs,
+                                             EngineResult precomputedVosk) {
+        Objects.requireNonNull(pcm, "pcm");
+        Objects.requireNonNull(precomputedVosk, "precomputedVosk");
+        final long toMs = timeoutMs > 0 ? timeoutMs : defaultTimeoutMs;
+
+        CompletableFuture<EngineResult> future =
+                CompletableFuture.supplyAsync(() -> runEngine(whisper, pcm), executor);
+        try {
+            future.get(toMs, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException te) {
+            LOG.warn("Whisper-only transcription timed out after {} ms", toMs);
+            future.cancel(false);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException ignored) {
+            // Handled inside runEngine
+        }
+
+        EngineResult rWhisper = getResultSilently(future);
+        if (rWhisper == null) {
+            throw new TranscriptionException("Whisper engine failed or timed out");
+        }
+        return new EnginePair(precomputedVosk, rWhisper);
+    }
+
     private EngineResult getResultSilently(CompletableFuture<EngineResult> f) {
         try {
             return f.isDone() && !f.isCompletedExceptionally() && !f.isCancelled() ? f.get() : null;

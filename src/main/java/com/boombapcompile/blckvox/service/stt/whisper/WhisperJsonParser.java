@@ -138,6 +138,69 @@ final class WhisperJsonParser {
         return sb.toString();
     }
 
+    /**
+     * Extracts average word-level confidence from Whisper JSON output.
+     *
+     * <p>Looks for {@code prob} or {@code probability} fields in
+     * {@code segments[].words[]} and averages them. Returns 0.85 fallback
+     * when no word-level probabilities are available (Whisper is generally
+     * accurate, so default above 0.5 is reasonable).
+     *
+     * @param json Whisper JSON output
+     * @return average confidence clamped to [0.0, 1.0], or 0.85 if unavailable
+     */
+    static double extractConfidence(String json) {
+        if (json == null || json.isBlank()) {
+            return 0.85;
+        }
+        try {
+            JSONObject obj = new JSONObject(json);
+            if (!obj.has("segments")) {
+                return 0.85;
+            }
+            JSONArray segs = obj.optJSONArray("segments");
+            if (segs == null || segs.length() == 0) {
+                return 0.85;
+            }
+
+            double sum = 0.0;
+            int count = 0;
+
+            for (int i = 0; i < segs.length(); i++) {
+                JSONObject seg = segs.optJSONObject(i);
+                if (seg == null) {
+                    continue;
+                }
+                JSONArray words = seg.optJSONArray("words");
+                if (words == null) {
+                    continue;
+                }
+                for (int w = 0; w < words.length(); w++) {
+                    JSONObject word = words.optJSONObject(w);
+                    if (word == null) {
+                        continue;
+                    }
+                    // whisper.cpp uses "prob"; some builds use "probability"
+                    if (word.has("prob")) {
+                        sum += word.optDouble("prob", 0.0);
+                        count++;
+                    } else if (word.has("probability")) {
+                        sum += word.optDouble("probability", 0.0);
+                        count++;
+                    }
+                }
+            }
+
+            if (count == 0) {
+                return 0.85;
+            }
+            double avg = sum / count;
+            return Math.min(1.0, Math.max(0.0, avg));
+        } catch (org.json.JSONException ignored) {
+            return 0.85;
+        }
+    }
+
     static List<String> extractTokens(String json) {
         List<String> tokens = new ArrayList<>();
         if (json == null || json.isBlank()) {

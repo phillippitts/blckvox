@@ -29,8 +29,9 @@ WRITE_APP_PROPS=true ./build-whisper.sh
 - System Settings → Privacy & Security → Accessibility (for paste/typing)
 
 ## Using the App
-- Default hotkey: Right Command (RIGHT_META)
-- Press and hold the hotkey, speak, release; the text is pasted into the active application.
+- Default hotkey: Right Command (RIGHT_META) double-tap
+- Default mode: Toggle (press once to start recording, press again to stop and transcribe)
+- The transcribed text is pasted into the active application.
 
 ## Changing the Hotkey
 

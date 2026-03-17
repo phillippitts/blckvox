@@ -19,4 +19,20 @@ public interface ParallelSttService {
      * @throws TranscriptionException when both engines fail or timeout occurs without any result
      */
     EnginePair transcribeBoth(byte[] pcm, long timeoutMs);
+
+    /**
+     * Transcribes with Vosk only and returns the result.
+     * @throws TranscriptionException when Vosk fails
+     */
+    default EngineResult transcribeVoskOnly(byte[] pcm, long timeoutMs) {
+        throw new UnsupportedOperationException("transcribeVoskOnly not implemented");
+    }
+
+    /**
+     * Runs Whisper only and pairs it with a pre-computed Vosk result.
+     * @throws TranscriptionException when Whisper fails
+     */
+    default EnginePair transcribeWhisperOnly(byte[] pcm, long timeoutMs, EngineResult precomputedVosk) {
+        throw new UnsupportedOperationException("transcribeWhisperOnly not implemented");
+    }
 }

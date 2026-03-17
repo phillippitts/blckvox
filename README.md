@@ -30,7 +30,7 @@ Current capabilities (implemented):
 - ✅ Hotkey detection (single-key, double-tap, modifier-combo) with reserved-shortcut detection and permission events
 - ✅ Fallback typing chain (Robot → Clipboard → Notify), chunked paste, privacy-safe logging
 - ✅ Event-driven watchdog with bounded auto-restart and cooldown
-- ✅ Metrics: Planned for Phase 6. Currently observable via INFO-level log events (engine latency, success/failure, reconciliation strategy)
+- ✅ Metrics: JMX metrics via Micrometer (engine latency, success/failure, reconciliation strategy)
 - ✅ Live Caption overlay: real-time oscilloscope waveform + streaming Vosk captions (JavaFX, toggleable from tray menu)
 
 Planned (later phases):
@@ -393,8 +393,7 @@ stt.whisper.timeout-seconds=120
 stt.whisper.language=en
 stt.whisper.threads=4
 
-# Orchestration (placeholders for Phase 3)
-stt.enabled-engines=vosk,whisper
+# Orchestration
 stt.parallel.timeout-ms=120000
 ```
 
@@ -561,7 +560,7 @@ src/main/java/com/boombapcompile/blckvox/
 │   ├── audio/         # Audio capture, PCM events
 │   ├── stt/           # STT engines (Vosk, Whisper), streaming
 │   ├── orchestration/ # State tracking, recording service
-│   ├── reconciliation/# Reconciliation strategies
+│   ├── reconcile/     # Reconciliation strategies
 │   ├── typing/        # Typing adapters (Robot, Clipboard, Notify)
 │   ├── hotkey/        # Hotkey detection and triggers
 │   ├── livecaption/   # JavaFX overlay (oscilloscope + captions)

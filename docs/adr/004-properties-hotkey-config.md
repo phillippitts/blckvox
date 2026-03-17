@@ -17,11 +17,9 @@ Externalize hotkey configuration via `application.properties` with factory-based
 
 **Architecture:**
 ```properties
-hotkey.type=single-key            # single-key | double-tap | modifier-combination
+hotkey.type=single-key            # single-key | double-tap | modifier-combo
 hotkey.key=RIGHT_META             # JNativeHook key name
-# hotkey.modifiers=SHIFT,CONTROL  # SHIFT, CONTROL, ALT, META
-# hotkey.primary-key=D            # For modifier-combination type
-# hotkey.combination-modifiers=META,SHIFT  # Cmd+Shift+D example
+# hotkey.modifiers=SHIFT,CONTROL  # SHIFT, CONTROL, ALT, META (required for modifier-combo)
 ```
 
 **Implementation:**
@@ -42,7 +40,7 @@ hotkey.key=RIGHT_META             # JNativeHook key name
 ### Negative
 - ❌ **Configuration complexity**: Users must understand key names
 - ❌ **Runtime-only validation**: Typos not caught until app starts
-- ❌ **No conflict detection**: Cannot detect macOS reserved shortcuts
+- ❌ **Limited conflict detection**: Warns on known reserved shortcuts but cannot detect all OS-level conflicts
 
 ### Mitigation
 - Comprehensive key name documentation
