@@ -648,7 +648,8 @@ class WhisperJsonParserTest {
               ]
             }
             """;
-        assertThat(WhisperJsonParser.extractConfidence(json)).isCloseTo(0.6, org.assertj.core.data.Offset.offset(0.001));
+        assertThat(WhisperJsonParser.extractConfidence(json))
+                .isCloseTo(0.6, org.assertj.core.data.Offset.offset(0.001));
     }
 
     @Test

@@ -94,9 +94,15 @@ class ProcessStreamHandlerTest {
         // Create a long-running stream so the gobbler thread takes time
         InputStream slow = new InputStream() {
             private volatile boolean read = false;
-            @Override public int read() throws java.io.IOException {
-                if (!read) { read = true; return 'a'; }
-                try { Thread.sleep(5000); } catch (InterruptedException e) {
+            @Override
+            public int read() throws java.io.IOException {
+                if (!read) {
+                    read = true;
+                    return 'a';
+                }
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
                     throw new java.io.IOException("interrupted");
                 }
                 return -1;
@@ -117,7 +123,8 @@ class ProcessStreamHandlerTest {
     void gobblerHandlesIOException() {
         // InputStream that throws IOException on read — exercises the catch(IOException) branch
         InputStream failing = new InputStream() {
-            @Override public int read() throws java.io.IOException {
+            @Override
+            public int read() throws java.io.IOException {
                 throw new java.io.IOException("simulated device error");
             }
         };
@@ -145,9 +152,14 @@ class ProcessStreamHandlerTest {
         // Create a slow stream that takes a long time
         InputStream slow = new InputStream() {
             private int count = 0;
-            @Override public int read() throws java.io.IOException {
-                if (count++ < 2) return 'a';
-                try { Thread.sleep(10_000); } catch (InterruptedException e) {
+            @Override
+            public int read() throws java.io.IOException {
+                if (count++ < 2) {
+                    return 'a';
+                }
+                try {
+                    Thread.sleep(10_000);
+                } catch (InterruptedException e) {
                     throw new java.io.IOException("interrupted");
                 }
                 return -1;

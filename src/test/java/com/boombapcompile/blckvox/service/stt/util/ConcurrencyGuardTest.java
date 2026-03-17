@@ -6,7 +6,6 @@ import java.util.concurrent.Semaphore;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 class ConcurrencyGuardTest {
 

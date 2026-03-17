@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ConfidenceMonitorTest {
 
     private final SttWatchdogProperties props = new SttWatchdogProperties(
-            true, 60, 3, 10, false, 60000L, 0.3, 10, 5);
+            true, 60, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L);
 
     @Test
     void isTrackedReturnsFalseForUnregisteredEngine() {

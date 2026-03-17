@@ -167,7 +167,7 @@ class ThreadPoolPropertiesTest {
         assertThat(violations).isNotEmpty();
     }
 
-    @ParameterizedTest(name = "EventPoolProperties: corePoolSize={0}, maxPoolSize={1}, queueCapacity={2} should be valid")
+    @ParameterizedTest(name = "EventPoolProperties: core={0}, max={1}, queue={2} valid")
     @CsvSource({
         "1, 1, 1",     // minimum valid values
         "2, 4, 10",    // default values

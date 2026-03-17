@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RestartBudgetTrackerTest {
 
     private final SttWatchdogProperties props = new SttWatchdogProperties(
-            true, 60, 3, 10, false, 60000L, 0.3, 10, 5);
+            true, 60, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L);
 
     @Test
     void allowsRestartWhenBudgetNotExhausted() {
@@ -93,7 +93,7 @@ class RestartBudgetTrackerTest {
     void isInCooldownReturnsFalseAfterCooldownExpires() {
         // Use 0-minute cooldown so it expires immediately
         SttWatchdogProperties zeroCooldownProps = new SttWatchdogProperties(
-                true, 60, 3, 0, false, 60000L, 0.3, 10, 5);
+                true, 60, 3, 0, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L);
         RestartBudgetTracker tracker = new RestartBudgetTracker(zeroCooldownProps);
         tracker.register("vosk");
 
@@ -127,7 +127,7 @@ class RestartBudgetTrackerTest {
     void pruneOldRemovesExpiredEntries() throws InterruptedException {
         // Use 0-minute window so entries expire immediately
         SttWatchdogProperties zeroWindowProps = new SttWatchdogProperties(
-                true, 0, 3, 10, false, 60000L, 0.3, 10, 5);
+                true, 0, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L);
         RestartBudgetTracker tracker = new RestartBudgetTracker(zeroWindowProps);
         tracker.register("vosk");
 
@@ -136,6 +136,48 @@ class RestartBudgetTrackerTest {
         // With windowMinutes=0, cutoff = Instant.now(), so entry is before cutoff
         assertThat(tracker.getRestartCount("vosk")).isZero();
         assertThat(tracker.allowsRestart("vosk")).isTrue();
+    }
+
+    @Test
+    void recordRestartSetsBackoff() {
+        RestartBudgetTracker tracker = new RestartBudgetTracker(props);
+        tracker.register("vosk");
+
+        assertThat(tracker.isBackoffActive("vosk")).isFalse();
+
+        tracker.recordRestart("vosk");
+
+        assertThat(tracker.isBackoffActive("vosk")).isTrue();
+        assertThat(tracker.getBackoffUntil("vosk")).isAfter(Instant.now().minusSeconds(1));
+    }
+
+    @Test
+    void backoffDelayCapsAtMax() {
+        // backoffMaxDelayMs=100, base=1000 — cap should apply
+        SttWatchdogProperties cappedProps = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 100L);
+        RestartBudgetTracker tracker = new RestartBudgetTracker(cappedProps);
+        tracker.register("vosk");
+
+        tracker.recordRestart("vosk");
+        tracker.recordRestart("vosk");
+        tracker.recordRestart("vosk");
+
+        // Even with multiplier^2 = 4000ms, should be capped at 100ms
+        Instant backoffUntil = tracker.getBackoffUntil("vosk");
+        assertThat(backoffUntil).isBefore(Instant.now().plusMillis(200));
+    }
+
+    @Test
+    void clearOnRecoveryClearsBackoff() {
+        RestartBudgetTracker tracker = new RestartBudgetTracker(props);
+        tracker.register("vosk");
+
+        tracker.recordRestart("vosk");
+        assertThat(tracker.isBackoffActive("vosk")).isTrue();
+
+        tracker.clearOnRecovery("vosk");
+        assertThat(tracker.isBackoffActive("vosk")).isFalse();
     }
 
     @Test

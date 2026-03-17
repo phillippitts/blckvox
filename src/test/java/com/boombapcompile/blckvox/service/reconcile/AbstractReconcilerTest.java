@@ -104,7 +104,7 @@ class AbstractReconcilerTest {
     }
 
     @Test
-    void reconcileIsFinal_bothNonNullAlwaysDelegates() {
+    void reconcileIsFinalBothNonNullAlwaysDelegates() {
         TestReconciler reconciler = new TestReconciler();
         EngineResult vosk = engineResult("a", 0.5, "vosk");
         EngineResult whisper = engineResult("b", 0.5, "whisper");

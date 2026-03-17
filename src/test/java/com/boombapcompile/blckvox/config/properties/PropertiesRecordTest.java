@@ -22,6 +22,32 @@ class PropertiesRecordTest {
         assertThat(props.getWindowOpacity()).isEqualTo(0.9);
     }
 
+    @Test
+    void liveCaptionPropertiesRejectsOpacityAboveOne() {
+        assertThatThrownBy(() -> new LiveCaptionProperties(true, 800, 300, 1.5))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("window-opacity");
+    }
+
+    @Test
+    void liveCaptionPropertiesRejectsNegativeOpacity() {
+        assertThatThrownBy(() -> new LiveCaptionProperties(true, 800, 300, -0.1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("window-opacity");
+    }
+
+    @Test
+    void liveCaptionPropertiesAcceptsBoundaryOpacityZero() {
+        LiveCaptionProperties props = new LiveCaptionProperties(true, 800, 300, 0.0);
+        assertThat(props.getWindowOpacity()).isEqualTo(0.0);
+    }
+
+    @Test
+    void liveCaptionPropertiesAcceptsBoundaryOpacityOne() {
+        LiveCaptionProperties props = new LiveCaptionProperties(true, 800, 300, 1.0);
+        assertThat(props.getWindowOpacity()).isEqualTo(1.0);
+    }
+
     // --- TrayProperties ---
 
     @Test
@@ -99,7 +125,7 @@ class PropertiesRecordTest {
     @Test
     void sttWatchdogPropertiesGetters() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60000L, 0.3, 10, 5);
+                true, 60, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L);
         assertThat(props.isEnabled()).isTrue();
         assertThat(props.getWindowMinutes()).isEqualTo(60);
         assertThat(props.getMaxRestartsPerWindow()).isEqualTo(3);
@@ -109,5 +135,8 @@ class PropertiesRecordTest {
         assertThat(props.getConfidenceBlacklistThreshold()).isEqualTo(0.3);
         assertThat(props.getConfidenceWindowSize()).isEqualTo(10);
         assertThat(props.getConfidenceMinSamples()).isEqualTo(5);
+        assertThat(props.getBackoffBaseDelayMs()).isEqualTo(1000L);
+        assertThat(props.getBackoffMultiplier()).isEqualTo(2.0);
+        assertThat(props.getBackoffMaxDelayMs()).isEqualTo(60000L);
     }
 }

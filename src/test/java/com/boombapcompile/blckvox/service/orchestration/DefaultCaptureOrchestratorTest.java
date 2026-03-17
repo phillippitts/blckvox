@@ -228,9 +228,16 @@ class DefaultCaptureOrchestratorTest {
                 stateMachine.startCapture(UUID.randomUUID());
                 return id;
             }
-            @Override public void stopSession(UUID sessionId) {}
-            @Override public void cancelSession(UUID sessionId) { cancelCount++; }
-            @Override public byte[] readAll(UUID sessionId) { return new byte[0]; }
+            @Override
+            public void stopSession(UUID sessionId) { }
+            @Override
+            public void cancelSession(UUID sessionId) {
+                cancelCount++;
+            }
+            @Override
+            public byte[] readAll(UUID sessionId) {
+                return new byte[0];
+            }
         };
 
         DefaultCaptureOrchestrator orchestrator = new DefaultCaptureOrchestrator(racingCapture, stateMachine);

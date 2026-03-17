@@ -7,7 +7,6 @@ import com.boombapcompile.blckvox.config.properties.ReconciliationProperties;
 import com.boombapcompile.blckvox.config.properties.SttWatchdogProperties;
 import com.boombapcompile.blckvox.domain.TranscriptionResult;
 import com.boombapcompile.blckvox.service.audio.capture.AudioCaptureService;
-import com.boombapcompile.blckvox.service.reconcile.TranscriptReconciler;
 import com.boombapcompile.blckvox.service.stt.EngineResult;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
 import com.boombapcompile.blckvox.service.stt.parallel.ParallelSttService;
@@ -166,31 +165,43 @@ class HotkeyRecordingAdapterBuilderTest {
     }
 
     static class FakeCapture implements AudioCaptureService {
-        @Override public UUID startSession() { return UUID.randomUUID(); }
+        @Override public UUID startSession() {
+            return UUID.randomUUID();
+        }
         @Override public void stopSession(UUID id) { }
         @Override public void cancelSession(UUID id) { }
-        @Override public byte[] readAll(UUID id) { return new byte[0]; }
+        @Override public byte[] readAll(UUID id) {
+            return new byte[0];
+        }
     }
 
     static class StubEngine implements SttEngine {
         private final String name;
-        StubEngine(String name) { this.name = name; }
+        StubEngine(String name) {
+            this.name = name;
+        }
         @Override public void initialize() { }
         @Override public TranscriptionResult transcribe(byte[] data) {
             return TranscriptionResult.of("text", 1.0, name);
         }
-        @Override public String getEngineName() { return name; }
-        @Override public boolean isHealthy() { return true; }
+        @Override public String getEngineName() {
+            return name;
+        }
+        @Override public boolean isHealthy() {
+            return true;
+        }
         @Override public void close() { }
     }
 
     static class FakeWatchdog extends SttEngineWatchdog {
         FakeWatchdog() {
             super(List.of(),
-                    new SttWatchdogProperties(true, 60, 3, 10, false, 60_000L, 0.3, 10, 5),
+                    new SttWatchdogProperties(true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L),
                     e -> { });
         }
         @Override
-        public boolean isEngineEnabled(String engine) { return true; }
+        public boolean isEngineEnabled(String engine) {
+            return true;
+        }
     }
 }

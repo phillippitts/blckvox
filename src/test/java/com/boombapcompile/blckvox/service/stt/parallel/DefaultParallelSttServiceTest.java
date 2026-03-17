@@ -184,13 +184,17 @@ class DefaultParallelSttServiceTest {
                         TranscriptionResult.of("hi", 0.95, "vosk"),
                         List.of("hi"), "{\"text\":\"hi\"}");
             }
-            @Override public void initialize() {}
+            @Override public void initialize() { }
             @Override public TranscriptionResult transcribe(byte[] audioData) {
                 return TranscriptionResult.of("hi", 0.95, "vosk");
             }
-            @Override public String getEngineName() { return "vosk"; }
-            @Override public boolean isHealthy() { return true; }
-            @Override public void close() {}
+            @Override public String getEngineName() {
+                return "vosk";
+            }
+            @Override public boolean isHealthy() {
+                return true;
+            }
+            @Override public void close() { }
         };
         SttEngine whisper = new StubEngine("whisper", 10, false);
         Executor exec = Executors.newFixedThreadPool(2);
@@ -225,7 +229,7 @@ class DefaultParallelSttServiceTest {
         new Thread(() -> {
             try {
                 Thread.sleep(100);
-            } catch (InterruptedException ignored) {}
+            } catch (InterruptedException ignored) { }
             testThread.interrupt();
         }).start();
 
@@ -253,14 +257,20 @@ class DefaultParallelSttServiceTest {
 
     static class RuntimeExceptionEngine implements SttEngine {
         private final String name;
-        RuntimeExceptionEngine(String name) { this.name = name; }
-        @Override public void initialize() {}
+        RuntimeExceptionEngine(String name) {
+            this.name = name;
+        }
+        @Override public void initialize() { }
         @Override public TranscriptionResult transcribe(byte[] audioData) {
             throw new RuntimeException("unexpected boom");
         }
-        @Override public String getEngineName() { return name; }
-        @Override public boolean isHealthy() { return true; }
-        @Override public void close() {}
+        @Override public String getEngineName() {
+            return name;
+        }
+        @Override public boolean isHealthy() {
+            return true;
+        }
+        @Override public void close() { }
     }
 
     static class StubEngine implements SttEngine {
@@ -314,12 +324,16 @@ class DefaultParallelSttServiceTest {
             return TranscriptionOutput.of(tr, tokens, null);
         }
 
-        @Override public void initialize() {}
+        @Override public void initialize() { }
         @Override public TranscriptionResult transcribe(byte[] audioData) {
             return TranscriptionResult.of(name + "-text", 0.9, name);
         }
-        @Override public String getEngineName() { return name; }
-        @Override public boolean isHealthy() { return true; }
-        @Override public void close() {}
+        @Override public String getEngineName() {
+            return name;
+        }
+        @Override public boolean isHealthy() {
+            return true;
+        }
+        @Override public void close() { }
     }
 }

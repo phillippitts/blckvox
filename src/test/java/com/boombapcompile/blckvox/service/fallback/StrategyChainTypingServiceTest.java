@@ -22,9 +22,15 @@ class StrategyChainTypingServiceTest {
         TypingAdapter failingRobot = adapter("robot", true, false);
         final boolean[] clipboardCalled = {false};
         TypingAdapter okClipboard = new TypingAdapter() {
-            @Override public boolean canType() { return true; }
-            @Override public boolean type(String text) { clipboardCalled[0] = true; return true; }
-            @Override public String name() { return "clipboard"; }
+            @Override public boolean canType() {
+                return true;
+            }
+            @Override public boolean type(String text) {
+                clipboardCalled[0] = true; return true;
+            }
+            @Override public String name() {
+                return "clipboard";
+            }
         };
         TypingAdapter notify = adapter("notify", true, true);
         StrategyChainTypingService svc = new StrategyChainTypingService(
@@ -52,9 +58,15 @@ class StrategyChainTypingServiceTest {
     void adapterThrowingPublishesFallbackEvent() {
         List<Object> events = new ArrayList<>();
         TypingAdapter throwing = new TypingAdapter() {
-            @Override public boolean canType() { return true; }
-            @Override public boolean type(String text) { throw new RuntimeException("boom"); }
-            @Override public String name() { return "robot"; }
+            @Override public boolean canType() {
+                return true;
+            }
+            @Override public boolean type(String text) {
+                throw new RuntimeException("boom");
+            }
+            @Override public String name() {
+                return "robot";
+            }
         };
         TypingAdapter ok = adapter("clipboard", true, true);
         StrategyChainTypingService svc = new StrategyChainTypingService(
@@ -70,9 +82,15 @@ class StrategyChainTypingServiceTest {
     void skipsAdapterThatCannotType() {
         final boolean[] robotCalled = {false};
         TypingAdapter unavailableRobot = new TypingAdapter() {
-            @Override public boolean canType() { return false; }
-            @Override public boolean type(String text) { robotCalled[0] = true; return true; }
-            @Override public String name() { return "robot"; }
+            @Override public boolean canType() {
+                return false;
+            }
+            @Override public boolean type(String text) {
+                robotCalled[0] = true; return true;
+            }
+            @Override public String name() {
+                return "robot";
+            }
         };
         TypingAdapter clipboard = adapter("clipboard", true, true);
         StrategyChainTypingService svc = new StrategyChainTypingService(
@@ -99,19 +117,37 @@ class StrategyChainTypingServiceTest {
         // Provide adapters in wrong order — service should reorder to robot, clipboard, notify
         List<String> callOrder = new ArrayList<>();
         TypingAdapter notify = new TypingAdapter() {
-            @Override public boolean canType() { return true; }
-            @Override public boolean type(String text) { callOrder.add("notify"); return false; }
-            @Override public String name() { return "notify"; }
+            @Override public boolean canType() {
+                return true;
+            }
+            @Override public boolean type(String text) {
+                callOrder.add("notify"); return false;
+            }
+            @Override public String name() {
+                return "notify";
+            }
         };
         TypingAdapter clipboard = new TypingAdapter() {
-            @Override public boolean canType() { return true; }
-            @Override public boolean type(String text) { callOrder.add("clipboard"); return false; }
-            @Override public String name() { return "clipboard"; }
+            @Override public boolean canType() {
+                return true;
+            }
+            @Override public boolean type(String text) {
+                callOrder.add("clipboard"); return false;
+            }
+            @Override public String name() {
+                return "clipboard";
+            }
         };
         TypingAdapter robot = new TypingAdapter() {
-            @Override public boolean canType() { return true; }
-            @Override public boolean type(String text) { callOrder.add("robot"); return false; }
-            @Override public String name() { return "robot"; }
+            @Override public boolean canType() {
+                return true;
+            }
+            @Override public boolean type(String text) {
+                callOrder.add("robot"); return false;
+            }
+            @Override public String name() {
+                return "robot";
+            }
         };
         StrategyChainTypingService svc = new StrategyChainTypingService(
                 List.of(notify, clipboard, robot), PROPS, e -> { });
@@ -182,9 +218,15 @@ class StrategyChainTypingServiceTest {
 
     private static TypingAdapter adapter(String name, boolean canType, boolean typeResult) {
         return new TypingAdapter() {
-            @Override public boolean canType() { return canType; }
-            @Override public boolean type(String text) { return typeResult; }
-            @Override public String name() { return name; }
+            @Override public boolean canType() {
+                return canType;
+            }
+            @Override public boolean type(String text) {
+                return typeResult;
+            }
+            @Override public String name() {
+                return name;
+            }
         };
     }
 }

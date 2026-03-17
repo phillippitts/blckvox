@@ -19,6 +19,16 @@ WRITE_APP_PROPS=true ./build-whisper.sh  # Build whisper.cpp
 ./gradlew clean build      # Verify everything compiles
 ```
 
+## Git Hooks
+
+Install the project's git hooks to enforce commit message conventions:
+
+```bash
+./hooks/install-hooks.sh
+```
+
+This configures git to use the `hooks/` directory. The `commit-msg` hook validates that commit messages follow the format defined in [Commit Message Format](#commit-message-format).
+
 ## Code Style
 
 - Checkstyle enforced (`maxWarnings = 0`) — the build fails on any violation.

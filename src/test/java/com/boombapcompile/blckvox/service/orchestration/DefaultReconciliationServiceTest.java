@@ -111,7 +111,8 @@ class DefaultReconciliationServiceTest {
     void shouldReconcileSuccessfully() {
         // Vosk confidence 0.5 is below threshold 0.7, so Whisper will be invoked
         EngineResult voskResult = new EngineResult("hello", 0.5, List.of("hello"), 100, "vosk", "{}");
-        EngineResult whisperResult = new EngineResult("hello world", 0.95, List.of("hello", "world"), 200, "whisper", "{}");
+        EngineResult whisperResult = new EngineResult(
+                "hello world", 0.95, List.of("hello", "world"), 200, "whisper", "{}");
 
         ParallelSttService parallel = new ParallelSttService() {
             @Override

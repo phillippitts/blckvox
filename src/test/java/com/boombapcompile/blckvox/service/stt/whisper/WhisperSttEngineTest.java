@@ -393,7 +393,7 @@ class WhisperSttEngineTest {
             firstStarted.countDown();
             try {
                 engine.transcribe(new byte[32_000]);
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) { }
         });
         occupier.start();
         firstStarted.await(2, TimeUnit.SECONDS);

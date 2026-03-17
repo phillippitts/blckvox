@@ -394,7 +394,7 @@ class HotkeyRecordingAdapterTest {
         FakeWatchdog(boolean voskEnabled, boolean whisperEnabled) {
             super(java.util.List.of(),
                     new SttWatchdogProperties(
-                            true, 60, 3, 10, false, 60_000L, 0.3, 10, 5),
+                            true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L),
                     e -> { });
             this.voskEnabled = voskEnabled;
             this.whisperEnabled = whisperEnabled;
@@ -488,12 +488,28 @@ class HotkeyRecordingAdapterTest {
         // Directly construct adapter with a RecordingService whose toggleRecording returns false.
         // This covers HotkeyRecordingAdapter line 54: LOG.warn("Toggle recording failed")
         RecordingService failingRecording = new RecordingService() {
-            @Override public boolean startRecording() { return false; }
-            @Override public boolean stopRecording() { return false; }
-            @Override public void cancelRecording() { }
-            @Override public ApplicationState getState() { return ApplicationState.IDLE; }
-            @Override public boolean isRecording() { return false; }
-            @Override public boolean toggleRecording() { return false; }
+            @Override
+            public boolean startRecording() {
+                return false;
+            }
+            @Override
+            public boolean stopRecording() {
+                return false;
+            }
+            @Override
+            public void cancelRecording() { }
+            @Override
+            public ApplicationState getState() {
+                return ApplicationState.IDLE;
+            }
+            @Override
+            public boolean isRecording() {
+                return false;
+            }
+            @Override
+            public boolean toggleRecording() {
+                return false;
+            }
         };
 
         HotkeyRecordingAdapter adapter = new HotkeyRecordingAdapter(failingRecording, toggleHotkeyProps());

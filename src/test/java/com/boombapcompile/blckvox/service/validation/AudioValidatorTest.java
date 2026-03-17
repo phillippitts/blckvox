@@ -321,7 +321,8 @@ class AudioValidatorTest {
         return out;
     }
 
-    private static byte[] makeMinimalWavWithBlockAlign(int sampleRate, int channels, int bitsPerSample, int blockAlign) {
+    private static byte[] makeMinimalWavWithBlockAlign(
+            int sampleRate, int channels, int bitsPerSample, int blockAlign) {
         int payloadBytes = 40_000;
         int header = 44;
         byte[] out = new byte[header + payloadBytes];

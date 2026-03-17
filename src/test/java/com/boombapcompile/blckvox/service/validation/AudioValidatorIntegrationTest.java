@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.TestPropertySource;
 
 import java.io.IOException;
 
@@ -18,15 +17,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Integration test using real test resources under src/test/resources/audio.
  * Ensures AudioValidator accepts a valid 1-second PCM clip and rejects too-short clips.
+ *
+ * <p>Audio validation properties are provided by the {@code @Primary} bean in
+ * {@link IntegrationTestConfiguration} (min=100ms, max=300000ms). We do not use
+ * {@code @TestPropertySource} because {@link AudioValidationProperties} is a Java record
+ * (immutable, no setters), and {@code @TestPropertySource} attempts setter-based binding
+ * which fails for records.
  */
 @Tag("integration")
 @Import(IntegrationTestConfiguration.class)
 @SpringBootTest(properties = {
         "stt.validation.enabled=false" // avoid requiring real models/binaries in CI
-})
-@TestPropertySource(properties = {
-        "audio.validation.min-duration-ms=200",
-        "audio.validation.max-duration-ms=60000"
 })
 class AudioValidatorIntegrationTest {
 

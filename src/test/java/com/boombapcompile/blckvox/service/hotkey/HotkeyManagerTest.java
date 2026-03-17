@@ -190,7 +190,9 @@ class HotkeyManagerTest {
         private volatile Consumer<NormalizedKeyEvent> listener;
         int registerCount;
         @Override
-        public void register() { registerCount++; }
+        public void register() {
+            registerCount++;
+        }
         @Override
         public void unregister() { }
         @Override
@@ -207,9 +209,13 @@ class HotkeyManagerTest {
 
     static class ThrowingHook implements GlobalKeyHook {
         private final RuntimeException ex;
-        ThrowingHook(RuntimeException ex) { this.ex = ex; }
+        ThrowingHook(RuntimeException ex) {
+            this.ex = ex;
+        }
         @Override
-        public void register() { throw ex; }
+        public void register() {
+            throw ex;
+        }
         @Override
         public void unregister() { }
         @Override
@@ -220,7 +226,9 @@ class HotkeyManagerTest {
         @Override
         public void register() { }
         @Override
-        public void unregister() { throw new RuntimeException("unregister failed"); }
+        public void unregister() {
+            throw new RuntimeException("unregister failed");
+        }
         @Override
         public void addListener(Consumer<NormalizedKeyEvent> listener) { }
     }

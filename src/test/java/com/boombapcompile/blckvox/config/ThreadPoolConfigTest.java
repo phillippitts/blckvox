@@ -11,7 +11,6 @@ import org.apache.logging.log4j.ThreadContext;
 import java.util.concurrent.Executor;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.RejectedExecutionHandler;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -215,7 +214,7 @@ class ThreadPoolConfigTest {
         executor.execute(() -> {
             try {
                 blockingLatch.await(5, TimeUnit.SECONDS);
-            } catch (InterruptedException ignored) {}
+            } catch (InterruptedException ignored) { }
         });
         executor.execute(() -> completedCount.incrementAndGet());
 
@@ -243,7 +242,7 @@ class ThreadPoolConfigTest {
         // Get the rejection handler and invoke it directly with a shutdown executor
         RejectedExecutionHandler handler = executor.getThreadPoolExecutor().getRejectedExecutionHandler();
         // Should not throw — the handler checks isShutdown()
-        handler.rejectedExecution(() -> {}, executor.getThreadPoolExecutor());
+        handler.rejectedExecution(() -> { }, executor.getThreadPoolExecutor());
     }
 
     @Test
@@ -267,7 +266,7 @@ class ThreadPoolConfigTest {
             setupLatch.countDown();
             try {
                 releaseLatch.await(5, TimeUnit.SECONDS);
-            } catch (InterruptedException ignored) {}
+            } catch (InterruptedException ignored) { }
         });
         setupLatch.await(2, TimeUnit.SECONDS);
         releaseLatch.countDown();
@@ -343,9 +342,9 @@ class ThreadPoolConfigTest {
         executor.execute(() -> {
             try {
                 blockingLatch.await(5, TimeUnit.SECONDS);
-            } catch (InterruptedException ignored) {}
+            } catch (InterruptedException ignored) { }
         });
-        executor.execute(() -> {}); // fills queue
+        executor.execute(() -> { }); // fills queue
 
         // This triggers rejection handler → discards oldest
         executor.execute(() -> completionLatch.countDown());

@@ -391,7 +391,7 @@ class JavaSoundAudioCaptureServiceTest {
         AudioCaptureProperties props = new AudioCaptureProperties(20, 500, null);
         AudioValidationProperties vprops = new AudioValidationProperties(50, 60000, 100 * 1024 * 1024);
         AudioValidator validator = new AudioValidator(vprops);
-        ApplicationEventPublisher publisher = e -> {};
+        ApplicationEventPublisher publisher = e -> { };
         JavaSoundAudioCaptureService.DataLineProvider provider = (fmt, dev) -> {
             RepeatingTargetDataLine line = new RepeatingTargetDataLine(fmt);
             line.open(fmt);
@@ -482,39 +482,106 @@ class JavaSoundAudioCaptureServiceTest {
             }
         }
 
-        @Override public javax.sound.sampled.AudioFormat getFormat() { return fmt; }
-        @Override public void open(javax.sound.sampled.AudioFormat format, int bufferSize) { open = true; }
-        @Override public void open(javax.sound.sampled.AudioFormat format) { open = true; }
-        @Override public int read(byte[] b, int off, int len) {
-            if (!started || !open) return 0;
-            try { Thread.sleep(10); } catch (InterruptedException ignore) {}
+        @Override
+        public javax.sound.sampled.AudioFormat getFormat() {
+            return fmt;
+        }
+        @Override
+        public void open(javax.sound.sampled.AudioFormat format, int bufferSize) {
+            open = true;
+        }
+        @Override
+        public void open(javax.sound.sampled.AudioFormat format) {
+            open = true;
+        }
+        @Override
+        public int read(byte[] b, int off, int len) {
+            if (!started || !open) {
+                return 0;
+            }
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException ignore) { }
             int n = Math.min(len, pattern.length);
             System.arraycopy(pattern, 0, b, off, n);
             return n;
         }
-        @Override public void start() { started = true; }
-        @Override public void stop() { throw new RuntimeException("stop failed"); }
-        @Override public void close() { throw new RuntimeException("close failed"); }
-        @Override public boolean isOpen() { return open; }
-        @Override public int available() { return 0; }
-        @Override public void drain() {}
-        @Override public void flush() {}
-        @Override public int getBufferSize() { return 0; }
-        @Override public int getFramePosition() { return 0; }
-        @Override public float getLevel() { return 0; }
-        @Override public long getLongFramePosition() { return 0; }
-        @Override public Control getControl(Control.Type c) { throw new IllegalArgumentException(); }
-        @Override public Control[] getControls() { return new Control[0]; }
-        @Override public boolean isControlSupported(Control.Type c) { return false; }
-        @Override public void addLineListener(LineListener l) {}
-        @Override public void removeLineListener(LineListener l) {}
-        @Override public javax.sound.sampled.Line.Info getLineInfo() {
+        @Override
+        public void start() {
+            started = true;
+        }
+        @Override
+        public void stop() {
+            throw new RuntimeException("stop failed");
+        }
+        @Override
+        public void close() {
+            throw new RuntimeException("close failed");
+        }
+        @Override
+        public boolean isOpen() {
+            return open;
+        }
+        @Override
+        public int available() {
+            return 0;
+        }
+        @Override
+        public void drain() { }
+        @Override
+        public void flush() { }
+        @Override
+        public int getBufferSize() {
+            return 0;
+        }
+        @Override
+        public int getFramePosition() {
+            return 0;
+        }
+        @Override
+        public float getLevel() {
+            return 0;
+        }
+        @Override
+        public long getLongFramePosition() {
+            return 0;
+        }
+        @Override
+        public Control getControl(Control.Type c) {
+            throw new IllegalArgumentException();
+        }
+        @Override
+        public Control[] getControls() {
+            return new Control[0];
+        }
+        @Override
+        public boolean isControlSupported(Control.Type c) {
+            return false;
+        }
+        @Override
+        public void addLineListener(LineListener l) { }
+        @Override
+        public void removeLineListener(LineListener l) { }
+        @Override
+        public javax.sound.sampled.Line.Info getLineInfo() {
             return new DataLine.Info(TargetDataLine.class, fmt);
         }
-        @Override public void open() { open = true; }
-        @Override public boolean isActive() { return started; }
-        @Override public boolean isRunning() { return started; }
-        @Override public long getMicrosecondPosition() { return 0L; }
+        @Override
+        public void open() {
+            open = true;
+        }
+        @Override
+        public boolean isActive() {
+            return started;
+        }
+        @Override
+        public boolean isRunning() {
+            return started;
+        }
+        @Override
+        public long getMicrosecondPosition() {
+            return 0L;
+        }
     }
 
     /** A TargetDataLine that produces all-zero audio data. */
@@ -523,40 +590,109 @@ class JavaSoundAudioCaptureServiceTest {
         private boolean started;
         private boolean open;
 
-        ZeroTargetDataLine(javax.sound.sampled.AudioFormat fmt) { this.fmt = fmt; }
+        ZeroTargetDataLine(javax.sound.sampled.AudioFormat fmt) {
+            this.fmt = fmt;
+        }
 
-        @Override public javax.sound.sampled.AudioFormat getFormat() { return fmt; }
-        @Override public void open(javax.sound.sampled.AudioFormat format, int bufferSize) { open = true; }
-        @Override public void open(javax.sound.sampled.AudioFormat format) { open = true; }
-        @Override public int read(byte[] b, int off, int len) {
-            if (!started || !open) return 0;
-            try { Thread.sleep(10); } catch (InterruptedException ignore) {}
+        @Override
+        public javax.sound.sampled.AudioFormat getFormat() {
+            return fmt;
+        }
+        @Override
+        public void open(javax.sound.sampled.AudioFormat format, int bufferSize) {
+            open = true;
+        }
+        @Override
+        public void open(javax.sound.sampled.AudioFormat format) {
+            open = true;
+        }
+        @Override
+        public int read(byte[] b, int off, int len) {
+            if (!started || !open) {
+                return 0;
+            }
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException ignore) { }
             java.util.Arrays.fill(b, off, off + Math.min(len, 320), (byte) 0);
             return Math.min(len, 320);
         }
-        @Override public void start() { started = true; }
-        @Override public void stop() { started = false; }
-        @Override public void close() { open = false; }
-        @Override public boolean isOpen() { return open; }
-        @Override public int available() { return 0; }
-        @Override public void drain() {}
-        @Override public void flush() {}
-        @Override public int getBufferSize() { return 0; }
-        @Override public int getFramePosition() { return 0; }
-        @Override public float getLevel() { return 0; }
-        @Override public long getLongFramePosition() { return 0; }
-        @Override public Control getControl(Control.Type c) { throw new IllegalArgumentException(); }
-        @Override public Control[] getControls() { return new Control[0]; }
-        @Override public boolean isControlSupported(Control.Type c) { return false; }
-        @Override public void addLineListener(LineListener l) {}
-        @Override public void removeLineListener(LineListener l) {}
-        @Override public javax.sound.sampled.Line.Info getLineInfo() {
+        @Override
+        public void start() {
+            started = true;
+        }
+        @Override
+        public void stop() {
+            started = false;
+        }
+        @Override
+        public void close() {
+            open = false;
+        }
+        @Override
+        public boolean isOpen() {
+            return open;
+        }
+        @Override
+        public int available() {
+            return 0;
+        }
+        @Override
+        public void drain() { }
+        @Override
+        public void flush() { }
+        @Override
+        public int getBufferSize() {
+            return 0;
+        }
+        @Override
+        public int getFramePosition() {
+            return 0;
+        }
+        @Override
+        public float getLevel() {
+            return 0;
+        }
+        @Override
+        public long getLongFramePosition() {
+            return 0;
+        }
+        @Override
+        public Control getControl(Control.Type c) {
+            throw new IllegalArgumentException();
+        }
+        @Override
+        public Control[] getControls() {
+            return new Control[0];
+        }
+        @Override
+        public boolean isControlSupported(Control.Type c) {
+            return false;
+        }
+        @Override
+        public void addLineListener(LineListener l) { }
+        @Override
+        public void removeLineListener(LineListener l) { }
+        @Override
+        public javax.sound.sampled.Line.Info getLineInfo() {
             return new DataLine.Info(TargetDataLine.class, fmt);
         }
-        @Override public void open() { open = true; }
-        @Override public boolean isActive() { return started; }
-        @Override public boolean isRunning() { return started; }
-        @Override public long getMicrosecondPosition() { return 0L; }
+        @Override
+        public void open() {
+            open = true;
+        }
+        @Override
+        public boolean isActive() {
+            return started;
+        }
+        @Override
+        public boolean isRunning() {
+            return started;
+        }
+        @Override
+        public long getMicrosecondPosition() {
+            return 0L;
+        }
     }
 
     /** A TargetDataLine that returns 0 bytes for the first N reads, then real data. */
@@ -572,41 +708,112 @@ class JavaSoundAudioCaptureServiceTest {
             this.zeroReads = zeroReads;
         }
 
-        @Override public javax.sound.sampled.AudioFormat getFormat() { return fmt; }
-        @Override public void open(javax.sound.sampled.AudioFormat format, int bufferSize) { open = true; }
-        @Override public void open(javax.sound.sampled.AudioFormat format) { open = true; }
-        @Override public int read(byte[] b, int off, int len) {
-            if (!started || !open) return 0;
-            try { Thread.sleep(10); } catch (InterruptedException ignore) {}
+        @Override
+        public javax.sound.sampled.AudioFormat getFormat() {
+            return fmt;
+        }
+        @Override
+        public void open(javax.sound.sampled.AudioFormat format, int bufferSize) {
+            open = true;
+        }
+        @Override
+        public void open(javax.sound.sampled.AudioFormat format) {
+            open = true;
+        }
+        @Override
+        public int read(byte[] b, int off, int len) {
+            if (!started || !open) {
+                return 0;
+            }
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException ignore) { }
             readCount++;
-            if (readCount <= zeroReads) return 0;
+            if (readCount <= zeroReads) {
+                return 0;
+            }
             int n = Math.min(len, 320);
-            for (int i = 0; i < n; i++) b[off + i] = (byte) (i & 0xFF);
+            for (int i = 0; i < n; i++) {
+                b[off + i] = (byte) (i & 0xFF);
+            }
             return n;
         }
-        @Override public void start() { started = true; }
-        @Override public void stop() { started = false; }
-        @Override public void close() { open = false; }
-        @Override public boolean isOpen() { return open; }
-        @Override public int available() { return 0; }
-        @Override public void drain() {}
-        @Override public void flush() {}
-        @Override public int getBufferSize() { return 0; }
-        @Override public int getFramePosition() { return 0; }
-        @Override public float getLevel() { return 0; }
-        @Override public long getLongFramePosition() { return 0; }
-        @Override public Control getControl(Control.Type c) { throw new IllegalArgumentException(); }
-        @Override public Control[] getControls() { return new Control[0]; }
-        @Override public boolean isControlSupported(Control.Type c) { return false; }
-        @Override public void addLineListener(LineListener l) {}
-        @Override public void removeLineListener(LineListener l) {}
-        @Override public javax.sound.sampled.Line.Info getLineInfo() {
+        @Override
+        public void start() {
+            started = true;
+        }
+        @Override
+        public void stop() {
+            started = false;
+        }
+        @Override
+        public void close() {
+            open = false;
+        }
+        @Override
+        public boolean isOpen() {
+            return open;
+        }
+        @Override
+        public int available() {
+            return 0;
+        }
+        @Override
+        public void drain() { }
+        @Override
+        public void flush() { }
+        @Override
+        public int getBufferSize() {
+            return 0;
+        }
+        @Override
+        public int getFramePosition() {
+            return 0;
+        }
+        @Override
+        public float getLevel() {
+            return 0;
+        }
+        @Override
+        public long getLongFramePosition() {
+            return 0;
+        }
+        @Override
+        public Control getControl(Control.Type c) {
+            throw new IllegalArgumentException();
+        }
+        @Override
+        public Control[] getControls() {
+            return new Control[0];
+        }
+        @Override
+        public boolean isControlSupported(Control.Type c) {
+            return false;
+        }
+        @Override
+        public void addLineListener(LineListener l) { }
+        @Override
+        public void removeLineListener(LineListener l) { }
+        @Override
+        public javax.sound.sampled.Line.Info getLineInfo() {
             return new DataLine.Info(TargetDataLine.class, fmt);
         }
-        @Override public void open() { open = true; }
-        @Override public boolean isActive() { return started; }
-        @Override public boolean isRunning() { return started; }
-        @Override public long getMicrosecondPosition() { return 0L; }
+        @Override
+        public void open() {
+            open = true;
+        }
+        @Override
+        public boolean isActive() {
+            return started;
+        }
+        @Override
+        public boolean isRunning() {
+            return started;
+        }
+        @Override
+        public long getMicrosecondPosition() {
+            return 0L;
+        }
     }
 
     static final class RepeatingTargetDataLine implements TargetDataLine {

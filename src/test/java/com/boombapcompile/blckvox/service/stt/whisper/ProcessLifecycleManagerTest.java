@@ -44,7 +44,9 @@ class ProcessLifecycleManagerTest {
 
     @Test
     void startProcessThrowsWhenFactoryFails() {
-        ProcessFactory factory = (cmd, dir) -> { throw new IOException("No such binary"); };
+        ProcessFactory factory = (cmd, dir) -> {
+            throw new IOException("No such binary");
+        };
         ProcessLifecycleManager mgr = new ProcessLifecycleManager(factory);
 
         assertThatThrownBy(() -> mgr.startProcess(List.of("bad"), Path.of("/tmp"), 4096, 4096))
@@ -199,7 +201,9 @@ class ProcessLifecycleManagerTest {
     @Test
     void cleanupWithNullExecIsNoop() {
         ProcessLifecycleManager manager = new ProcessLifecycleManager(
-                (command, workDir) -> { throw new IOException("should not be called"); });
+                (command, workDir) -> {
+                    throw new IOException("should not be called");
+                });
         // Should not throw
         manager.cleanup(null);
     }
@@ -207,7 +211,9 @@ class ProcessLifecycleManagerTest {
     @Test
     void destroyProcessWithNullIsNoop() {
         ProcessLifecycleManager manager = new ProcessLifecycleManager(
-                (command, workDir) -> { throw new IOException("should not be called"); });
+                (command, workDir) -> {
+                    throw new IOException("should not be called");
+                });
         // Should not throw
         manager.destroyProcess(null);
     }
@@ -230,11 +236,26 @@ class ProcessLifecycleManagerTest {
             this.stderr = new ByteArrayInputStream(stderrContent.getBytes());
         }
 
-        @Override public InputStream getInputStream() { return stdout; }
-        @Override public InputStream getErrorStream() { return stderr; }
-        @Override public OutputStream getOutputStream() { return OutputStream.nullOutputStream(); }
-        @Override public int exitValue() { return exitValue; }
-        @Override public int waitFor() { return exitValue; }
+        @Override
+        public InputStream getInputStream() {
+            return stdout;
+        }
+        @Override
+        public InputStream getErrorStream() {
+            return stderr;
+        }
+        @Override
+        public OutputStream getOutputStream() {
+            return OutputStream.nullOutputStream();
+        }
+        @Override
+        public int exitValue() {
+            return exitValue;
+        }
+        @Override
+        public int waitFor() {
+            return exitValue;
+        }
 
         @Override
         public boolean waitFor(long timeout, java.util.concurrent.TimeUnit unit) {
@@ -249,7 +270,10 @@ class ProcessLifecycleManagerTest {
             return waitForResult;
         }
 
-        @Override public boolean isAlive() { return alive; }
+        @Override
+        public boolean isAlive() {
+            return alive;
+        }
 
         @Override
         public void destroy() {
@@ -274,15 +298,43 @@ class ProcessLifecycleManagerTest {
      * covering the catch(Throwable) path in destroyProcess.
      */
     private static class ThrowingDestroyProcess extends Process {
-        @Override public InputStream getInputStream() { return new ByteArrayInputStream(new byte[0]); }
-        @Override public InputStream getErrorStream() { return new ByteArrayInputStream(new byte[0]); }
-        @Override public OutputStream getOutputStream() { return OutputStream.nullOutputStream(); }
-        @Override public int exitValue() { return 0; }
-        @Override public int waitFor() { return 0; }
-        @Override public boolean isAlive() { return true; } // must be alive so destroyProcess enters the block
-        @Override public void destroy() { throw new RuntimeException("destroy boom"); }
-        @Override public Process destroyForcibly() { return this; }
-        @Override public boolean waitFor(long timeout, java.util.concurrent.TimeUnit unit) { return true; }
+        @Override
+        public InputStream getInputStream() {
+            return new ByteArrayInputStream(new byte[0]);
+        }
+        @Override
+        public InputStream getErrorStream() {
+            return new ByteArrayInputStream(new byte[0]);
+        }
+        @Override
+        public OutputStream getOutputStream() {
+            return OutputStream.nullOutputStream();
+        }
+        @Override
+        public int exitValue() {
+            return 0;
+        }
+        @Override
+        public int waitFor() {
+            return 0;
+        }
+        // must be alive so destroyProcess enters the block
+        @Override
+        public boolean isAlive() {
+            return true;
+        }
+        @Override
+        public void destroy() {
+            throw new RuntimeException("destroy boom");
+        }
+        @Override
+        public Process destroyForcibly() {
+            return this;
+        }
+        @Override
+        public boolean waitFor(long timeout, java.util.concurrent.TimeUnit unit) {
+            return true;
+        }
     }
 
     /**
@@ -292,14 +344,38 @@ class ProcessLifecycleManagerTest {
     private static class InterruptingProcess extends Process {
         boolean alive = true;
 
-        @Override public InputStream getInputStream() { return new ByteArrayInputStream(new byte[0]); }
-        @Override public InputStream getErrorStream() { return new ByteArrayInputStream(new byte[0]); }
-        @Override public OutputStream getOutputStream() { return OutputStream.nullOutputStream(); }
-        @Override public int exitValue() { return 0; }
-        @Override public int waitFor() { return 0; }
-        @Override public boolean isAlive() { return alive; }
-        @Override public void destroy() { /* no-op, stays alive */ }
-        @Override public Process destroyForcibly() { return this; }
+        @Override
+        public InputStream getInputStream() {
+            return new ByteArrayInputStream(new byte[0]);
+        }
+        @Override
+        public InputStream getErrorStream() {
+            return new ByteArrayInputStream(new byte[0]);
+        }
+        @Override
+        public OutputStream getOutputStream() {
+            return OutputStream.nullOutputStream();
+        }
+        @Override
+        public int exitValue() {
+            return 0;
+        }
+        @Override
+        public int waitFor() {
+            return 0;
+        }
+        @Override
+        public boolean isAlive() {
+            return alive;
+        }
+        @Override
+        public void destroy() {
+            // no-op, stays alive
+        }
+        @Override
+        public Process destroyForcibly() {
+            return this;
+        }
 
         @Override
         public boolean waitFor(long timeout, java.util.concurrent.TimeUnit unit)

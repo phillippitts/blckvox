@@ -207,13 +207,22 @@ class DefaultTranscriptionOrchestratorTest {
         reconciliation.enabled = false;
 
         SttEngine runtimeFailingEngine = new SttEngine() {
-            @Override public void initialize() { }
-            @Override public TranscriptionResult transcribe(byte[] audioData) {
+            @Override
+            public void initialize() { }
+            @Override
+            public TranscriptionResult transcribe(byte[] audioData) {
                 throw new RuntimeException("unexpected NPE");
             }
-            @Override public String getEngineName() { return "vosk"; }
-            @Override public boolean isHealthy() { return true; }
-            @Override public void close() { }
+            @Override
+            public String getEngineName() {
+                return "vosk";
+            }
+            @Override
+            public boolean isHealthy() {
+                return true;
+            }
+            @Override
+            public void close() { }
         };
         SttEngine healthyWhisper = new OrchestrationTestDoubles.FakeEngine("whisper", "whisper ok");
         EngineSelectionStrategy selector = createEngineSelectorWith(runtimeFailingEngine, healthyWhisper);
@@ -236,7 +245,7 @@ class DefaultTranscriptionOrchestratorTest {
         SttEngine fakeVosk = new OrchestrationTestDoubles.FakeEngine("vosk", "text");
         SttEngine fakeWhisper = new OrchestrationTestDoubles.FakeEngine("whisper", "text");
         SttWatchdogProperties watchdogProps = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L);
         // Use a real watchdog where both engines are disabled
         SttEngineWatchdog watchdog = new SttEngineWatchdog(
                 List.of(fakeVosk, fakeWhisper), watchdogProps, publisher) {
@@ -294,7 +303,7 @@ class DefaultTranscriptionOrchestratorTest {
      */
     private EngineSelectionStrategy createEngineSelectorWith(SttEngine vosk, SttEngine whisper) {
         SttWatchdogProperties watchdogProps = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5);
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L);
         SttEngineWatchdog watchdog = new SttEngineWatchdog(
                 List.of(vosk, whisper), watchdogProps, publisher);
         OrchestrationProperties orchProps = orchestrationProps(200);

@@ -95,14 +95,18 @@ public class IntegrationTestConfiguration {
      * Provides mock SttEngineWatchdog bean for tests.
      *
      * <p>Returns a Mockito mock that avoids actual engine monitoring and restart logic.
-     * The watchdog is disabled in test properties (stt.watchdog.enabled=false), but
-     * a bean is still required as a dependency for OrchestrationConfig.
+     * All engines are stubbed as enabled so that {@code EngineSelectionStrategy} can
+     * select them during integration tests. Without this, the mock returns {@code false}
+     * by default, causing "Both engines unavailable" failures.
      *
      * @return mock STT engine watchdog for tests
      */
     @Bean
     public SttEngineWatchdog sttEngineWatchdog() {
-        return org.mockito.Mockito.mock(SttEngineWatchdog.class);
+        SttEngineWatchdog mock = org.mockito.Mockito.mock(SttEngineWatchdog.class);
+        org.mockito.Mockito.when(mock.isEngineEnabled(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(true);
+        return mock;
     }
 
     /**
