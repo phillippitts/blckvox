@@ -34,7 +34,7 @@ class WhisperProcessManagerJsonTest {
     @Test
     void capsStdoutAtConfiguredMaxBytes() throws Exception {
         // Configure a very small cap: 16 bytes
-        WhisperConfig cfg = new WhisperConfig("bin", "model", 10, "en", 4, 16);
+        WhisperConfig cfg = new WhisperConfig("bin", "model", 10, "en", 4, 16, 0.85);
         String longJson = "{" + "\"text\":\"" + "x".repeat(100) + "\"}"; // ~100 chars
         CapturingFactory factory = new CapturingFactory(longJson + "\n");
         WhisperProcessManager mgr = new WhisperProcessManager(factory, "json");

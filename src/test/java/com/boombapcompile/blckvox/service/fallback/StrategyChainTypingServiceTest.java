@@ -184,17 +184,29 @@ class StrategyChainTypingServiceTest {
     }
 
     @Test
-    void unknownAdapterIsIgnoredInOrdering() {
-        // Covers the false branch of `else if ("notify".equalsIgnoreCase(a.name()))`
-        // when adapter name doesn't match robot, clipboard, or notify
-        TypingAdapter unknown = adapter("other", true, true);
-        TypingAdapter clipboard = adapter("clipboard", true, true);
+    void unknownAdapterIsIncludedInChainAfterClipboardBeforeNotify() {
+        List<String> callOrder = new ArrayList<>();
+        TypingAdapter unknown = new TypingAdapter() {
+            @Override public boolean canType() { return true; }
+            @Override public boolean type(String text) { callOrder.add("other"); return false; }
+            @Override public String name() { return "other"; }
+        };
+        TypingAdapter clipboard = new TypingAdapter() {
+            @Override public boolean canType() { return true; }
+            @Override public boolean type(String text) { callOrder.add("clipboard"); return false; }
+            @Override public String name() { return "clipboard"; }
+        };
+        TypingAdapter notify = new TypingAdapter() {
+            @Override public boolean canType() { return true; }
+            @Override public boolean type(String text) { callOrder.add("notify"); return false; }
+            @Override public String name() { return "notify"; }
+        };
         StrategyChainTypingService svc = new StrategyChainTypingService(
-                List.of(unknown, clipboard), PROPS, e -> { });
+                List.of(unknown, notify, clipboard), PROPS, e -> { });
 
-        // "other" adapter is silently dropped; only clipboard is in the chain
-        boolean ok = svc.paste("test");
-        assertThat(ok).isTrue();
+        svc.paste("test");
+        // Unknown adapters go after clipboard but before notify
+        assertThat(callOrder).containsExactly("clipboard", "other", "notify");
     }
 
     @Test

@@ -18,7 +18,7 @@ class ModelValidationServiceTest {
 
     @Test
     void shouldFailWhenWhisperModelMissing() {
-        WhisperConfig whisper = new WhisperConfig("/bin/echo", "/tmp/does-not-exist.bin", 10, "en", 2, 1048576);
+        WhisperConfig whisper = new WhisperConfig("/bin/echo", "/tmp/does-not-exist.bin", 10, "en", 2, 1048576, 0.85);
         VoskConfig vosk = new VoskConfig("models/vosk-model-en-us-0.22", 16000, 1);
         ModelValidationService svc = new ModelValidationService(vosk, whisper);
 
@@ -36,7 +36,7 @@ class ModelValidationServiceTest {
         Files.createFile(tmpBin);
         tmpBin.toFile().setExecutable(true);
 
-        WhisperConfig whisper = new WhisperConfig(tmpBin.toString(), tmpModel.toString(), 10, "en", 2, 1048576);
+        WhisperConfig whisper = new WhisperConfig(tmpBin.toString(), tmpModel.toString(), 10, "en", 2, 1048576, 0.85);
         VoskConfig vosk = new VoskConfig("models/vosk-model-en-us-0.22", 16000, 1);
         ModelValidationService svc = new ModelValidationService(vosk, whisper);
 
@@ -54,7 +54,7 @@ class ModelValidationServiceTest {
         Files.createFile(tmpBin);
         tmpBin.toFile().setExecutable(false);
 
-        WhisperConfig whisper = new WhisperConfig(tmpBin.toString(), tmpModel.toString(), 10, "en", 2, 1048576);
+        WhisperConfig whisper = new WhisperConfig(tmpBin.toString(), tmpModel.toString(), 10, "en", 2, 1048576, 0.85);
         VoskConfig vosk = new VoskConfig("models/vosk-model-en-us-0.22", 16000, 1);
         ModelValidationService svc = new ModelValidationService(vosk, whisper);
 
@@ -71,7 +71,7 @@ class ModelValidationServiceTest {
         Path tmpDir = tempDir.resolve("whisper-dir");
         Files.createDirectory(tmpDir);
 
-        WhisperConfig whisper = new WhisperConfig(tmpDir.toString(), tmpModel.toString(), 10, "en", 2, 1048576);
+        WhisperConfig whisper = new WhisperConfig(tmpDir.toString(), tmpModel.toString(), 10, "en", 2, 1048576, 0.85);
         VoskConfig vosk = new VoskConfig("models/vosk-model-en-us-0.22", 16000, 1);
         ModelValidationService svc = new ModelValidationService(vosk, whisper);
 
@@ -119,7 +119,7 @@ class ModelValidationServiceTest {
         binary.toFile().setExecutable(true);
 
         WhisperConfig whisper = new WhisperConfig(
-                binary.toString(), model.toString(), 10, "en", 2, 1048576);
+                binary.toString(), model.toString(), 10, "en", 2, 1048576, 0.85);
         VoskConfig vosk = new VoskConfig("models/vosk", 16000, 1);
         ModelValidationService svc = new ModelValidationService(vosk, whisper);
 
@@ -134,7 +134,7 @@ class ModelValidationServiceTest {
         }
 
         WhisperConfig whisper = new WhisperConfig(
-                "/tmp/nonexistent-binary-xyz", model.toString(), 10, "en", 2, 1048576);
+                "/tmp/nonexistent-binary-xyz", model.toString(), 10, "en", 2, 1048576, 0.85);
         VoskConfig vosk = new VoskConfig("models/vosk", 16000, 1);
         ModelValidationService svc = new ModelValidationService(vosk, whisper);
 
@@ -153,7 +153,7 @@ class ModelValidationServiceTest {
         binary.toFile().setExecutable(true);
 
         WhisperConfig whisper = new WhisperConfig(
-                binary.toString(), modelDir.toString(), 10, "en", 2, 1048576);
+                binary.toString(), modelDir.toString(), 10, "en", 2, 1048576, 0.85);
         VoskConfig vosk = new VoskConfig("models/vosk", 16000, 1);
         ModelValidationService svc = new ModelValidationService(vosk, whisper);
 

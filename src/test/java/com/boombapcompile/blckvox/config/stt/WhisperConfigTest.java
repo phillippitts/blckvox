@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class WhisperConfigTest {
 
@@ -21,7 +22,7 @@ class WhisperConfigTest {
 
     @Test
     void shouldCreateValidConfig() {
-        WhisperConfig config = new WhisperConfig("bin/whisper", "models/ggml.bin", 15, "en", 4, 1048576);
+        WhisperConfig config = new WhisperConfig("bin/whisper", "models/ggml.bin", 15, "en", 4, 1048576, 0.85);
 
         assertThat(config.binaryPath()).isEqualTo("bin/whisper");
         assertThat(config.modelPath()).isEqualTo("models/ggml.bin");
@@ -29,6 +30,7 @@ class WhisperConfigTest {
         assertThat(config.language()).isEqualTo("en");
         assertThat(config.threads()).isEqualTo(4);
         assertThat(config.maxStdoutBytes()).isEqualTo(1048576);
+        assertThat(config.textModeConfidence()).isEqualTo(0.85);
     }
 
     @Test
@@ -41,11 +43,26 @@ class WhisperConfigTest {
         assertThat(config.language()).isEqualTo("en");
         assertThat(config.threads()).isEqualTo(4);
         assertThat(config.maxStdoutBytes()).isEqualTo(1048576);
+        assertThat(config.textModeConfidence()).isEqualTo(0.85);
+    }
+
+    @Test
+    void shouldRejectTextModeConfidenceAboveOne() {
+        assertThatThrownBy(() -> new WhisperConfig("bin/whisper", "models/ggml.bin", 10, "en", 4, 1048576, 1.5))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("textModeConfidence must be between 0.0 and 1.0");
+    }
+
+    @Test
+    void shouldRejectTextModeConfidenceBelowZero() {
+        assertThatThrownBy(() -> new WhisperConfig("bin/whisper", "models/ggml.bin", 10, "en", 4, 1048576, -0.1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("textModeConfidence must be between 0.0 and 1.0");
     }
 
     @Test
     void shouldRejectBlankBinaryPath() {
-        WhisperConfig config = new WhisperConfig("", "models/ggml.bin", 10, "en", 4, 1048576);
+        WhisperConfig config = new WhisperConfig("", "models/ggml.bin", 10, "en", 4, 1048576, 0.85);
         Set<ConstraintViolation<WhisperConfig>> violations = validator.validate(config);
 
         assertThat(violations).hasSize(1);
@@ -55,7 +72,7 @@ class WhisperConfigTest {
 
     @Test
     void shouldRejectBlankModelPath() {
-        WhisperConfig config = new WhisperConfig("bin/whisper", "", 10, "en", 4, 1048576);
+        WhisperConfig config = new WhisperConfig("bin/whisper", "", 10, "en", 4, 1048576, 0.85);
         Set<ConstraintViolation<WhisperConfig>> violations = validator.validate(config);
 
         assertThat(violations).hasSize(1);
@@ -65,7 +82,7 @@ class WhisperConfigTest {
 
     @Test
     void shouldRejectNegativeTimeout() {
-        WhisperConfig config = new WhisperConfig("bin/whisper", "models/ggml.bin", -5, "en", 4, 1048576);
+        WhisperConfig config = new WhisperConfig("bin/whisper", "models/ggml.bin", -5, "en", 4, 1048576, 0.85);
         Set<ConstraintViolation<WhisperConfig>> violations = validator.validate(config);
 
         assertThat(violations).hasSize(1);
@@ -75,7 +92,7 @@ class WhisperConfigTest {
 
     @Test
     void shouldRejectZeroTimeout() {
-        WhisperConfig config = new WhisperConfig("bin/whisper", "models/ggml.bin", 0, "en", 4, 1048576);
+        WhisperConfig config = new WhisperConfig("bin/whisper", "models/ggml.bin", 0, "en", 4, 1048576, 0.85);
         Set<ConstraintViolation<WhisperConfig>> violations = validator.validate(config);
 
         assertThat(violations).hasSize(1);
@@ -85,7 +102,7 @@ class WhisperConfigTest {
 
     @Test
     void shouldAcceptValidNonDefaultValues() {
-        WhisperConfig config = new WhisperConfig("custom/whisper", "custom/model.bin", 30, "es", 8, 2097152);
+        WhisperConfig config = new WhisperConfig("custom/whisper", "custom/model.bin", 30, "es", 8, 2097152, 0.90);
         Set<ConstraintViolation<WhisperConfig>> violations = validator.validate(config);
 
         assertThat(violations).isEmpty();

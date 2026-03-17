@@ -18,6 +18,7 @@ import jakarta.validation.constraints.Positive;
  * stt.whisper.language=en
  * stt.whisper.threads=4
  * stt.whisper.max-stdout-bytes=1048576
+ * stt.whisper.text-mode-confidence=0.85
  * </pre>
  *
  * @param binaryPath Path to the whisper.cpp binary executable
@@ -26,6 +27,8 @@ import jakarta.validation.constraints.Positive;
  * @param language Language code for transcription (e.g., "en", "es", "fr")
  * @param threads Number of CPU threads to use for transcription
  * @param maxStdoutBytes Maximum stdout accumulation in bytes (prevents pathological memory usage)
+ * @param textModeConfidence Default confidence score when running in text mode (no JSON).
+ *                           Used as the confidence value when Whisper does not provide one.
  */
 @ConfigurationProperties(prefix = "stt.whisper")
 @Validated
@@ -46,13 +49,25 @@ public record WhisperConfig(
         int threads,
 
         @Positive(message = "Max stdout bytes must be positive")
-        int maxStdoutBytes
+        int maxStdoutBytes,
+
+        double textModeConfidence
 ) {
     /**
      * Default constructor with standard values.
      * Default stdout cap: 1MB (sufficient for typical transcriptions, protects against pathological cases).
      */
     public WhisperConfig() {
-        this("tools/whisper.cpp/main", "models/ggml-base.en.bin", 10, "en", 4, 1048576);
+        this("tools/whisper.cpp/main", "models/ggml-base.en.bin", 10, "en", 4, 1048576, 0.85);
+    }
+
+    /**
+     * Compact constructor — clamp textModeConfidence to [0.0, 1.0].
+     */
+    public WhisperConfig {
+        if (textModeConfidence < 0.0 || textModeConfidence > 1.0) {
+            throw new IllegalArgumentException(
+                    "textModeConfidence must be between 0.0 and 1.0, got: " + textModeConfidence);
+        }
     }
 }

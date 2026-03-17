@@ -172,7 +172,7 @@ public final class WhisperSttEngine extends AbstractSttEngine
                         text = stdout.trim();
                     }
 
-                    double confidence = jsonMode ? WhisperJsonParser.extractConfidence(stdout) : 0.85;
+                    double confidence = jsonMode ? WhisperJsonParser.extractConfidence(stdout) : cfg.textModeConfidence();
                     long elapsedMs = TimeUtils.elapsedMillis(startTime);
                     LOG.debug("Whisper transcribed clip in {} ms (chars={})", elapsedMs, text.length());
 

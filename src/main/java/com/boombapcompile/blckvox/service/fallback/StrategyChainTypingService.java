@@ -28,8 +28,9 @@ public class StrategyChainTypingService implements TypingService {
                                       ApplicationEventPublisher publisher) {
         Objects.requireNonNull(props);
         this.publisher = Objects.requireNonNull(publisher);
-        // Order adapters: Robot (if present) -> Clipboard -> Notify
+        // Order adapters: Robot (if present) -> Clipboard -> unknown adapters -> Notify
         List<TypingAdapter> ordered = new ArrayList<>();
+        List<TypingAdapter> unknown = new ArrayList<>();
         TypingAdapter notify = null;
         TypingAdapter clipboard = null;
         for (TypingAdapter a : adapters) {
@@ -39,11 +40,15 @@ public class StrategyChainTypingService implements TypingService {
                 clipboard = a;
             } else if ("notify".equalsIgnoreCase(a.name())) {
                 notify = a;
+            } else {
+                LOG.warn("Unknown typing adapter '{}' — appending to fallback chain", a.name());
+                unknown.add(a);
             }
         }
         if (clipboard != null) {
             ordered.add(clipboard);
         }
+        ordered.addAll(unknown);
         if (notify != null) {
             ordered.add(notify);
         }

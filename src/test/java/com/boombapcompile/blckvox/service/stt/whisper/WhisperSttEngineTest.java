@@ -37,7 +37,7 @@ class WhisperSttEngineTest {
         WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                 new TestProcess(new ProcessBehavior("hello world", "", 0, 0))
         ));
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         WhisperSttEngine engine = new WhisperSttEngine(cfg, mgr);
         engine.initialize();
 
@@ -54,7 +54,7 @@ class WhisperSttEngineTest {
         WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                 new TestProcess(new ProcessBehavior("", "error", 1, 0))
         ));
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         WhisperSttEngine engine = new WhisperSttEngine(cfg, mgr);
         engine.initialize();
 
@@ -70,7 +70,7 @@ class WhisperSttEngineTest {
         WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                 new TestProcess(new ProcessBehavior("", "", 0, -1)) // never finishes
         ));
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 1, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 1, "en", 2, 1048576, 0.85);
         WhisperSttEngine engine = new WhisperSttEngine(cfg, mgr);
         engine.initialize();
 
@@ -86,7 +86,7 @@ class WhisperSttEngineTest {
         WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                 new TestProcess(new ProcessBehavior("", "", 0, 0))
         ));
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         WhisperSttEngine engine = new WhisperSttEngine(cfg, mgr);
         engine.initialize();
 
@@ -101,7 +101,7 @@ class WhisperSttEngineTest {
         WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                 new TestProcess(new ProcessBehavior("test", "", 0, 0))
         ));
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         WhisperSttEngine engine = new WhisperSttEngine(cfg, mgr);
 
         // Initialize multiple times - should be idempotent
@@ -122,7 +122,7 @@ class WhisperSttEngineTest {
         WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                 new TestProcess(new ProcessBehavior("test", "", 0, 0))
         ));
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         WhisperSttEngine engine = new WhisperSttEngine(cfg, mgr);
         engine.initialize();
 
@@ -143,7 +143,7 @@ class WhisperSttEngineTest {
         WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                 new TestProcess(new ProcessBehavior("", "", 0, 0))
         ));
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         WhisperSttEngine engine = new WhisperSttEngine(cfg, mgr);
         engine.initialize();
 
@@ -170,7 +170,7 @@ class WhisperSttEngineTest {
         WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                 new TestProcess(new ProcessBehavior(jsonOutput, "", 0, 0))
         ));
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         SttConcurrencyProperties concurrencyProps = new SttConcurrencyProperties(4, 2, 1000, false, 0.8, 0.85, 5000);
         OrchestrationProperties orchProps = new OrchestrationProperties(
                 OrchestrationProperties.PrimaryEngine.VOSK, 0, 200);
@@ -201,7 +201,7 @@ class WhisperSttEngineTest {
         WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                 new TestProcess(new ProcessBehavior(jsonOutput, "", 0, 0))
         ));
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         SttConcurrencyProperties concurrencyProps = new SttConcurrencyProperties(4, 2, 1000, false, 0.8, 0.85, 5000);
         OrchestrationProperties orchProps = new OrchestrationProperties(
                 OrchestrationProperties.PrimaryEngine.VOSK, 500, 200);
@@ -224,7 +224,7 @@ class WhisperSttEngineTest {
         WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                 new TestProcess(new ProcessBehavior("dynamic test", "", 0, 0))
         ));
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         SttConcurrencyProperties concurrencyProps = new SttConcurrencyProperties(4, 2, 1000, true, 0.8, 0.85, 5000);
         OrchestrationProperties orchProps = new OrchestrationProperties(
                 OrchestrationProperties.PrimaryEngine.VOSK, 0, 200);
@@ -249,7 +249,7 @@ class WhisperSttEngineTest {
         WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                 new TestProcess(new ProcessBehavior("static fallback", "", 0, 0))
         ));
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         // dynamicScalingEnabled=true but concurrencyScaler will be null → static ConcurrencyGuard used
         SttConcurrencyProperties concurrencyProps = new SttConcurrencyProperties(4, 2, 1000, true, 0.8, 0.85, 5000);
         OrchestrationProperties orchProps = new OrchestrationProperties(
@@ -270,7 +270,7 @@ class WhisperSttEngineTest {
         WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                 new TestProcess(new ProcessBehavior("plain text", "", 0, 0))
         ));
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         SttConcurrencyProperties concurrencyProps = new SttConcurrencyProperties(4, 2, 1000, false, 0.8, 0.85, 5000);
 
         // orchProps = null → silenceGapMs should default to 0
@@ -298,7 +298,7 @@ class WhisperSttEngineTest {
                 throw new RuntimeException("close boom");
             }
         };
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         WhisperSttEngine engine = new WhisperSttEngine(cfg, throwingMgr);
         engine.initialize();
 
@@ -315,7 +315,7 @@ class WhisperSttEngineTest {
         WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                 new TestProcess(new ProcessBehavior("result", "", 0, 0))
         ));
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         WhisperSttEngine engine = new WhisperSttEngine(cfg, mgr);
         engine.initialize();
 
@@ -339,7 +339,7 @@ class WhisperSttEngineTest {
             WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
                     new TestProcess(new ProcessBehavior("sensitive secret password data", "", 0, 0))
             ));
-            WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+            WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
             WhisperSttEngine engine = new WhisperSttEngine(cfg, mgr);
             engine.initialize();
 
@@ -377,7 +377,7 @@ class WhisperSttEngineTest {
                 new TestProcess(new ProcessBehavior("slow", "", 0, 5000))
         );
         WhisperProcessManager mgr = new WhisperProcessManager(slowFactory);
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         // whisperMax=1 (single permit), acquireTimeoutMs=1 (fail fast)
         SttConcurrencyProperties concurrencyProps = new SttConcurrencyProperties(4, 1, 1, false, 0.8, 0.85, 5000);
         OrchestrationProperties orchProps = new OrchestrationProperties(
@@ -422,7 +422,7 @@ class WhisperSttEngineTest {
             @Override public void close() {}
         };
 
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         WhisperSttEngine engine = new WhisperSttEngine(cfg, failingMgr);
         engine.initialize();
 

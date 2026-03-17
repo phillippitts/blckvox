@@ -26,7 +26,7 @@ class WhisperProcessManagerTest {
         return new WhisperConfig(
                 "/usr/bin/echo",
                 tempDir.resolve("model.bin").toString(),
-                2, "en", 1, 1_048_576
+                2, "en", 1, 1_048_576, 0.85
         );
     }
 
@@ -61,7 +61,7 @@ class WhisperProcessManagerTest {
         // Create a config with a very short timeout
         WhisperConfig shortTimeout = new WhisperConfig(
                 "/usr/bin/echo", tempDir.resolve("model.bin").toString(),
-                1, "en", 1, 1_048_576
+                1, "en", 1, 1_048_576, 0.85
         );
         ProcessFactory factory = (cmd, workDir) -> new HangingProcess();
         WhisperProcessManager manager = new WhisperProcessManager(factory);

@@ -24,7 +24,7 @@ class WhisperProcessManagerHermeticTest {
         TestProcess tp = new TestProcess(behavior);
         ProcessFactory factory = new StubProcessFactory(tp);
         WhisperProcessManager mgr = new WhisperProcessManager(factory);
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         Path wav = Files.createTempFile("whisper-", ".wav");
 
         // Act
@@ -40,7 +40,7 @@ class WhisperProcessManagerHermeticTest {
         TestProcess tp = new TestProcess(behavior);
         ProcessFactory factory = new StubProcessFactory(tp);
         WhisperProcessManager mgr = new WhisperProcessManager(factory);
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
         Path wav = Files.createTempFile("whisper-", ".wav");
 
         assertThatThrownBy(() -> mgr.transcribe(wav, cfg))
@@ -57,7 +57,7 @@ class WhisperProcessManagerHermeticTest {
         TestProcess tp = new TestProcess(behavior);
         ProcessFactory factory = new StubProcessFactory(tp);
         WhisperProcessManager mgr = new WhisperProcessManager(factory);
-        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 1, "en", 2, 1048576);
+        WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 1, "en", 2, 1048576, 0.85);
         Path wav = Files.createTempFile("whisper-", ".wav");
 
         long start = System.nanoTime();

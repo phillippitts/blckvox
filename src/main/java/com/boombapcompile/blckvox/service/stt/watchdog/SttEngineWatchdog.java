@@ -162,6 +162,17 @@ public class SttEngineWatchdog {
             return;
         }
 
+        // Skip failed and silent results — failures poison the average with 0.0,
+        // and silent results inflate it with 1.0, both masking real engine health.
+        if (event.result().isFailure()) {
+            LOG.debug("Skipping failed result for confidence tracking: engine={}", engine);
+            return;
+        }
+        if (event.result().text().isEmpty() && event.result().confidence() >= 1.0) {
+            LOG.debug("Skipping silent result for confidence tracking: engine={}", engine);
+            return;
+        }
+
         double confidence = event.result().confidence();
         ConfidenceMonitor.Evaluation eval = confidenceMonitor.record(engine, confidence);
         if (eval != null && eval.degraded()) {

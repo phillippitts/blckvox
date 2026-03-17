@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class WhisperCommandBuilderTest {
 
     private final WhisperConfig cfg = new WhisperConfig(
-            "/usr/local/bin/whisper", "/models/base.bin", 10, "en", 4, 1048576);
+            "/usr/local/bin/whisper", "/models/base.bin", 10, "en", 4, 1048576, 0.85);
 
     private final Path wavPath = Path.of("/tmp/test.wav");
 
@@ -73,7 +73,7 @@ class WhisperCommandBuilderTest {
     @Test
     void relativePathResolved() {
         WhisperConfig relativeCfg = new WhisperConfig(
-                "tools/whisper", "/models/base.bin", 10, "en", 4, 1048576);
+                "tools/whisper", "/models/base.bin", 10, "en", 4, 1048576, 0.85);
         List<String> cmd = new WhisperCommandBuilder("text").buildCommand(relativeCfg, wavPath);
         // relative path should be resolved to absolute
         assertThat(Path.of(cmd.get(0)).isAbsolute()).isTrue();

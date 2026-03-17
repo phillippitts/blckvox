@@ -887,6 +887,70 @@ class SttEngineWatchdogTest {
     }
 
     @Test
+    void shouldSkipFailedResultsInConfidenceTracking() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L);
+        RecordingEngine engine = new RecordingEngine("vosk");
+        List<Object> publishedEvents = new ArrayList<>();
+        ApplicationEventPublisher publisher = publishedEvents::add;
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
+
+        // Send 5 failed results — should NOT trigger degradation
+        for (int i = 0; i < 5; i++) {
+            TranscriptionResult result = TranscriptionResult.failure("vosk", "engine error");
+            watchdog.onTranscriptionCompleted(
+                    new TranscriptionCompletedEvent(result, Instant.now(), "vosk"));
+        }
+
+        // Confidence window should remain empty (failures skipped)
+        Deque<Double> window = watchdog.getConfidenceMonitor().getWindow("vosk");
+        assertThat(window).isEmpty();
+        assertThat(watchdog.getState("vosk")).isEqualTo(SttEngineWatchdog.EngineState.HEALTHY);
+    }
+
+    @Test
+    void shouldSkipSilentResultsInConfidenceTracking() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L);
+        RecordingEngine engine = new RecordingEngine("vosk");
+        List<Object> publishedEvents = new ArrayList<>();
+        ApplicationEventPublisher publisher = publishedEvents::add;
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
+
+        // Send 5 silent results (empty text, confidence 1.0) — should NOT enter confidence window
+        for (int i = 0; i < 5; i++) {
+            TranscriptionResult result = TranscriptionResult.of("", 1.0, "vosk");
+            watchdog.onTranscriptionCompleted(
+                    new TranscriptionCompletedEvent(result, Instant.now(), "vosk"));
+        }
+
+        Deque<Double> window = watchdog.getConfidenceMonitor().getWindow("vosk");
+        assertThat(window).isEmpty();
+        assertThat(watchdog.getState("vosk")).isEqualTo(SttEngineWatchdog.EngineState.HEALTHY);
+    }
+
+    @Test
+    void shouldTrackNonEmptyLowConfidenceResults() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L);
+        RecordingEngine engine = new RecordingEngine("vosk");
+        List<Object> publishedEvents = new ArrayList<>();
+        ApplicationEventPublisher publisher = publishedEvents::add;
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
+
+        // Non-empty text with low confidence should still be tracked
+        for (int i = 0; i < 5; i++) {
+            TranscriptionResult result = TranscriptionResult.of("some text", 0.1, "vosk");
+            watchdog.onTranscriptionCompleted(
+                    new TranscriptionCompletedEvent(result, Instant.now(), "vosk"));
+        }
+
+        Deque<Double> window = watchdog.getConfidenceMonitor().getWindow("vosk");
+        assertThat(window).hasSize(5);
+        assertThat(watchdog.getState("vosk")).isEqualTo(SttEngineWatchdog.EngineState.DEGRADED);
+    }
+
+    @Test
     void engineHealthChangedEventNullTimestampDefaultsToNow() {
         EngineHealthChangedEvent event = new EngineHealthChangedEvent(
                 "vosk", SttEngineWatchdog.EngineState.HEALTHY,
