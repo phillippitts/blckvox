@@ -15,7 +15,7 @@ The CI pipeline runs on every push to `main` and on all pull requests.
 
 **What's tested:**
 - ✅ Code compiles on Linux and macOS (Apple Silicon)
-- ✅ All 438 unit tests pass
+- ✅ All all unit tests pass
 - ✅ Checkstyle validates code style
 - ✅ JAR builds successfully (55 MB)
 
@@ -64,7 +64,7 @@ jobs:
 
 **Key flags**:
 - `-x integrationTest` - Skip integration tests
-- This still runs 438 unit tests
+- This still runs all unit tests
 - This still runs checkstyle
 
 **Design decisions**:
@@ -105,7 +105,7 @@ open build/reports/checkstyle/main.html
 
 ### 2. Unit Test Failures
 
-**Error**: `280 tests completed, 1 failed`
+**Error**: `N tests completed, 1 failed`
 
 **Fix**:
 ```bash
@@ -160,7 +160,7 @@ All three run in parallel, so total wall time is ~4-5 minutes.
 
 1. **Download dependencies** (first run): ~30s
 2. **Compile Java**: ~10s
-3. **Run 438 unit tests**: ~2-3 min
+3. **Run all unit tests**: ~2-3 min
 4. **Checkstyle**: ~5s
 5. **Build JAR**: ~5s
 
@@ -207,22 +207,30 @@ Recommended GitHub settings for `main` branch:
 - ✅ Require pull request reviews (at least 1)
 - ✅ Dismiss stale reviews on new commits
 
+## Already Configured (Local Build)
+
+These tools are configured in `build.gradle` and run during local builds, but are **not yet integrated into CI**:
+
+1. **JaCoCo code coverage** — `./gradlew test jacocoTestReport` generates HTML/XML reports. Current: 95% instruction, 88% branch coverage.
+2. **OWASP dependency-check** — `./gradlew dependencyCheckAnalyze` scans for CVEs. Fails build on CVSS >= 7.0. Suppression file at `config/owasp/suppression.xml`.
+3. **SpotBugs** — `./gradlew spotbugsMain` performs bytecode-level static analysis (effort=MAX, reportLevel=MEDIUM).
+
 ## Future Improvements
 
-**Possible enhancements** (not implemented):
+**Possible enhancements** (not yet implemented):
 
 1. **Add integration test job** (separate, optional)
    - Cache models between runs
    - Only run on main branch
    - Make it non-blocking
 
-2. **Code coverage reporting**
-   - Add JaCoCo plugin
-   - Upload to Codecov
-   - Require minimum coverage
+2. **CI coverage reporting**
+   - Upload JaCoCo reports to Codecov
+   - Require minimum coverage threshold
+   - Track coverage trends
 
-3. **Security scanning**
-   - OWASP dependency-check
+3. **CI security scanning**
+   - Run OWASP/SpotBugs in CI pipeline
    - Trivy container scanning
    - Snyk vulnerability scanning
 

@@ -1,6 +1,8 @@
 package com.boombapcompile.blckvox.config;
 
 import com.boombapcompile.blckvox.config.properties.ThreadPoolProperties;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.logging.log4j.ThreadContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,9 +31,11 @@ public class ThreadPoolConfig {
     private static final Logger LOG = LogManager.getLogger(ThreadPoolConfig.class);
 
     private final ThreadPoolProperties threadPoolProperties;
+    private final MeterRegistry meterRegistry;
 
-    public ThreadPoolConfig(ThreadPoolProperties threadPoolProperties) {
+    public ThreadPoolConfig(ThreadPoolProperties threadPoolProperties, MeterRegistry meterRegistry) {
         this.threadPoolProperties = threadPoolProperties;
+        this.meterRegistry = meterRegistry;
     }
 
     /**
@@ -114,10 +118,14 @@ public class ThreadPoolConfig {
         executor.setKeepAliveSeconds(eventProps.getKeepAliveSeconds());
         // Use DiscardOldestPolicy for event executor to prevent blocking the Spring event bus.
         // CallerRunsPolicy would block all event delivery if the pool is saturated.
+        Counter discardCounter = Counter.builder("blckvox.event.executor.discard")
+                .description("Event executor task discards due to queue saturation")
+                .register(meterRegistry);
         executor.setRejectedExecutionHandler((r, e) -> {
             if (!e.isShutdown()) {
                 Runnable oldest = e.getQueue().poll();
                 if (oldest != null) {
+                    discardCounter.increment();
                     LOG.warn("Event executor saturated, discarding oldest queued task");
                 }
                 if (!e.isShutdown()) {

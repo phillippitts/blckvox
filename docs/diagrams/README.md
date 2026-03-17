@@ -236,6 +236,19 @@ This directory contains comprehensive visual documentation for the blckvox proje
 
 ---
 
+### [Deployment Topology](deployment-topology.md)
+**Purpose:** Understand the runtime deployment structure and resource footprint
+
+**Contains:**
+- Deployment topology diagram (JVM, subprocess, file system, macOS integration)
+- Process interaction flow (whisper.cpp subprocess lifecycle)
+- Resource footprint table (memory, CPU, disk budgets)
+- macOS permission requirements
+
+**Best for:** Capacity planning, troubleshooting, deployment verification
+
+---
+
 ## Diagram Technology
 
 All diagrams are created using **Mermaid**, which renders automatically on:
@@ -275,6 +288,7 @@ mmdc -i architecture-overview.md -o architecture-overview.svg
 | **User** | Onboarding | [user-journey.md](user-journey.md) |
 | **User** | Troubleshooting | [troubleshooting-guide.md](troubleshooting-guide.md) |
 | **All** | Overview | [architecture-overview.md](architecture-overview.md) |
+| **Operator/SRE** | Deployment Topology | [deployment-topology.md](deployment-topology.md) |
 
 ## Total Diagram Count
 
@@ -292,8 +306,9 @@ mmdc -i architecture-overview.md -o architecture-overview.svg
 - **7 diagrams** in exception-flow.md
 - **6 diagrams** in async-threading-model.md
 - **6 diagrams** in conditional-bean-loading.md
+- **3 diagrams** in deployment-topology.md
 
-**Total: ~112 diagrams** across 14 documentation files
+**Total: ~115 diagrams** across 15 documentation files
 
 ## Recommended Reading Order
 
@@ -318,9 +333,10 @@ mmdc -i architecture-overview.md -o architecture-overview.svg
 
 ### For Operators/SREs
 1. [Architecture Overview](architecture-overview.md) - System overview
-2. [Data Flow Diagram](data-flow-diagram.md) - Error flows
-3. [Troubleshooting Guide](troubleshooting-guide.md) - Diagnostic procedures
-4. [Thread Model & Concurrency](thread-model-concurrency.md) - Performance tuning
+2. [Deployment Topology](deployment-topology.md) - Runtime structure and resource footprint
+3. [Data Flow Diagram](data-flow-diagram.md) - Error flows
+4. [Troubleshooting Guide](troubleshooting-guide.md) - Diagnostic procedures
+5. [Thread Model & Concurrency](thread-model-concurrency.md) - Performance tuning
 
 ## Contributing New Diagrams
 

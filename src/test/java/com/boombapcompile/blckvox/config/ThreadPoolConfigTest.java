@@ -1,6 +1,8 @@
 package com.boombapcompile.blckvox.config;
 
 import com.boombapcompile.blckvox.config.properties.ThreadPoolProperties;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -27,7 +29,7 @@ class ThreadPoolConfigTest {
     @Test
     void shouldCreateExecutorWithCorrectConfiguration() {
         ThreadPoolProperties properties = defaultThreadPoolProperties();
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         Executor executor = config.sttExecutor();
 
         assertThat(executor).isNotNull();
@@ -44,7 +46,7 @@ class ThreadPoolConfigTest {
     @Test
     void shouldHandleConcurrentTasks() throws InterruptedException {
         ThreadPoolProperties properties = defaultThreadPoolProperties();
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         Executor executor = config.sttExecutor();
 
         int taskCount = 10;
@@ -73,7 +75,7 @@ class ThreadPoolConfigTest {
     @Test
     void shouldNotExhaustThreadsUnderLoad() throws InterruptedException {
         ThreadPoolProperties properties = defaultThreadPoolProperties();
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) config.sttExecutor();
 
         int taskCount = 20;
@@ -100,7 +102,7 @@ class ThreadPoolConfigTest {
     @Test
     void shouldUseCorrectThreadNamePrefix() throws InterruptedException {
         ThreadPoolProperties properties = defaultThreadPoolProperties();
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         Executor executor = config.sttExecutor();
 
         CountDownLatch latch = new CountDownLatch(1);
@@ -119,7 +121,7 @@ class ThreadPoolConfigTest {
     @Test
     void shouldShutdownGracefully() {
         ThreadPoolProperties properties = defaultThreadPoolProperties();
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) config.sttExecutor();
 
         executor.execute(() -> {
@@ -133,7 +135,7 @@ class ThreadPoolConfigTest {
     @Test
     void shouldCreateEventExecutorWithCorrectConfiguration() {
         ThreadPoolProperties properties = defaultThreadPoolProperties();
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         Executor executor = config.eventExecutor();
 
         assertThat(executor).isNotNull();
@@ -148,7 +150,7 @@ class ThreadPoolConfigTest {
     @Test
     void eventExecutorHandlesTasks() throws InterruptedException {
         ThreadPoolProperties properties = defaultThreadPoolProperties();
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         Executor executor = config.eventExecutor();
 
         CountDownLatch latch = new CountDownLatch(1);
@@ -160,7 +162,7 @@ class ThreadPoolConfigTest {
     @Test
     void mdcPropagationWithNonEmptyContext() throws InterruptedException {
         ThreadPoolProperties properties = defaultThreadPoolProperties();
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         Executor executor = config.sttExecutor();
 
         org.apache.logging.log4j.ThreadContext.put("testKey", "testValue");
@@ -180,7 +182,7 @@ class ThreadPoolConfigTest {
     @Test
     void mdcPropagationWithEmptyContext() throws InterruptedException {
         ThreadPoolProperties properties = defaultThreadPoolProperties();
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         Executor executor = config.sttExecutor();
 
         org.apache.logging.log4j.ThreadContext.clearAll();
@@ -202,7 +204,7 @@ class ThreadPoolConfigTest {
         ThreadPoolProperties properties = new ThreadPoolProperties(
                 new ThreadPoolProperties.SttPoolProperties(4, 8, 50, 60, "stt-pool-"),
                 new ThreadPoolProperties.EventPoolProperties(1, 1, 1, 60, "event-pool-"));
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) config.eventExecutor();
 
         CountDownLatch blockingLatch = new CountDownLatch(1);
@@ -232,7 +234,7 @@ class ThreadPoolConfigTest {
     @Test
     void eventExecutorRejectionWhenShutdown() throws InterruptedException {
         ThreadPoolProperties properties = defaultThreadPoolProperties();
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) config.eventExecutor();
 
         executor.shutdown();
@@ -247,7 +249,7 @@ class ThreadPoolConfigTest {
     @Test
     void mdcPropagationRestoresPreviousContext() throws InterruptedException {
         ThreadPoolProperties properties = defaultThreadPoolProperties();
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) config.sttExecutor();
 
         // Set submitter context
@@ -288,7 +290,7 @@ class ThreadPoolConfigTest {
     @Test
     void mdcPropagationWithNullContextMap() throws InterruptedException {
         ThreadPoolProperties properties = defaultThreadPoolProperties();
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         Executor executor = config.sttExecutor();
 
         // Clear all context — getImmutableContext() returns empty map (not null in Log4j2),
@@ -313,7 +315,7 @@ class ThreadPoolConfigTest {
     void eventExecutorRejectionWithEmptyQueue() throws InterruptedException {
         // Directly test rejection handler when queue.poll() returns null
         ThreadPoolProperties properties = defaultThreadPoolProperties();
-        ThreadPoolConfig config = new ThreadPoolConfig(properties);
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) config.eventExecutor();
 
         RejectedExecutionHandler handler = executor.getThreadPoolExecutor().getRejectedExecutionHandler();
@@ -322,6 +324,39 @@ class ThreadPoolConfigTest {
         handler.rejectedExecution(latch::countDown, executor.getThreadPoolExecutor());
 
         assertThat(latch.await(2, TimeUnit.SECONDS)).isTrue();
+        executor.shutdown();
+    }
+
+    @Test
+    void eventExecutorDiscardCounterIncrements() throws InterruptedException {
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        ThreadPoolProperties properties = new ThreadPoolProperties(
+                new ThreadPoolProperties.SttPoolProperties(4, 8, 50, 60, "stt-pool-"),
+                new ThreadPoolProperties.EventPoolProperties(1, 1, 1, 60, "event-pool-"));
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, registry);
+        ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) config.eventExecutor();
+
+        CountDownLatch blockingLatch = new CountDownLatch(1);
+        CountDownLatch completionLatch = new CountDownLatch(1);
+
+        // Fill the pool: 1 thread blocked + 1 queued
+        executor.execute(() -> {
+            try {
+                blockingLatch.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException ignored) {}
+        });
+        executor.execute(() -> {}); // fills queue
+
+        // This triggers rejection handler → discards oldest
+        executor.execute(() -> completionLatch.countDown());
+
+        blockingLatch.countDown();
+        assertThat(completionLatch.await(5, TimeUnit.SECONDS)).isTrue();
+
+        Counter counter = registry.find("blckvox.event.executor.discard").counter();
+        assertThat(counter).isNotNull();
+        assertThat(counter.count()).isGreaterThanOrEqualTo(1.0);
+
         executor.shutdown();
     }
 }

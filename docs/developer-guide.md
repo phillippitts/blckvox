@@ -133,19 +133,66 @@ stt.orchestration.silence-gap-ms=1000
 5. Typing adapter outputs the text with newline, creating a paragraph break in the document
 
 ## Testing Strategy
+
+### Philosophy
+- **No Mockito** in most tests — use fakes, stubs, and lambdas instead
 - Hermetic by default: all OS / native integrations behind seams
-  - GlobalKeyHook → tests inject fake implementation
-  - Java Sound DataLineProvider → fake TargetDataLine
-  - Whisper ProcessFactory → fake Process with controlled stdout/stderr/exit
-  - Robot/Clipboard facades → fakes in unit tests
-- Gated local tests: real models/binary can be run locally via system properties/tags (keep off in CI)
-- Examples:
-  - `HotkeyTriggerTests`, `HotkeyManagerTest`
-  - `JavaSoundAudioCaptureServiceTest`, `PcmRingBufferTest`
-  - `DefaultParallelSttServiceTest`, `DefaultParallelSttServiceTimeoutTest`
-  - `ReconcilerStrategiesTest`, `HotkeyRecordingAdapterReconciledTest`
-  - `WhisperJsonParserTest`, `WhisperProcessManagerJsonTest`, `WhisperSttEngineJsonModeTest`
-  - Fallback: `StrategyChainTypingService*`, `ClipboardTypingAdapterTest`
+- Tests should be fast, deterministic, and runnable without external dependencies
+
+### Test Doubles Location
+All shared test doubles live in `OrchestrationTestDoubles`:
+- `FakeEngine` — configurable transcription result, tracks calls
+- `SlowEngine` — introduces configurable delay
+- `FailingEngine` — throws on transcribe()
+
+Additional test doubles are defined within their test classes (e.g., `RecordingEngine`, `StubProcessFactory`).
+
+### Seam Architecture
+| External Dependency | Seam Interface | Test Double |
+|---------------------|---------------|-------------|
+| JNativeHook (hotkeys) | `GlobalKeyHook` | Fake implementation injected |
+| Java Sound (audio) | `DataLineProvider` | Fake `TargetDataLine` |
+| whisper.cpp (process) | `ProcessFactory` | `StubProcessFactory` with `TestProcess` |
+| Robot API (typing) | `AwtRobotFacade` | Fake in unit tests |
+| Clipboard (typing) | `AwtClipboardFacade` | Fake in unit tests |
+
+### Parameterized Tests
+Use `@ParameterizedTest` with `@CsvSource` for boundary value testing:
+```java
+@ParameterizedTest(name = "corePoolSize={0}, maxPoolSize={1} should be valid")
+@CsvSource({"1, 1", "4, 8", "16, 32"})
+void boundaryValid(int core, int max) { ... }
+```
+See `ThreadPoolPropertiesTest` and `WhisperJsonParserTest` for examples.
+
+### Test Tags
+| Tag | Purpose | Command |
+|-----|---------|---------|
+| (none) | Unit tests | `./gradlew test` |
+| `@Tag("integration")` | Integration tests | `./gradlew integrationTest` |
+| `@Tag("real-binary")` | Requires real whisper.cpp | `./gradlew realBinaryTest` |
+| `@Tag("requiresVoskModel")` | Requires Vosk model | `./gradlew voskIntegrationTest` |
+
+### Coverage Expectations
+- **Minimum gates:** 90% instruction / 80% branch (enforced by `jacocoTestCoverageVerification`)
+- **Current:** ~95% instruction / ~88% branch
+- JaCoCo excludes genuinely untestable classes (JNI, JavaFX, AWT, hardware)
+- Run `./gradlew test jacocoTestReport` to generate report at `build/reports/jacoco/test/html/`
+
+### Debugging Setup
+- Add `-XX:+EnableDynamicAgentLoading` JVM arg (already configured in `build.gradle`)
+- Use `@TempDir` for file-based tests (model validation, audio)
+- Sparse files via `RandomAccessFile.setLength()` for large model stubs (>100MB)
+- For async tests, use Awaitility: `await().atMost(5, SECONDS).until(...)
+
+### Key Test Files
+- `HotkeyTriggerTests`, `HotkeyManagerTest`
+- `JavaSoundAudioCaptureServiceTest`, `PcmRingBufferTest`
+- `DefaultParallelSttServiceTest`, `DefaultParallelSttServiceTimeoutTest`
+- `ReconcilerStrategiesTest`, `HotkeyRecordingAdapterReconciledTest`
+- `WhisperJsonParserTest`, `WhisperProcessManagerJsonTest`, `WhisperSttEngineJsonModeTest`
+- `SttEngineWatchdogTest` (watchdog lifecycle, confidence monitoring, health events)
+- Fallback: `StrategyChainTypingService*`, `ClipboardTypingAdapterTest`
 
 ## Coding Standards
 - Java 21, Spring Boot 3.5.x

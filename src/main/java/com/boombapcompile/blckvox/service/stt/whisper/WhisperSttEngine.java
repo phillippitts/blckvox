@@ -8,7 +8,6 @@ import com.boombapcompile.blckvox.service.stt.DetailedTranscriptionEngine;
 import com.boombapcompile.blckvox.config.stt.WhisperConfig;
 import com.boombapcompile.blckvox.config.properties.SttConcurrencyProperties;
 import com.boombapcompile.blckvox.domain.TranscriptionResult;
-import com.boombapcompile.blckvox.exception.TranscriptionException;
 import com.boombapcompile.blckvox.service.audio.WavWriter;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
 import com.boombapcompile.blckvox.service.stt.SttEngineNames;

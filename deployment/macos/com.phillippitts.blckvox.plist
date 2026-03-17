@@ -4,7 +4,7 @@
 <dict>
     <!-- Service identification -->
     <key>Label</key>
-    <string>com.phillippitts.blckvox</string>
+    <string>com.boombapcompile.blckvox</string>
 
     <!-- Program and arguments -->
     <key>ProgramArguments</key>

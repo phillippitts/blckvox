@@ -5,6 +5,7 @@ import com.boombapcompile.blckvox.config.ThreadPoolConfig;
 import com.boombapcompile.blckvox.config.properties.ThreadPoolProperties;
 import com.boombapcompile.blckvox.config.stt.VoskConfig;
 import com.boombapcompile.blckvox.config.stt.WhisperConfig;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.boombapcompile.blckvox.service.stt.EngineResult;
 import com.boombapcompile.blckvox.service.stt.parallel.DefaultParallelSttService;
 import com.boombapcompile.blckvox.service.stt.parallel.ParallelSttService;
@@ -67,7 +68,7 @@ class ParallelSttEnginesIntegrationTest {
         ThreadPoolProperties properties = new ThreadPoolProperties(
                 new ThreadPoolProperties.SttPoolProperties(4, 8, 50, 60, "stt-pool-"),
                 new ThreadPoolProperties.EventPoolProperties(2, 4, 10, 60, "event-pool-"));
-        ThreadPoolConfig threadPoolConfig = new ThreadPoolConfig(properties);
+        ThreadPoolConfig threadPoolConfig = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
         sttExecutor = threadPoolConfig.sttExecutor();
 
         vosk = new VoskSttEngine(new VoskConfig(VOSK_MODEL, 16_000, 1));

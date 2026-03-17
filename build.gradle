@@ -7,6 +7,7 @@ plugins {
     id 'jacoco'      // Test coverage reporting
     id 'com.github.spotbugs' version '6.1.7'  // Bytecode-level static analysis
     id 'org.owasp.dependencycheck' version '9.2.0'  // Dependency vulnerability scanning
+    id 'org.cyclonedx.bom' version '1.8.2'  // SBOM generation (CycloneDX format)
 }
 
 group = 'com.boombapcompile'
@@ -51,6 +52,9 @@ dependencies {
     // Metrics (JMX-based runtime observability)
     implementation 'io.micrometer:micrometer-core'
     implementation 'io.micrometer:micrometer-registry-jmx'
+
+    // Spring Boot configuration metadata generation
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -110,6 +114,7 @@ tasks.register('realBinaryTest', Test) {
 // Run both unit and integration tests with ./gradlew check
 tasks.named('check') {
     dependsOn integrationTest
+    dependsOn jacocoTestCoverageVerification
 }
 
 javafx {
@@ -150,6 +155,42 @@ dependencyCheck {
     }
 }
 
+// Shared exclusion list for JaCoCo (genuinely untestable: JNI, JavaFX, AWT, hardware)
+def jacocoExclusions = [
+    // Spring Boot entry point
+    '**/BlckvoxApplication.class',
+    // JavaFX (requires FX thread / Platform.startup)
+    '**/livecaption/LiveCaptionWindow.class',
+    '**/livecaption/JavaFxLifecycle.class',
+    '**/livecaption/LiveCaptionManager.class',
+    // JNI-dependent (Vosk native lib / model loading)
+    '**/vosk/VoskSttEngine.class',
+    '**/vosk/VoskSttEngine$SegmentAggregation.class',
+    '**/vosk/VoskStreamingService.class',
+    '**/vosk/VoskModelProvider.class',
+    // JNI smoke test in validateVosk() requires real Vosk model
+    '**/config/stt/ModelValidationService.class',
+    // OS accessibility permissions required
+    '**/hotkey/impl/JNativeHookGlobalKeyHook.class',
+    // AWT SystemTray (headless CI incompatible)
+    '**/tray/SystemTrayManager*.class',
+    // OS process creation (requires real binary)
+    '**/whisper/DefaultProcessFactory.class',
+    // AWT Robot/Clipboard facades (headless CI incompatible)
+    '**/fallback/ClipboardTypingAdapter$AwtClipboardFacade.class',
+    '**/fallback/RobotTypingAdapter.class',
+    '**/fallback/RobotTypingAdapter$AwtRobotFacade.class',
+    // Hardware-dependent audio capture (TargetDataLine, AudioSystem, real microphone)
+    '**/capture/JavaSoundAudioCaptureService.class',
+    '**/capture/JavaSoundAudioCaptureService$*.class',
+    // System-dependent (OperatingSystemMXBean CPU/memory varies by JVM/OS)
+    '**/util/SystemResourceMonitor.class',
+    // 1-arg @Autowired constructor delegates to testable multi-arg constructor
+    '**/whisper/WhisperProcessManager.class',
+    // Default constructor only
+    '**/whisper/ProcessStreamHandler.class',
+]
+
 jacocoTestReport {
     dependsOn test
     mustRunAfter integrationTest
@@ -162,42 +203,39 @@ jacocoTestReport {
     }
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, excludes: [
-                // Spring Boot entry point
-                '**/BlckvoxApplication.class',
-                // JavaFX (requires FX thread / Platform.startup)
-                '**/livecaption/LiveCaptionWindow.class',
-                '**/livecaption/JavaFxLifecycle.class',
-                '**/livecaption/LiveCaptionManager.class',
-                // JNI-dependent (Vosk native lib / model loading)
-                '**/vosk/VoskSttEngine.class',
-                '**/vosk/VoskSttEngine$SegmentAggregation.class',
-                '**/vosk/VoskStreamingService.class',
-                '**/vosk/VoskModelProvider.class',
-                // JNI smoke test in validateVosk() requires real Vosk model
-                '**/config/stt/ModelValidationService.class',
-                // OS accessibility permissions required
-                '**/hotkey/impl/JNativeHookGlobalKeyHook.class',
-                // AWT SystemTray (headless CI incompatible)
-                '**/tray/SystemTrayManager*.class',
-                // OS process creation (requires real binary)
-                '**/whisper/DefaultProcessFactory.class',
-                // AWT Robot/Clipboard facades (headless CI incompatible)
-                '**/fallback/ClipboardTypingAdapter$AwtClipboardFacade.class',
-                '**/fallback/RobotTypingAdapter.class',
-                '**/fallback/RobotTypingAdapter$AwtRobotFacade.class',
-                // Hardware-dependent audio capture (TargetDataLine, AudioSystem, real microphone)
-                '**/capture/JavaSoundAudioCaptureService.class',
-                '**/capture/JavaSoundAudioCaptureService$*.class',
-                // System-dependent (OperatingSystemMXBean CPU/memory varies by JVM/OS)
-                '**/util/SystemResourceMonitor.class',
-                // 1-arg @Autowired constructor delegates to testable multi-arg constructor
-                '**/whisper/WhisperProcessManager.class',
-                // Default constructor only
-                '**/whisper/ProcessStreamHandler.class',
-            ])
+            fileTree(dir: it, excludes: jacocoExclusions)
         }))
     }
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            limit {
+                counter = 'INSTRUCTION'
+                minimum = 0.90
+            }
+            limit {
+                counter = 'BRANCH'
+                minimum = 0.80
+            }
+        }
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, excludes: jacocoExclusions)
+        }))
+    }
+}
+
+cyclonedxBom {
+    includeConfigs = ['runtimeClasspath']
+    skipConfigs = ['testCompileClasspath', 'testRuntimeClasspath']
+    projectType = "application"
+    outputFormat = "json"
+    outputName = "bom"
+    destination = file("${layout.buildDirectory.get()}/reports/sbom")
 }
 
 // Configure bootRun to disable headless mode (required for Robot/Clipboard APIs)

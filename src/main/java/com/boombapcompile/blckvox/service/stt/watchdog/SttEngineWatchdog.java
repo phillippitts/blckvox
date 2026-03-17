@@ -87,7 +87,7 @@ public class SttEngineWatchdog {
                 LOG.info("Engine {} initialized successfully", name);
             } catch (Exception ex) {
                 LOG.error("Failed to initialize engine {} at startup: {}", name, ex.toString());
-                state.put(name, EngineState.DISABLED);
+                updateState(name, EngineState.DISABLED);
             }
         }
     }
@@ -95,6 +95,18 @@ public class SttEngineWatchdog {
     /** Visible for tests. */
     EngineState getState(String engine) {
         return state.get(engine);
+    }
+
+    /**
+     * Updates engine state and publishes an {@link EngineHealthChangedEvent}
+     * if the state actually changed.
+     */
+    private void updateState(String engine, EngineState newState) {
+        EngineState previous = state.put(engine, newState);
+        if (previous != null && previous != newState) {
+            publisher.publishEvent(new EngineHealthChangedEvent(
+                    engine, previous, newState, Instant.now()));
+        }
     }
 
     /** Visible for tests. */
@@ -127,7 +139,7 @@ public class SttEngineWatchdog {
             return;
         }
 
-        state.put(engine, EngineState.DEGRADED);
+        updateState(engine, EngineState.DEGRADED);
         attemptRestart(engine);
     }
 
@@ -137,7 +149,7 @@ public class SttEngineWatchdog {
         if (!enginesByName.containsKey(engine)) {
             return;
         }
-        state.put(engine, EngineState.HEALTHY);
+        updateState(engine, EngineState.HEALTHY);
         budgetTracker.clearOnRecovery(engine);
         confidenceMonitor.clearOnRecovery(engine);
         LOG.info("Engine recovered: {}", engine);
@@ -155,7 +167,7 @@ public class SttEngineWatchdog {
         if (eval != null && eval.degraded()) {
             LOG.warn("Engine {} confidence degraded: avg={} (window tracked by monitor)",
                     engine, String.format("%.3f", eval.average()));
-            state.put(engine, EngineState.DEGRADED);
+            updateState(engine, EngineState.DEGRADED);
             publisher.publishEvent(new EngineFailureEvent(
                     engine, Instant.now(),
                     "low-confidence: avg=" + String.format("%.3f", eval.average()),
@@ -195,7 +207,7 @@ public class SttEngineWatchdog {
                 publisher.publishEvent(new EngineRecoveredEvent(engine, Instant.now()));
                 LOG.info("Engine {} restarted successfully", engine);
             } else {
-                state.put(engine, EngineState.DEGRADED);
+                updateState(engine, EngineState.DEGRADED);
                 LOG.warn("Engine {} restart failed; remaining in DEGRADED state", engine);
             }
         } finally {
@@ -204,7 +216,7 @@ public class SttEngineWatchdog {
     }
 
     private void disableEngine(String engine) {
-        state.put(engine, EngineState.DISABLED);
+        updateState(engine, EngineState.DISABLED);
         Instant until = budgetTracker.disable(engine);
         LOG.error("Engine {} disabled after {} restarts within budget; cooldown until {}",
                 engine, budgetTracker.getRestartCount(engine), until);
@@ -233,7 +245,7 @@ public class SttEngineWatchdog {
                 .orElseThrow();
 
         double avgConf = confidenceMonitor.averageConfidence(bestEngine);
-        state.put(bestEngine, EngineState.DEGRADED);
+        updateState(bestEngine, EngineState.DEGRADED);
         budgetTracker.clearOnRecovery(bestEngine);
         LOG.error("SAFETY MODE: Force-enabled engine {} (avg confidence: {})",
                 bestEngine, String.format("%.3f", avgConf));

@@ -4,6 +4,8 @@ import com.boombapcompile.blckvox.service.audio.capture.BufferOverflowEvent;
 import com.boombapcompile.blckvox.service.orchestration.ApplicationState;
 import com.boombapcompile.blckvox.service.orchestration.RecordingService;
 import com.boombapcompile.blckvox.service.orchestration.event.ApplicationStateChangedEvent;
+import com.boombapcompile.blckvox.service.stt.watchdog.EngineHealthChangedEvent;
+import com.boombapcompile.blckvox.service.stt.watchdog.SttEngineWatchdog.EngineState;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.boot.SpringApplication;
@@ -150,6 +152,30 @@ public class SystemTrayManager implements SmartLifecycle {
             trayIcon.displayMessage("Audio Dropped",
                     "Recording exceeds capacity. Try shorter dictations.",
                     TrayIcon.MessageType.WARNING);
+        });
+    }
+
+    @EventListener
+    public void onEngineHealthChanged(EngineHealthChangedEvent event) {
+        if (trayIcon == null) {
+            return;
+        }
+        SwingUtilities.invokeLater(() -> {
+            if (trayIcon == null) {
+                return;
+            }
+            EngineState newState = event.currentState();
+            String engine = event.engine();
+            if (newState == EngineState.DEGRADED || newState == EngineState.DISABLED) {
+                trayIcon.displayMessage("Engine " + newState,
+                        engine + " is " + newState.name().toLowerCase() + ". "
+                                + (newState == EngineState.DISABLED
+                                        ? "Watchdog will attempt recovery after cooldown."
+                                        : "Performance may be reduced."),
+                        newState == EngineState.DISABLED
+                                ? TrayIcon.MessageType.ERROR
+                                : TrayIcon.MessageType.WARNING);
+            }
         });
     }
 

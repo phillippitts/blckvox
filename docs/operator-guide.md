@@ -1,6 +1,6 @@
 # Operator Guide
 
-This guide documents configuration, metrics, logs, and production profile guidance for blckvox.
+This guide documents configuration, metrics, logs, capacity planning, and production profile guidance for blckvox.
 
 ## Configuration Overview
 All configuration uses Spring Boot properties (application.properties). The most important groups:
@@ -93,7 +93,36 @@ typing.enable-robot=true
 
 ## Observability
 
-**Note:** Micrometer/Prometheus metrics are planned for Phase 6. Current observability is via structured logging.
+### JMX Metrics (Micrometer)
+
+Runtime metrics are available via JMX (JConsole/VisualVM). Key metrics:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `blckvox.transcription.duration` | Timer | Transcription latency by engine and strategy |
+| `blckvox.transcription.count` | Counter | Transcription count by engine and result |
+| `blckvox.engine.failure` | Counter | Engine failure count by engine |
+| `blckvox.engine.restart` | Counter | Engine restart count by engine |
+| `blckvox.typing.fallback` | Counter | Typing fallback count by tier |
+| `blckvox.reconciliation.confidence` | DistributionSummary | Confidence scores by engine |
+| `blckvox.event.executor.discard` | Counter | Event executor task discards due to queue saturation |
+
+Configuration: `management.metrics.export.jmx.enabled=true` (enabled by default).
+
+### Metrics Alerting Thresholds
+
+Recommended alerting thresholds for production monitoring:
+
+| Metric | Warning Threshold | Critical Threshold | Action |
+|--------|------------------|-------------------|--------|
+| `blckvox.engine.failure` | > 3/hour | > 10/hour | Check engine health, review logs for model/binary issues |
+| `blckvox.engine.restart` | > 2/hour | > 5/hour | Investigate root cause; watchdog may be cycling |
+| `blckvox.transcription.duration` (p95) | > 5s | > 15s | Reduce Whisper threads, check CPU load |
+| `blckvox.typing.fallback` | > 1/hour (tier 2+) | > 5/hour | Check Accessibility permissions |
+| `blckvox.event.executor.discard` | > 1/hour | > 10/hour | Increase event pool size or investigate bottleneck |
+| `blckvox.reconciliation.confidence` (avg) | < 0.5 | < 0.3 | Model quality issue; consider upgrading model |
+
+### Key Log Events
 
 Key log events to monitor:
 - `TranscriptionCompletedEvent` - engine used, confidence, duration, text length
@@ -108,6 +137,125 @@ All logs are PII-safe: INFO level never includes full transcripts, only duration
 - DEBUG logs may include truncated previews via LogSanitizer.
 - Error events are centralized and throttled (Hotkey permission/ conflict; capture errors).
 - Audit log: `logs/audit.log` (separate appender, daily rollover, 365-day retention).
+
+## Capacity Planning
+
+### Memory Budget
+
+| Component | Memory (Resident) | Notes |
+|-----------|-------------------|-------|
+| JVM + Spring Boot | ~200 MB | Heap + metaspace + thread stacks |
+| Vosk model (in-process) | ~1.8 GB | Loaded once via JNI, held for app lifetime |
+| Whisper model (subprocess) | ~300 MB peak | Loaded per transcription by whisper.cpp process |
+| Audio ring buffer | ~2 MB | PCM capture buffer (configurable via max-duration-ms) |
+| Log buffers | ~10 MB | Log4j2 async appender queues |
+| **Total (idle)** | **~2.0 GB** | Without active transcription |
+| **Total (active)** | **~2.5 GB** | During parallel Vosk+Whisper transcription |
+
+**Recommendation:** Minimum 4 GB available RAM. 8 GB recommended for comfortable headroom.
+
+### CPU Budget
+
+| Operation | CPU Cores | Duration | Frequency |
+|-----------|-----------|----------|-----------|
+| Idle | < 0.01 cores | Continuous | Always |
+| Audio capture | < 0.1 cores | While recording | Per dictation |
+| Vosk transcription | 1 core | ~100-500ms | Per dictation |
+| Whisper transcription | 4 cores (configurable) | ~1-5s | Per dictation (if reconciliation enabled) |
+| **Peak (reconciliation)** | **~5 cores** | ~2-5s | Per dictation |
+
+**Recommendation:** Minimum 4 cores. 8+ cores recommended if using reconciliation.
+
+### Disk Budget
+
+| Component | Disk Space | Growth Rate |
+|-----------|-----------|-------------|
+| Vosk model | 1.8 GB | Static |
+| Whisper model | 142 MB (base.en) | Static |
+| whisper.cpp binary | ~15 MB | Static |
+| Application JAR | ~30 MB | Per release |
+| Log files | ~10 MB/day | Daily rotation, 30-day retention |
+| Audit log | ~1 MB/day | Daily rotation, 365-day retention |
+| Temp WAV files | ~1-5 MB each | Transient (deleted after transcription) |
+| **Total (static)** | **~2.0 GB** | |
+| **Total (with 30 days logs)** | **~2.3 GB** | |
+
+**Recommendation:** Minimum 5 GB free disk space for models + logs + growth.
+
+## Thread Pool Tuning Guide
+
+The application uses two dedicated thread pools configured via `threadpool.*` properties:
+
+### STT Executor (`sttExecutor`)
+Handles parallel STT engine transcription tasks.
+
+| Hardware Profile | core-pool-size | max-pool-size | queue-capacity | Rationale |
+|-----------------|---------------|--------------|----------------|-----------|
+| Low-end (2-4 cores) | 2 | 4 | 10 | Default; prevents CPU contention |
+| Mid-range (4-8 cores) | 4 | 8 | 20 | Room for concurrent Vosk+Whisper |
+| High-end (8+ cores) | 8 | 16 | 50 | Maximum throughput |
+
+- **Rejection policy:** `CallerRunsPolicy` — submitting thread runs the task (backpressure)
+- **MDC propagation:** Log4j2 ThreadContext copied to worker threads
+
+### Event Executor (`eventExecutor`)
+Offloads CPU-intensive transcription work from Spring's event bus.
+
+| Hardware Profile | core-pool-size | max-pool-size | queue-capacity | Rationale |
+|-----------------|---------------|--------------|----------------|-----------|
+| Low-end (2-4 cores) | 2 | 4 | 10 | Default; adequate for typical hotkey rate |
+| Mid-range (4-8 cores) | 2 | 4 | 20 | Larger queue for burst tolerance |
+| High-end (8+ cores) | 4 | 8 | 50 | High concurrency |
+
+- **Rejection policy:** `DiscardOldestPolicy` — discards oldest queued task to prevent blocking event bus
+- **Discard metric:** `blckvox.event.executor.discard` counter increments on each discard
+- **MDC propagation:** Same as sttExecutor
+
+### Tuning Symptoms
+
+| Symptom | Likely Cause | Fix |
+|---------|-------------|-----|
+| `CallerRunsPolicy` warning in logs | STT pool saturated | Increase `threadpool.stt.max-pool-size` |
+| `blckvox.event.executor.discard` > 0 | Event pool saturated | Increase `threadpool.event.queue-capacity` or `max-pool-size` |
+| High CPU during idle | Thread pool too large | Reduce `core-pool-size` |
+| Slow transcription response | Not enough threads | Increase `max-pool-size` (up to CPU core count) |
+
+## Engine Health Indicators
+
+The system tray displays engine health notifications based on `EngineHealthChangedEvent` transitions published by the watchdog.
+
+### Health States
+
+| State | Meaning | Tray Behavior |
+|-------|---------|---------------|
+| **HEALTHY** | Engine initialized and performing well | No notification (normal operation) |
+| **DEGRADED** | Engine experienced failure or low confidence | Warning notification in system tray |
+| **DISABLED** | Engine exceeded restart budget, in cooldown | Error notification in system tray |
+
+### State Transitions
+
+```
+HEALTHY → DEGRADED : Engine failure or low confidence detected
+DEGRADED → HEALTHY : Successful restart or recovery
+DEGRADED → DISABLED : Restart budget exhausted
+DISABLED → DEGRADED : Safety mode force-enables best engine (all disabled)
+```
+
+### Troubleshooting Engine Health
+
+| Symptom | Likely Cause | Resolution |
+|---------|-------------|------------|
+| Frequent DEGRADED notifications | Intermittent engine failures | Check model file integrity, verify binary permissions |
+| Engine DISABLED | Restart budget exhausted (3 failures in 60 min) | Wait for cooldown (10 min default), check logs for root cause |
+| Both engines DISABLED | Systemic issue | Safety mode auto-enables best engine; investigate model paths and disk space |
+| Low confidence warnings | Poor audio quality or wrong model | Verify microphone settings, consider upgrading to larger model |
+
+### Relevant Metrics
+
+Monitor these metrics alongside tray notifications:
+- `blckvox.engine.failure` — correlates with DEGRADED transitions
+- `blckvox.engine.restart` — tracks restart attempts
+- `blckvox.reconciliation.confidence` — tracks confidence scores that may trigger DEGRADED
 
 ## Production profile
 Use Spring profiles to adjust configuration per environment:

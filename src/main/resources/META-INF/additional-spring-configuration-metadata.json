@@ -1,0 +1,494 @@
+{
+  "groups": [
+    {
+      "name": "audio.validation",
+      "type": "com.boombapcompile.blckvox.config.properties.AudioValidationProperties",
+      "description": "Audio validation thresholds for minimum/maximum recording duration and file size."
+    },
+    {
+      "name": "audio.capture",
+      "type": "com.boombapcompile.blckvox.config.properties.AudioCaptureProperties",
+      "description": "Audio capture service settings for chunk size, max duration, and device selection."
+    },
+    {
+      "name": "stt.vosk",
+      "type": "com.boombapcompile.blckvox.config.stt.VoskConfig",
+      "description": "Vosk STT engine configuration (JNI-based, offline, fast)."
+    },
+    {
+      "name": "stt.whisper",
+      "type": "com.boombapcompile.blckvox.config.stt.WhisperConfig",
+      "description": "Whisper STT engine configuration (process-based, offline, accurate)."
+    },
+    {
+      "name": "stt.orchestration",
+      "type": "com.boombapcompile.blckvox.config.properties.OrchestrationProperties",
+      "description": "STT engine orchestration: primary engine selection, silence detection, and parallel execution."
+    },
+    {
+      "name": "stt.reconciliation",
+      "type": "com.boombapcompile.blckvox.config.properties.ReconciliationProperties",
+      "description": "Dual-engine reconciliation strategy and threshold configuration."
+    },
+    {
+      "name": "stt.concurrency",
+      "type": "com.boombapcompile.blckvox.config.properties.SttConcurrencyProperties",
+      "description": "Concurrency bulkheads for STT engine resource management."
+    },
+    {
+      "name": "stt.watchdog",
+      "type": "com.boombapcompile.blckvox.config.properties.SttWatchdogProperties",
+      "description": "Engine health watchdog with bounded auto-restart and confidence monitoring."
+    },
+    {
+      "name": "hotkey",
+      "type": "com.boombapcompile.blckvox.config.properties.HotkeyProperties",
+      "description": "Global hotkey configuration for push-to-talk dictation."
+    },
+    {
+      "name": "typing",
+      "type": "com.boombapcompile.blckvox.config.properties.TypingProperties",
+      "description": "Text delivery configuration via clipboard and Robot API."
+    },
+    {
+      "name": "live-caption",
+      "type": "com.boombapcompile.blckvox.config.properties.LiveCaptionProperties",
+      "description": "Live caption overlay with oscilloscope waveform and streaming captions."
+    },
+    {
+      "name": "tray",
+      "type": "com.boombapcompile.blckvox.config.properties.TrayProperties",
+      "description": "macOS system tray icon configuration."
+    },
+    {
+      "name": "threadpool",
+      "type": "com.boombapcompile.blckvox.config.properties.ThreadPoolProperties",
+      "description": "Thread pool sizing for STT processing and event handling."
+    }
+  ],
+  "properties": [
+    {
+      "name": "audio.validation.min-duration-ms",
+      "type": "java.lang.Integer",
+      "defaultValue": 250,
+      "description": "Minimum audio duration in milliseconds. Clips shorter than this are rejected to avoid accidental hotkey taps."
+    },
+    {
+      "name": "audio.validation.max-duration-ms",
+      "type": "java.lang.Integer",
+      "defaultValue": 300000,
+      "description": "Maximum audio duration in milliseconds (5 minutes). Prevents unbounded memory usage."
+    },
+    {
+      "name": "audio.validation.max-file-size-bytes",
+      "type": "java.lang.Integer",
+      "defaultValue": 104857600,
+      "description": "Maximum file size in bytes for audio payloads (100 MB). Security guard against memory exhaustion."
+    },
+    {
+      "name": "audio.capture.chunk-millis",
+      "type": "java.lang.Integer",
+      "defaultValue": 40,
+      "description": "Audio buffer chunk size in milliseconds. Smaller values lower latency but increase CPU."
+    },
+    {
+      "name": "audio.capture.max-duration-ms",
+      "type": "java.lang.Integer",
+      "defaultValue": 600000,
+      "description": "Maximum recording duration (10 minutes). Hard limit to prevent unbounded capture."
+    },
+    {
+      "name": "audio.capture.device-name",
+      "type": "java.lang.String",
+      "description": "Optional audio input device name. If not set, uses system default microphone."
+    },
+    {
+      "name": "stt.vosk.model-path",
+      "type": "java.lang.String",
+      "defaultValue": "models/vosk-model-en-us-0.22",
+      "description": "Path to Vosk model directory. Must contain am/, graph/, rescore/ subdirectories."
+    },
+    {
+      "name": "stt.vosk.sample-rate",
+      "type": "java.lang.Integer",
+      "defaultValue": 16000,
+      "description": "Audio sample rate in Hz. Must match model requirements (typically 16000)."
+    },
+    {
+      "name": "stt.vosk.max-alternatives",
+      "type": "java.lang.Integer",
+      "defaultValue": 1,
+      "description": "Maximum recognition alternatives to generate. Higher values increase processing time."
+    },
+    {
+      "name": "stt.whisper.binary-path",
+      "type": "java.lang.String",
+      "defaultValue": "tools/whisper.cpp/main",
+      "description": "Path to whisper.cpp binary executable."
+    },
+    {
+      "name": "stt.whisper.model-path",
+      "type": "java.lang.String",
+      "defaultValue": "models/ggml-base.en.bin",
+      "description": "Path to Whisper GGML model file."
+    },
+    {
+      "name": "stt.whisper.timeout-seconds",
+      "type": "java.lang.Integer",
+      "defaultValue": 120,
+      "description": "Maximum transcription time in seconds. Prevents hanging on long/corrupted audio."
+    },
+    {
+      "name": "stt.whisper.language",
+      "type": "java.lang.String",
+      "defaultValue": "en",
+      "description": "Language code (ISO 639-1). Use 'en' for English."
+    },
+    {
+      "name": "stt.whisper.threads",
+      "type": "java.lang.Integer",
+      "defaultValue": 4,
+      "description": "Number of CPU threads for Whisper processing."
+    },
+    {
+      "name": "stt.whisper.max-stdout-bytes",
+      "type": "java.lang.Integer",
+      "defaultValue": 1048576,
+      "description": "Maximum stdout buffer size (1MB). Protects against runaway process output."
+    },
+    {
+      "name": "stt.whisper.output",
+      "type": "java.lang.String",
+      "defaultValue": "json",
+      "description": "Output format: 'text' (plain) or 'json' (structured with tokens). JSON enables advanced reconciliation."
+    },
+    {
+      "name": "stt.orchestration.primary-engine",
+      "type": "java.lang.String",
+      "defaultValue": "vosk",
+      "description": "Primary engine preference: 'vosk' (fast) or 'whisper' (accurate). Falls back to secondary if unhealthy."
+    },
+    {
+      "name": "stt.orchestration.silence-gap-ms",
+      "type": "java.lang.Integer",
+      "defaultValue": 1000,
+      "description": "Silence gap threshold in milliseconds for automatic paragraph breaks. Set to 0 to disable."
+    },
+    {
+      "name": "stt.orchestration.silence-threshold",
+      "type": "java.lang.Integer",
+      "defaultValue": 200,
+      "description": "RMS amplitude threshold for silence detection (0-32767). Lower values capture quieter speech."
+    },
+    {
+      "name": "stt.parallel.timeout-ms",
+      "type": "java.lang.Integer",
+      "defaultValue": 120000,
+      "description": "Timeout in milliseconds for parallel dual-engine transcription."
+    },
+    {
+      "name": "stt.reconciliation.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "Enable dual-engine reconciliation. Runs both engines in parallel and reconciles results."
+    },
+    {
+      "name": "stt.reconciliation.strategy",
+      "type": "java.lang.String",
+      "defaultValue": "overlap",
+      "description": "Reconciliation strategy: 'simple' (prefer primary), 'confidence' (highest score), 'overlap' (Jaccard similarity)."
+    },
+    {
+      "name": "stt.reconciliation.overlap-threshold",
+      "type": "java.lang.Double",
+      "defaultValue": 0.6,
+      "description": "Minimum Jaccard similarity for overlap strategy (0.0 to 1.0)."
+    },
+    {
+      "name": "stt.concurrency.vosk-max",
+      "type": "java.lang.Integer",
+      "defaultValue": 4,
+      "description": "Maximum concurrent Vosk transcriptions."
+    },
+    {
+      "name": "stt.concurrency.whisper-max",
+      "type": "java.lang.Integer",
+      "defaultValue": 2,
+      "description": "Maximum concurrent Whisper transcriptions. Keep low (CPU-intensive)."
+    },
+    {
+      "name": "stt.concurrency.acquire-timeout-ms",
+      "type": "java.lang.Integer",
+      "defaultValue": 1000,
+      "description": "Maximum wait time (ms) to acquire concurrency permit."
+    },
+    {
+      "name": "stt.concurrency.dynamic-scaling-enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": false,
+      "description": "Enable dynamic concurrency scaling based on system CPU and memory usage."
+    },
+    {
+      "name": "stt.watchdog.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "Enable automatic engine restart on failures. Recommended for production."
+    },
+    {
+      "name": "stt.watchdog.window-minutes",
+      "type": "java.lang.Integer",
+      "defaultValue": 60,
+      "description": "Sliding window duration (minutes) for restart budget."
+    },
+    {
+      "name": "stt.watchdog.max-restarts-per-window",
+      "type": "java.lang.Integer",
+      "defaultValue": 3,
+      "description": "Maximum restarts within the sliding window. Prevents restart loops."
+    },
+    {
+      "name": "stt.watchdog.cooldown-minutes",
+      "type": "java.lang.Integer",
+      "defaultValue": 10,
+      "description": "Cooldown period (minutes) after max restarts exhausted."
+    },
+    {
+      "name": "stt.watchdog.probe-enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": false,
+      "description": "Enable lightweight health probe for engines."
+    },
+    {
+      "name": "stt.watchdog.confidence-blacklist-threshold",
+      "type": "java.lang.Double",
+      "defaultValue": 0.3,
+      "description": "Average confidence below this triggers engine blacklisting (0.0-1.0)."
+    },
+    {
+      "name": "stt.watchdog.confidence-window-size",
+      "type": "java.lang.Integer",
+      "defaultValue": 10,
+      "description": "Number of recent confidence scores to average for blacklisting."
+    },
+    {
+      "name": "stt.watchdog.confidence-min-samples",
+      "type": "java.lang.Integer",
+      "defaultValue": 5,
+      "description": "Minimum samples required before evaluating confidence trend."
+    },
+    {
+      "name": "hotkey.type",
+      "type": "java.lang.String",
+      "defaultValue": "double-tap",
+      "description": "Hotkey type: 'single-key', 'double-tap', or 'modifier-combo'."
+    },
+    {
+      "name": "hotkey.key",
+      "type": "java.lang.String",
+      "defaultValue": "RIGHT_META",
+      "description": "Primary key for hotkey. Examples: RIGHT_META, M, SPACE, F13."
+    },
+    {
+      "name": "hotkey.threshold-ms",
+      "type": "java.lang.Integer",
+      "defaultValue": 300,
+      "description": "For double-tap: max time between taps (100-1000ms). For others: min hold duration."
+    },
+    {
+      "name": "hotkey.toggle-mode",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "Toggle mode: true = click to start/stop. false = push-to-talk (hold)."
+    },
+    {
+      "name": "typing.chunk-size",
+      "type": "java.lang.Integer",
+      "defaultValue": 800,
+      "description": "Maximum characters per paste chunk. Large texts split to avoid clipboard limits."
+    },
+    {
+      "name": "typing.inter-chunk-delay-ms",
+      "type": "java.lang.Integer",
+      "defaultValue": 30,
+      "description": "Delay between paste chunks (ms). Gives apps time to process."
+    },
+    {
+      "name": "typing.focus-delay-ms",
+      "type": "java.lang.Integer",
+      "defaultValue": 100,
+      "description": "Delay after window focus before pasting (ms)."
+    },
+    {
+      "name": "typing.restore-clipboard",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "Restore original clipboard contents after pasting."
+    },
+    {
+      "name": "typing.clipboard-only-fallback",
+      "type": "java.lang.Boolean",
+      "defaultValue": false,
+      "description": "Use clipboard-only mode when Accessibility permission unavailable."
+    },
+    {
+      "name": "typing.normalize-newlines",
+      "type": "java.lang.String",
+      "defaultValue": "LF",
+      "description": "Newline normalization: 'LF', 'CRLF', or 'NONE'."
+    },
+    {
+      "name": "typing.trim-trailing-newline",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "Remove trailing newline from transcription."
+    },
+    {
+      "name": "typing.enable-robot",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "Enable Java Robot API for keystroke simulation. Requires macOS Accessibility."
+    },
+    {
+      "name": "typing.paste-shortcut",
+      "type": "java.lang.String",
+      "defaultValue": "os-default",
+      "description": "Paste shortcut: 'os-default' (Cmd+V on macOS) or custom like 'META+V'."
+    },
+    {
+      "name": "typing.clipboard-restore-delay-ms",
+      "type": "java.lang.Integer",
+      "defaultValue": 200,
+      "description": "Delay before restoring clipboard after paste (50-2000ms)."
+    },
+    {
+      "name": "live-caption.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "Enable live caption overlay. When false, no JavaFX initialization occurs."
+    },
+    {
+      "name": "live-caption.window-width",
+      "type": "java.lang.Integer",
+      "defaultValue": 600,
+      "description": "Width of the overlay window in pixels."
+    },
+    {
+      "name": "live-caption.window-height",
+      "type": "java.lang.Integer",
+      "defaultValue": 250,
+      "description": "Height of the overlay window in pixels."
+    },
+    {
+      "name": "live-caption.window-opacity",
+      "type": "java.lang.Double",
+      "defaultValue": 0.85,
+      "description": "Window opacity (0.0 = transparent, 1.0 = opaque)."
+    },
+    {
+      "name": "tray.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "Enable macOS system tray icon."
+    },
+    {
+      "name": "threadpool.stt.core-pool-size",
+      "type": "java.lang.Integer",
+      "defaultValue": 2,
+      "description": "Core threads for STT engine execution."
+    },
+    {
+      "name": "threadpool.stt.max-pool-size",
+      "type": "java.lang.Integer",
+      "defaultValue": 4,
+      "description": "Maximum threads for burst STT capacity."
+    },
+    {
+      "name": "threadpool.stt.queue-capacity",
+      "type": "java.lang.Integer",
+      "defaultValue": 10,
+      "description": "Bounded queue size for STT tasks."
+    },
+    {
+      "name": "threadpool.stt.keep-alive-seconds",
+      "type": "java.lang.Integer",
+      "defaultValue": 60,
+      "description": "Idle thread timeout before termination."
+    },
+    {
+      "name": "threadpool.stt.thread-name-prefix",
+      "type": "java.lang.String",
+      "defaultValue": "stt-pool-",
+      "description": "Thread name prefix for debugging and log identification."
+    },
+    {
+      "name": "threadpool.event.core-pool-size",
+      "type": "java.lang.Integer",
+      "defaultValue": 2,
+      "description": "Core threads for async event handling."
+    },
+    {
+      "name": "threadpool.event.max-pool-size",
+      "type": "java.lang.Integer",
+      "defaultValue": 4,
+      "description": "Maximum threads for event processing."
+    },
+    {
+      "name": "threadpool.event.queue-capacity",
+      "type": "java.lang.Integer",
+      "defaultValue": 10,
+      "description": "Bounded queue size for event tasks."
+    },
+    {
+      "name": "threadpool.event.keep-alive-seconds",
+      "type": "java.lang.Integer",
+      "defaultValue": 60,
+      "description": "Idle thread timeout before termination."
+    },
+    {
+      "name": "threadpool.event.thread-name-prefix",
+      "type": "java.lang.String",
+      "defaultValue": "event-pool-",
+      "description": "Thread name prefix for debugging and log identification."
+    }
+  ],
+  "hints": [
+    {
+      "name": "stt.orchestration.primary-engine",
+      "values": [
+        { "value": "vosk", "description": "Fast, JNI-based engine (~100ms latency)." },
+        { "value": "whisper", "description": "Accurate, process-based engine (~1-2s latency)." }
+      ]
+    },
+    {
+      "name": "stt.reconciliation.strategy",
+      "values": [
+        { "value": "simple", "description": "Prefer primary engine result unless empty." },
+        { "value": "confidence", "description": "Select result with higher confidence score." },
+        { "value": "overlap", "description": "Use Jaccard word overlap similarity." }
+      ]
+    },
+    {
+      "name": "hotkey.type",
+      "values": [
+        { "value": "single-key", "description": "Single key press/release." },
+        { "value": "double-tap", "description": "Two rapid taps within threshold." },
+        { "value": "modifier-combo", "description": "Key + modifier(s) combination." }
+      ]
+    },
+    {
+      "name": "typing.normalize-newlines",
+      "values": [
+        { "value": "LF", "description": "Unix-style line endings (\\n)." },
+        { "value": "CRLF", "description": "Windows-style line endings (\\r\\n)." },
+        { "value": "NONE", "description": "No newline normalization." }
+      ]
+    },
+    {
+      "name": "stt.whisper.output",
+      "values": [
+        { "value": "text", "description": "Plain text output." },
+        { "value": "json", "description": "Structured JSON with tokens and timestamps." }
+      ]
+    }
+  ]
+}

@@ -35,8 +35,12 @@ Current capabilities (implemented):
 
 Planned (later phases):
 - ❌ Database persistence and search
-- ❌ Security hardening (TLS, OWASP scanning)
+- ❌ Security hardening (TLS pinning, runtime security)
 - ❌ GDPR compliance features (90‑day retention, right to erasure, IP anonymization)
+
+Already in place (build-time security):
+- ✅ OWASP dependency-check (CVSS >= 7.0 fails build)
+- ✅ SpotBugs bytecode analysis (effort=MAX, reportLevel=MEDIUM)
 
 ## Key Features
 
@@ -354,7 +358,7 @@ After starting the app, check the console and `logs/blckvox.log` for structured 
 You should see log lines like:
 ```
 2025-10-14 16:45:12.345 [main] INFO  c.b.b.config.stt.ModelValidationService - Vosk model validated: models/vosk-model-en-us-0.22
-2025-10-14 16:45:13.456 [main] INFO  c.b.b.service.stt.VoskSttEngine - Vosk engine initialized
+2025-10-14 16:45:13.456 [main] INFO  c.b.b.service.stt.vosk.VoskSttEngine - Vosk engine initialized
 ```
 
 ## Architecture
@@ -492,6 +496,12 @@ GIT_REF=v1.8.0 ./build-whisper.sh
 - [ADR-004: Properties-Based Hotkey Config](docs/adr/004-properties-hotkey-config.md)
 - [ADR-005: Log4j 2 Logging](docs/adr/005-log4j2-logging.md)
 - [ADR-006: Event-Driven Architecture](docs/adr/006-event-driven-architecture.md)
+- [ADR-007: Threading Model](docs/adr/007-threading-model.md)
+- [ADR-008: Observability via JMX Metrics](docs/adr/008-observability-jmx-metrics.md)
+- [ADR-009: Typing Fallback Chain](docs/adr/009-typing-fallback-chain.md)
+- [ADR-010: Whisper Process Isolation](docs/adr/010-whisper-process-isolation.md)
+- [ADR-011: Spring Boot for Desktop](docs/adr/011-spring-boot-desktop.md)
+- [ADR-012: Audio Format Constraints](docs/adr/012-audio-format-constraints.md)
 
 ### Diagrams & Runbooks
 
@@ -554,24 +564,27 @@ Notes:
 ```
 src/main/java/com/boombapcompile/blckvox/
 ├── config/            # Spring configuration and typed properties
-│   ├── properties/    # VoskConfig, WhisperConfig, AudioProperties, etc.
+│   ├── properties/    # AudioValidationProperties, HotkeyProperties, TypingProperties, etc.
+│   ├── stt/           # VoskConfig, WhisperConfig, ModelValidationService
 │   └── orchestration/ # Thread pool, event, orchestration config
 ├── service/           # Business logic, STT engines, orchestration, audio capture
 │   ├── audio/         # Audio capture, PCM events
 │   ├── stt/           # STT engines (Vosk, Whisper), streaming
 │   ├── orchestration/ # State tracking, recording service
 │   ├── reconcile/     # Reconciliation strategies
-│   ├── typing/        # Typing adapters (Robot, Clipboard, Notify)
+│   ├── fallback/      # Typing adapters and fallback chain (Robot, Clipboard, Notify)
 │   ├── hotkey/        # Hotkey detection and triggers
 │   ├── livecaption/   # JavaFX overlay (oscilloscope + captions)
 │   └── tray/          # System tray icon and menu
 ├── domain/            # Domain records (TranscriptionResult, etc.)
-├── event/             # Spring ApplicationEvents
+├── events/            # Centralized error event listener
 ├── exception/         # Custom exceptions
 └── util/              # Utility classes (TimeUtils, ProcessTimeouts)
 ```
 
 ## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for prerequisites, build commands, testing philosophy, and PR process.
 
 This project follows:
 - **Clean Code Principles** (Robert C. Martin) - Mandatory naming conventions

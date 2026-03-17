@@ -770,4 +770,76 @@ class SttEngineWatchdogTest {
             // no-op
         }
     }
+
+    // --- EngineHealthChangedEvent tests ---
+
+    @Test
+    void shouldPublishHealthChangedEventOnStateTransition() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 1, false, 60_000L, 0.3, 10, 5);
+        RecordingEngine engine = new RecordingEngine("vosk");
+
+        List<Object> publishedEvents = new ArrayList<>();
+        ApplicationEventPublisher publisher = publishedEvents::add;
+
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
+
+        // Trigger failure → should transition from HEALTHY to DEGRADED
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "test fail",
+                null, Map.of()));
+
+        List<EngineHealthChangedEvent> healthEvents = publishedEvents.stream()
+                .filter(e -> e instanceof EngineHealthChangedEvent)
+                .map(e -> (EngineHealthChangedEvent) e)
+                .toList();
+
+        assertThat(healthEvents).isNotEmpty();
+        EngineHealthChangedEvent event = healthEvents.getFirst();
+        assertThat(event.engine()).isEqualTo("vosk");
+        assertThat(event.previousState()).isEqualTo(SttEngineWatchdog.EngineState.HEALTHY);
+        assertThat(event.currentState()).isEqualTo(SttEngineWatchdog.EngineState.DEGRADED);
+        assertThat(event.timestamp()).isNotNull();
+    }
+
+    @Test
+    void shouldPublishHealthChangedEventOnRecovery() {
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 3, 1, false, 60_000L, 0.3, 10, 5);
+        RecordingEngine engine = new RecordingEngine("vosk");
+
+        List<Object> publishedEvents = new ArrayList<>();
+        ApplicationEventPublisher publisher = publishedEvents::add;
+
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
+
+        // First: cause a failure (HEALTHY → DEGRADED)
+        watchdog.onFailure(new EngineFailureEvent("vosk", Instant.now(), "fail",
+                null, Map.of()));
+
+        // The failure causes a restart which publishes EngineRecoveredEvent.
+        // Process that recovery event.
+        publishedEvents.stream()
+                .filter(e -> e instanceof EngineRecoveredEvent)
+                .map(e -> (EngineRecoveredEvent) e)
+                .findFirst()
+                .ifPresent(watchdog::onRecovered);
+
+        // Should have DEGRADED→HEALTHY transition
+        List<EngineHealthChangedEvent> healthEvents = publishedEvents.stream()
+                .filter(e -> e instanceof EngineHealthChangedEvent)
+                .map(e -> (EngineHealthChangedEvent) e)
+                .toList();
+
+        assertThat(healthEvents).hasSizeGreaterThanOrEqualTo(2);
+        EngineHealthChangedEvent recoveryEvent = healthEvents.getLast();
+        assertThat(recoveryEvent.currentState()).isEqualTo(SttEngineWatchdog.EngineState.HEALTHY);
+    }
+
+    @Test
+    void engineHealthChangedEventNullTimestampDefaultsToNow() {
+        EngineHealthChangedEvent event = new EngineHealthChangedEvent(
+                "vosk", SttEngineWatchdog.EngineState.HEALTHY,
+                SttEngineWatchdog.EngineState.DEGRADED, null);
+        assertThat(event.timestamp()).isNotNull();
+    }
 }

@@ -72,4 +72,11 @@
         <Class name="com.boombapcompile.blckvox.service.orchestration.TranscriptionMetricsPublisher"/>
         <Bug pattern="EI_EXPOSE_REP2"/>
     </Match>
+
+    <!-- EI_EXPOSE_REP2: ThreadPoolConfig stores Spring-injected MeterRegistry
+         and ThreadPoolProperties; defensive copying DI collaborators is meaningless. -->
+    <Match>
+        <Class name="com.boombapcompile.blckvox.config.ThreadPoolConfig"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
 </FindBugsFilter>

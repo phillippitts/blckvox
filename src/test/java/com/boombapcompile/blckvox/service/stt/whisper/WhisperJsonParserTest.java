@@ -1,6 +1,8 @@
 package com.boombapcompile.blckvox.service.stt.whisper;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.List;
 
@@ -659,5 +661,158 @@ class WhisperJsonParserTest {
     void extractConfidenceSkipsSegmentsWithNullWordsArray() {
         String json = "{\"segments\": [{\"words\": null}]}";
         assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.85);
+    }
+
+    // --- Parameterized confidence boundary tests ---
+
+    @ParameterizedTest(name = "extractConfidence: prob={0} should return {1}")
+    @CsvSource({
+        "0.0, 0.0",     // exact zero
+        "0.001, 0.001",  // near zero
+        "0.5, 0.5",     // midpoint
+        "0.999, 0.999",  // near one
+        "1.0, 1.0",     // exact one
+        "-0.1, 0.0",    // negative clamped to zero
+        "1.5, 1.0",     // above one clamped to one
+        "-100.0, 0.0",  // extreme negative clamped
+        "100.0, 1.0",   // extreme positive clamped
+    })
+    void extractConfidenceBoundaryValues(double prob, double expected) {
+        String json = String.format("""
+            {
+              "segments": [
+                {"words": [{"word": "test", "prob": %s}]}
+              ]
+            }
+            """, prob);
+        assertThat(WhisperJsonParser.extractConfidence(json))
+                .isCloseTo(expected, org.assertj.core.data.Offset.offset(0.001));
+    }
+
+    @ParameterizedTest(name = "extractConfidence: two words with probs {0} and {1} should average to {2}")
+    @CsvSource({
+        "0.0, 1.0, 0.5",     // zero + one averages to 0.5
+        "0.3, 0.7, 0.5",     // symmetric around 0.5
+        "0.9, 0.9, 0.9",     // identical values
+        "0.0, 0.0, 0.0",     // both zero
+        "1.0, 1.0, 1.0",     // both one
+    })
+    void extractConfidenceAveragingBoundaries(double prob1, double prob2, double expected) {
+        String json = String.format("""
+            {
+              "segments": [
+                {"words": [
+                  {"word": "a", "prob": %s},
+                  {"word": "b", "prob": %s}
+                ]}
+              ]
+            }
+            """, prob1, prob2);
+        assertThat(WhisperJsonParser.extractConfidence(json))
+                .isCloseTo(expected, org.assertj.core.data.Offset.offset(0.001));
+    }
+
+    // --- avg_logprob fallback tests ---
+
+    @Test
+    void extractConfidenceFallsBackToAvgLogprob() {
+        // No word-level prob fields, but segments have avg_logprob
+        // Math.exp(-0.5) ≈ 0.6065
+        String json = """
+            {
+              "segments": [
+                {"text": "hello world", "avg_logprob": -0.5}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json))
+                .isCloseTo(Math.exp(-0.5), org.assertj.core.data.Offset.offset(0.001));
+    }
+
+    @Test
+    void extractConfidencePrefersWordProbOverAvgLogprob() {
+        // Word-level prob fields present — avg_logprob should be ignored
+        String json = """
+            {
+              "segments": [
+                {"avg_logprob": -2.0, "words": [
+                  {"word": "hello", "prob": 0.9}
+                ]}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.9);
+    }
+
+    @Test
+    void extractConfidenceAvgLogprobClampsAboveOne() {
+        // avg_logprob of 0.0 → Math.exp(0.0) = 1.0, should clamp to 1.0
+        String json = """
+            {
+              "segments": [
+                {"text": "hello", "avg_logprob": 0.0}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(1.0);
+    }
+
+    @Test
+    void extractConfidenceAvgLogprobClampsNearZero() {
+        // Very negative avg_logprob → Math.exp(-10) ≈ 0.0000454
+        String json = """
+            {
+              "segments": [
+                {"text": "hello", "avg_logprob": -10.0}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json))
+                .isCloseTo(Math.exp(-10.0), org.assertj.core.data.Offset.offset(0.0001));
+    }
+
+    @Test
+    void extractConfidenceAvgLogprobMultipleSegments() {
+        // Two segments: Math.exp(-0.3) ≈ 0.7408, Math.exp(-0.7) ≈ 0.4966
+        // Average ≈ 0.6187
+        String json = """
+            {
+              "segments": [
+                {"text": "first", "avg_logprob": -0.3},
+                {"text": "second", "avg_logprob": -0.7}
+              ]
+            }
+            """;
+        double expected = (Math.exp(-0.3) + Math.exp(-0.7)) / 2;
+        assertThat(WhisperJsonParser.extractConfidence(json))
+                .isCloseTo(expected, org.assertj.core.data.Offset.offset(0.001));
+    }
+
+    @Test
+    void extractConfidenceNoWordProbsNoAvgLogprobReturnsFallback() {
+        // Segments have words but no prob fields and no avg_logprob
+        String json = """
+            {
+              "segments": [
+                {"words": [{"word": "hello"}]}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.85);
+    }
+
+    @Test
+    void extractConfidenceAvgLogprobSkipsSegmentsWithoutField() {
+        // Mix: one segment has avg_logprob, one doesn't
+        String json = """
+            {
+              "segments": [
+                {"text": "first", "avg_logprob": -0.5},
+                {"text": "second"}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json))
+                .isCloseTo(Math.exp(-0.5), org.assertj.core.data.Offset.offset(0.001));
     }
 }

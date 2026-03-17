@@ -192,13 +192,42 @@ final class WhisperJsonParser {
             }
 
             if (count == 0) {
-                return 0.85;
+                // Fallback: try segment-level avg_logprob
+                return extractConfidenceFromAvgLogprob(segs);
             }
             double avg = sum / count;
             return Math.min(1.0, Math.max(0.0, avg));
         } catch (org.json.JSONException ignored) {
             return 0.85;
         }
+    }
+
+    /**
+     * Extracts confidence from segment-level {@code avg_logprob} fields.
+     * Converts log-probability to linear probability via {@code Math.exp()},
+     * averages across segments, and clamps to [0.0, 1.0].
+     * Returns 0.85 fallback if no avg_logprob fields are found.
+     */
+    private static double extractConfidenceFromAvgLogprob(JSONArray segs) {
+        double sum = 0.0;
+        int count = 0;
+        for (int i = 0; i < segs.length(); i++) {
+            JSONObject seg = segs.optJSONObject(i);
+            if (seg == null || !seg.has("avg_logprob")) {
+                continue;
+            }
+            double logprob = seg.optDouble("avg_logprob", Double.NaN);
+            if (Double.isNaN(logprob)) {
+                continue;
+            }
+            sum += Math.exp(logprob);
+            count++;
+        }
+        if (count == 0) {
+            return 0.85;
+        }
+        double avg = sum / count;
+        return Math.min(1.0, Math.max(0.0, avg));
     }
 
     static List<String> extractTokens(String json) {

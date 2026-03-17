@@ -1,6 +1,16 @@
 package com.boombapcompile.blckvox;
 
-import com.boombapcompile.blckvox.config.properties.*;
+import com.boombapcompile.blckvox.config.properties.AudioCaptureProperties;
+import com.boombapcompile.blckvox.config.properties.AudioValidationProperties;
+import com.boombapcompile.blckvox.config.properties.HotkeyProperties;
+import com.boombapcompile.blckvox.config.properties.LiveCaptionProperties;
+import com.boombapcompile.blckvox.config.properties.OrchestrationProperties;
+import com.boombapcompile.blckvox.config.properties.ReconciliationProperties;
+import com.boombapcompile.blckvox.config.properties.SttConcurrencyProperties;
+import com.boombapcompile.blckvox.config.properties.SttWatchdogProperties;
+import com.boombapcompile.blckvox.config.properties.ThreadPoolProperties;
+import com.boombapcompile.blckvox.config.properties.TrayProperties;
+import com.boombapcompile.blckvox.config.properties.TypingProperties;
 import com.boombapcompile.blckvox.config.stt.VoskConfig;
 import com.boombapcompile.blckvox.config.stt.WhisperConfig;
 import org.springframework.boot.SpringApplication;
