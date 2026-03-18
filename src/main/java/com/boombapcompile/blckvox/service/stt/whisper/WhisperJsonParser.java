@@ -13,6 +13,8 @@ import java.util.List;
  */
 final class WhisperJsonParser {
 
+    private static final double CONFIDENCE_FALLBACK = 0.85;
+
     private WhisperJsonParser() {}
 
     /**
@@ -151,16 +153,16 @@ final class WhisperJsonParser {
      */
     static double extractConfidence(String json) {
         if (json == null || json.isBlank()) {
-            return 0.85;
+            return CONFIDENCE_FALLBACK;
         }
         try {
             JSONObject obj = new JSONObject(json);
             if (!obj.has("segments")) {
-                return 0.85;
+                return CONFIDENCE_FALLBACK;
             }
             JSONArray segs = obj.optJSONArray("segments");
             if (segs == null || segs.length() == 0) {
-                return 0.85;
+                return CONFIDENCE_FALLBACK;
             }
 
             double sum = 0.0;
@@ -198,7 +200,7 @@ final class WhisperJsonParser {
             double avg = sum / count;
             return Math.min(1.0, Math.max(0.0, avg));
         } catch (org.json.JSONException ignored) {
-            return 0.85;
+            return CONFIDENCE_FALLBACK;
         }
     }
 
@@ -224,7 +226,7 @@ final class WhisperJsonParser {
             count++;
         }
         if (count == 0) {
-            return 0.85;
+            return CONFIDENCE_FALLBACK;
         }
         double avg = sum / count;
         return Math.min(1.0, Math.max(0.0, avg));

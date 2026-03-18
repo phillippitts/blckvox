@@ -396,7 +396,7 @@ class HotkeyRecordingAdapterTest {
         FakeWatchdog(boolean voskEnabled, boolean whisperEnabled) {
             super(java.util.List.of(),
                     new SttWatchdogProperties(
-                            true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5),
+                            true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5),
                     e -> { });
             this.voskEnabled = voskEnabled;
             this.whisperEnabled = whisperEnabled;

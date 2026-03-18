@@ -33,10 +33,12 @@ public final class AudioSilenceDetector {
     }
 
     /**
-     * Default RMS amplitude threshold for silence detection.
+     * Default RMS amplitude threshold for silence boundary detection within audio.
      * Values below this are considered silence in 16-bit PCM audio.
+     * This is distinct from the configurable {@code stt.orchestration.silence-threshold}
+     * property (default 200), which controls full-buffer silence skip in the orchestrator.
      */
-    private static final int DEFAULT_SILENCE_THRESHOLD = 800;
+    private static final int DEFAULT_BOUNDARY_THRESHOLD = 800;
 
     /**
      * Default window size for RMS analysis (milliseconds).
@@ -139,7 +141,7 @@ public final class AudioSilenceDetector {
      *         (empty list if no silence detected or invalid input)
      */
     public static List<Integer> detectSilenceBoundaries(byte[] pcmData, int silenceGapMs, int sampleRate) {
-        return detectSilenceBoundaries(pcmData, silenceGapMs, sampleRate, DEFAULT_SILENCE_THRESHOLD);
+        return detectSilenceBoundaries(pcmData, silenceGapMs, sampleRate, DEFAULT_BOUNDARY_THRESHOLD);
     }
 
     /**

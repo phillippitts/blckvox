@@ -253,12 +253,6 @@
       "description": "Cooldown period (minutes) after max restarts exhausted."
     },
     {
-      "name": "stt.watchdog.probe-enabled",
-      "type": "java.lang.Boolean",
-      "defaultValue": false,
-      "description": "Enable lightweight health probe for engines."
-    },
-    {
       "name": "stt.watchdog.confidence-blacklist-threshold",
       "type": "java.lang.Double",
       "defaultValue": 0.3,

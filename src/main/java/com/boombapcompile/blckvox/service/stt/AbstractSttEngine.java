@@ -2,12 +2,18 @@ package com.boombapcompile.blckvox.service.stt;
 
 import com.boombapcompile.blckvox.service.stt.vosk.VoskSttEngine;
 import com.boombapcompile.blckvox.service.stt.whisper.WhisperSttEngine;
+import com.boombapcompile.blckvox.config.properties.SttConcurrencyProperties;
 import com.boombapcompile.blckvox.exception.TranscriptionException;
+import com.boombapcompile.blckvox.service.stt.util.ConcurrencyGuard;
+import com.boombapcompile.blckvox.service.stt.util.ConcurrencyScaler;
+import com.boombapcompile.blckvox.service.stt.util.DynamicConcurrencyGuard;
 import com.boombapcompile.blckvox.service.stt.util.EngineEventPublisher;
+import com.boombapcompile.blckvox.service.stt.util.TranscriptionGuard;
 import jakarta.annotation.PreDestroy;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -73,6 +79,72 @@ public abstract class AbstractSttEngine implements SttEngine {
      * Access must be guarded by {@link #lock}.
      */
     protected boolean closed = false;
+
+    /**
+     * Concurrency guard protecting transcription operations.
+     * Initialized by subclass constructors via {@link #initializeGuard} or {@link #initializeDefaultGuard}.
+     */
+    private TranscriptionGuard guard;
+
+    /**
+     * Initializes the concurrency guard with dynamic scaling support.
+     *
+     * <p>Selects between {@link DynamicConcurrencyGuard} (if dynamic scaling is enabled and
+     * a scaler is available) and {@link ConcurrencyGuard} (static semaphore).
+     *
+     * @param engineName engine name for error messages and events
+     * @param max maximum concurrent permits
+     * @param timeoutMs acquire timeout in milliseconds
+     * @param publisher event publisher for failure notifications
+     * @param concurrencyProps concurrency configuration
+     * @param scaler optional dynamic concurrency scaler (may be null)
+     */
+    protected final void initializeGuard(String engineName,
+                                          int max,
+                                          long timeoutMs,
+                                          ApplicationEventPublisher publisher,
+                                          SttConcurrencyProperties concurrencyProps,
+                                          ConcurrencyScaler scaler) {
+        if (concurrencyProps.isDynamicScalingEnabled() && scaler != null) {
+            DynamicConcurrencyGuard dynamicGuard =
+                    new DynamicConcurrencyGuard(max, timeoutMs, engineName, publisher);
+            scaler.registerGuard(engineName, dynamicGuard);
+            this.guard = dynamicGuard;
+        } else {
+            this.guard = new ConcurrencyGuard(
+                    new Semaphore(max), timeoutMs, engineName, publisher);
+        }
+    }
+
+    /**
+     * Initializes the concurrency guard with default static settings.
+     *
+     * <p>Used by basic/test constructors that don't need dynamic scaling.
+     *
+     * @param engineName engine name for error messages
+     * @param max maximum concurrent permits
+     * @param timeoutMs acquire timeout in milliseconds
+     */
+    protected final void initializeDefaultGuard(String engineName, int max, long timeoutMs) {
+        this.guard = new ConcurrencyGuard(
+                new Semaphore(max), timeoutMs, engineName, null);
+    }
+
+    /**
+     * Acquires the concurrency guard permit.
+     *
+     * @throws TranscriptionException if permit cannot be acquired
+     */
+    protected final void acquireGuard() {
+        guard.acquire();
+    }
+
+    /**
+     * Releases the concurrency guard permit.
+     */
+    protected final void releaseGuard() {
+        guard.release();
+    }
 
     /**
      * Initializes the STT engine using the Template Method pattern.

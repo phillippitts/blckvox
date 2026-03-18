@@ -37,7 +37,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @since 1.0
  */
-public final class ConcurrencyGuard {
+public final class ConcurrencyGuard implements TranscriptionGuard {
 
     private final Semaphore semaphore;
     private final long timeoutMs;

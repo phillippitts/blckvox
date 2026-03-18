@@ -1,6 +1,8 @@
 package com.boombapcompile.blckvox.service.stt.watchdog;
 
 import com.boombapcompile.blckvox.config.properties.SttWatchdogProperties;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -18,6 +20,8 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class RestartBudgetTracker {
 
+    private static final Logger LOG = LogManager.getLogger(RestartBudgetTracker.class);
+
     private final int windowMinutes;
     private final int maxRestartsPerWindow;
     private final int cooldownMinutes;
@@ -32,12 +36,12 @@ public class RestartBudgetTracker {
 
     public RestartBudgetTracker(SttWatchdogProperties props) {
         Objects.requireNonNull(props, "props");
-        this.windowMinutes = props.getWindowMinutes();
-        this.maxRestartsPerWindow = props.getMaxRestartsPerWindow();
-        this.cooldownMinutes = props.getCooldownMinutes();
-        this.backoffBaseDelayMs = props.getBackoffBaseDelayMs();
-        this.backoffMultiplier = props.getBackoffMultiplier();
-        this.backoffMaxDelayMs = props.getBackoffMaxDelayMs();
+        this.windowMinutes = props.windowMinutes();
+        this.maxRestartsPerWindow = props.maxRestartsPerWindow();
+        this.cooldownMinutes = props.cooldownMinutes();
+        this.backoffBaseDelayMs = props.backoffBaseDelayMs();
+        this.backoffMultiplier = props.backoffMultiplier();
+        this.backoffMaxDelayMs = props.backoffMaxDelayMs();
     }
 
     /** Registers an engine for tracking. Must be called before any other method for this engine. */
@@ -127,12 +131,22 @@ public class RestartBudgetTracker {
      * Returns true if the lock was acquired. Caller MUST call {@link #unlockRestart} when done.
      */
     public boolean tryLockRestart(String engine) {
-        return locks.get(engine).tryLock();
+        ReentrantLock lock = locks.get(engine);
+        if (lock == null) {
+            LOG.warn("No restart lock for: {}", engine);
+            return false;
+        }
+        return lock.tryLock();
     }
 
     /** Releases the per-engine restart lock. */
     public void unlockRestart(String engine) {
-        locks.get(engine).unlock();
+        ReentrantLock lock = locks.get(engine);
+        if (lock == null) {
+            LOG.warn("No restart lock for: {}", engine);
+            return;
+        }
+        lock.unlock();
     }
 
     /** Returns the current restart count within the window (for logging). */

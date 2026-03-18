@@ -23,7 +23,7 @@ class SttEngineWatchdogTest {
     @Test
     void shouldRestartEngineOnFailureWithinBudget() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 1, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 1, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
 
         List<Object> publishedEvents = new ArrayList<>();
@@ -49,7 +49,7 @@ class SttEngineWatchdogTest {
     @Test
     void shouldDisableEngineAfterExceedingBudget() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 1, 1, false, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
+                true, 60, 1, 1, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("whisper");
         ApplicationEventPublisher publisher = (event) -> { };
 
@@ -72,7 +72,7 @@ class SttEngineWatchdogTest {
     @Test
     void shouldNotBlacklistBeforeMinSamplesReached() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         List<Object> publishedEvents = new ArrayList<>();
         ApplicationEventPublisher publisher = publishedEvents::add;
@@ -92,7 +92,7 @@ class SttEngineWatchdogTest {
     @Test
     void shouldBlacklistEngineWhenConfidenceBelowThreshold() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 1, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 1, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         List<Object> publishedEvents = new ArrayList<>();
         ApplicationEventPublisher publisher = publishedEvents::add;
@@ -112,7 +112,7 @@ class SttEngineWatchdogTest {
     @Test
     void shouldNotBlacklistWhenConfidenceAboveThreshold() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         List<Object> publishedEvents = new ArrayList<>();
         ApplicationEventPublisher publisher = publishedEvents::add;
@@ -131,7 +131,7 @@ class SttEngineWatchdogTest {
     @Test
     void shouldPruneConfidenceWindowToConfiguredSize() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 5, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 5, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
         SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
@@ -149,7 +149,7 @@ class SttEngineWatchdogTest {
     @Test
     void shouldClearConfidenceWindowOnRecovery() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 1, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 1, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
         SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
@@ -170,7 +170,7 @@ class SttEngineWatchdogTest {
     @Test
     void shouldIgnoreConfidenceForUnknownEngines() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
         SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
@@ -186,7 +186,7 @@ class SttEngineWatchdogTest {
     @Test
     void initializeEnginesCallsInitializeOnAllEngines() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine vosk = new RecordingEngine("vosk");
         RecordingEngine whisper = new RecordingEngine("whisper");
         ApplicationEventPublisher publisher = event -> { };
@@ -201,7 +201,7 @@ class SttEngineWatchdogTest {
     @Test
     void initializeEnginesDisablesEngineOnFailure() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         FailingEngine failing = new FailingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
 
@@ -214,7 +214,7 @@ class SttEngineWatchdogTest {
     @Test
     void initializeEnginesDefersSecondaryWhenPrimaryConfigured() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine vosk = new RecordingEngine("vosk");
         RecordingEngine whisper = new RecordingEngine("whisper");
         ApplicationEventPublisher publisher = event -> { };
@@ -234,7 +234,7 @@ class SttEngineWatchdogTest {
     @Test
     void initializeOnDemandInitializesLazyEngine() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine vosk = new RecordingEngine("vosk");
         // Use an engine that starts unhealthy until initialize() is called
         LazyRecordingEngine whisper = new LazyRecordingEngine("whisper");
@@ -260,7 +260,7 @@ class SttEngineWatchdogTest {
     @Test
     void initializeOnDemandReturnsTrueWhenAlreadyHealthy() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
 
@@ -275,7 +275,7 @@ class SttEngineWatchdogTest {
     @Test
     void initializeOnDemandReturnsFalseWhenInitThrows() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         // FailingEngine: isHealthy()=false, initialize() throws
         FailingEngine engine = new FailingEngine("whisper");
         List<Object> publishedEvents = new ArrayList<>();
@@ -290,7 +290,7 @@ class SttEngineWatchdogTest {
     @Test
     void initializeOnDemandReturnsFalseForUnknownEngine() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
 
@@ -302,7 +302,7 @@ class SttEngineWatchdogTest {
     @Test
     void logHealthSummaryShouldNotThrow() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
 
@@ -314,7 +314,7 @@ class SttEngineWatchdogTest {
     @Test
     void isEngineEnabledReturnsTrueForHealthyEngine() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
 
@@ -327,7 +327,7 @@ class SttEngineWatchdogTest {
     void isEngineEnabledReturnsFalseWhenDisabled() {
         // budget = 1 restart allowed; two failures will exhaust and disable
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 1, 10, false, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
+                true, 60, 1, 10, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
 
@@ -347,7 +347,7 @@ class SttEngineWatchdogTest {
     @Test
     void onFailureIgnoresUnknownEngine() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
 
@@ -366,7 +366,7 @@ class SttEngineWatchdogTest {
     void safetyModeForceEnablesBestEngine() {
         // Both engines get budget = 1, so two failures disable each
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 1, 10, false, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
+                true, 60, 1, 10, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
         RecordingEngine vosk = new RecordingEngine("vosk");
         RecordingEngine whisper = new RecordingEngine("whisper");
         List<Object> publishedEvents = new ArrayList<>();
@@ -410,7 +410,7 @@ class SttEngineWatchdogTest {
     @Test
     void onRecoveredIgnoresUnknownEngine() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
 
@@ -428,7 +428,7 @@ class SttEngineWatchdogTest {
     @Test
     void restartFailureKeepsEngineDegraded() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         // Engine that closes fine but fails to re-initialize
         InitFailingEngine engine = new InitFailingEngine("vosk");
         List<Object> publishedEvents = new ArrayList<>();
@@ -449,7 +449,7 @@ class SttEngineWatchdogTest {
     void singleEngineSkipsSafetyMode() {
         // Safety mode requires size >= 2; with a single engine it should not trigger
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 1, 10, false, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
+                true, 60, 1, 10, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
 
@@ -469,7 +469,7 @@ class SttEngineWatchdogTest {
     @Test
     void closeThrowsDuringRestartContinuesToInitialize() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         CloseFailingEngine engine = new CloseFailingEngine("vosk");
         List<Object> publishedEvents = new ArrayList<>();
         ApplicationEventPublisher publisher = publishedEvents::add;
@@ -519,7 +519,7 @@ class SttEngineWatchdogTest {
     @Test
     void confidenceMonitorFormattedSummaryWithData() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
 
@@ -540,7 +540,7 @@ class SttEngineWatchdogTest {
     @Test
     void confidenceMonitorRecordForUntrackedEngineReturnsNull() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         ConfidenceMonitor monitor = new ConfidenceMonitor(props);
         // "unknown" was never registered
         assertThat(monitor.record("unknown", 0.5)).isNull();
@@ -549,7 +549,7 @@ class SttEngineWatchdogTest {
     @Test
     void confidenceMonitorAverageConfidenceForEmptyReturnsZero() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         ConfidenceMonitor monitor = new ConfidenceMonitor(props);
         monitor.register("vosk");
         assertThat(monitor.averageConfidence("vosk")).isEqualTo(0.0);
@@ -558,7 +558,7 @@ class SttEngineWatchdogTest {
     @Test
     void confidenceMonitorAverageConfidenceForUnknownReturnsZero() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         ConfidenceMonitor monitor = new ConfidenceMonitor(props);
         assertThat(monitor.averageConfidence("unknown")).isEqualTo(0.0);
     }
@@ -566,7 +566,7 @@ class SttEngineWatchdogTest {
     @Test
     void confidenceMonitorFormattedSummaryForUnknownReturnsEmpty() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         ConfidenceMonitor monitor = new ConfidenceMonitor(props);
         assertThat(monitor.formattedSummary("unknown")).isEmpty();
     }
@@ -574,7 +574,7 @@ class SttEngineWatchdogTest {
     @Test
     void confidenceMonitorFormattedSummaryForEmptyWindowReturnsEmpty() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         ConfidenceMonitor monitor = new ConfidenceMonitor(props);
         monitor.register("vosk");
         assertThat(monitor.formattedSummary("vosk")).isEmpty();
@@ -583,7 +583,7 @@ class SttEngineWatchdogTest {
     @Test
     void confidenceMonitorClearOnRecoveryForUnknownDoesNotThrow() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         ConfidenceMonitor monitor = new ConfidenceMonitor(props);
         assertThatCode(() -> monitor.clearOnRecovery("unknown")).doesNotThrowAnyException();
     }
@@ -591,7 +591,7 @@ class SttEngineWatchdogTest {
     @Test
     void packagePrivateConstructorRegistersEngines() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RestartBudgetTracker budget = new RestartBudgetTracker(props);
         ConfidenceMonitor monitor = new ConfidenceMonitor(props);
 
@@ -609,7 +609,7 @@ class SttEngineWatchdogTest {
     @Test
     void safetyModeWithFailingRestartKeepsEngineDegraded() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 1, 10, false, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
+                true, 60, 1, 10, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
         // Use InitFailingEngine so tryRestart() fails in safety mode
         InitFailingEngine vosk = new InitFailingEngine("vosk");
         RecordingEngine whisper = new RecordingEngine("whisper");
@@ -648,7 +648,7 @@ class SttEngineWatchdogTest {
         // Tests the `!budgetTracker.isInCooldown(engine)` returning false
         // when state is not DISABLED (i.e., line 113 returns false)
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RestartBudgetTracker budget = new RestartBudgetTracker(props);
         ConfidenceMonitor monitor = new ConfidenceMonitor(props);
 
@@ -672,7 +672,7 @@ class SttEngineWatchdogTest {
     void attemptRestartSkipsWhenLockAlreadyHeld() throws InterruptedException {
         // Tests the `tryLockRestart` returning false branch (line 180)
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RestartBudgetTracker budget = new RestartBudgetTracker(props);
         ConfidenceMonitor monitor = new ConfidenceMonitor(props);
 
@@ -714,7 +714,7 @@ class SttEngineWatchdogTest {
     @Test
     void onFailureEarlyReturnWhenAlreadyDisabled() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 1, 10, false, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
+                true, 60, 1, 10, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
         SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
@@ -735,7 +735,7 @@ class SttEngineWatchdogTest {
     void attemptRestartSkippedWhenInCooldown() {
         // maxRestarts=1, budget period=60s — first restart uses budget, second triggers cooldown
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 1, 1, false, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
+                true, 60, 1, 1, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         List<Object> publishedEvents = new ArrayList<>();
         ApplicationEventPublisher publisher = publishedEvents::add;
@@ -919,7 +919,7 @@ class SttEngineWatchdogTest {
     @Test
     void shouldPublishHealthChangedEventOnStateTransition() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 1, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 1, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
 
         List<Object> publishedEvents = new ArrayList<>();
@@ -947,7 +947,7 @@ class SttEngineWatchdogTest {
     @Test
     void shouldPublishHealthChangedEventOnRecovery() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 1, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 1, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
 
         List<Object> publishedEvents = new ArrayList<>();
@@ -982,7 +982,7 @@ class SttEngineWatchdogTest {
     void attemptRestartSkippedDuringBackoff() {
         // Use high base delay so backoff is definitely active after first restart
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 600_000L, 2.0, 600_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 600_000L, 2.0, 600_000L, 5);
         RestartBudgetTracker budget = new RestartBudgetTracker(props);
         ConfidenceMonitor monitor = new ConfidenceMonitor(props);
 
@@ -1014,7 +1014,7 @@ class SttEngineWatchdogTest {
     @Test
     void shouldSkipFailedResultsInConfidenceTracking() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         List<Object> publishedEvents = new ArrayList<>();
         ApplicationEventPublisher publisher = publishedEvents::add;
@@ -1036,7 +1036,7 @@ class SttEngineWatchdogTest {
     @Test
     void shouldSkipSilentResultsInConfidenceTracking() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         List<Object> publishedEvents = new ArrayList<>();
         ApplicationEventPublisher publisher = publishedEvents::add;
@@ -1058,7 +1058,7 @@ class SttEngineWatchdogTest {
     void shouldTrackEmptyTextWithLowConfidence() {
         // Empty text with confidence < 1.0 is NOT silent — exercises L225 false branch
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         ApplicationEventPublisher publisher = event -> { };
         SttEngineWatchdog watchdog = new SttEngineWatchdog(List.of(engine), props, publisher);
@@ -1075,7 +1075,7 @@ class SttEngineWatchdogTest {
     @Test
     void shouldTrackNonEmptyLowConfidenceResults() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         RecordingEngine engine = new RecordingEngine("vosk");
         List<Object> publishedEvents = new ArrayList<>();
         ApplicationEventPublisher publisher = publishedEvents::add;

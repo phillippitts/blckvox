@@ -196,7 +196,7 @@ class HotkeyRecordingAdapterBuilderTest {
     static class FakeWatchdog extends SttEngineWatchdog {
         FakeWatchdog() {
             super(List.of(),
-                    new SttWatchdogProperties(true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5),
+                    new SttWatchdogProperties(true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5),
                     e -> { });
         }
         @Override

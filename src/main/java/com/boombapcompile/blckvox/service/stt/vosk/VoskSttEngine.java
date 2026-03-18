@@ -9,9 +9,7 @@ import com.boombapcompile.blckvox.domain.TranscriptionResult;
 import com.boombapcompile.blckvox.exception.TranscriptionException;
 import com.boombapcompile.blckvox.service.audio.AudioSilenceDetector;
 import com.boombapcompile.blckvox.service.stt.SttEngineNames;
-import com.boombapcompile.blckvox.service.stt.util.ConcurrencyGuard;
 import com.boombapcompile.blckvox.service.stt.util.ConcurrencyScaler;
-import com.boombapcompile.blckvox.service.stt.util.DynamicConcurrencyGuard;
 import com.boombapcompile.blckvox.service.stt.util.EngineEventPublisher;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -23,7 +21,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Map;
-import java.util.concurrent.Semaphore;
 
 /**
  * Vosk-based implementation of the SttEngine interface.
@@ -56,10 +53,6 @@ public class VoskSttEngine extends AbstractSttEngine {
     private final VoskConfig config;
     private final VoskModelProvider modelProvider;
 
-    // Lightweight concurrency guard (configurable); one of these is active
-    private final ConcurrencyGuard concurrencyGuard;
-    private final DynamicConcurrencyGuard dynamicGuard;
-
     // Optional event publisher for watchdog events
     private ApplicationEventPublisher publisher;
 
@@ -73,13 +66,7 @@ public class VoskSttEngine extends AbstractSttEngine {
     public VoskSttEngine(VoskConfig config) {
         this.config = Objects.requireNonNull(config, "config");
         this.modelProvider = null;
-        this.concurrencyGuard = new ConcurrencyGuard(
-                new Semaphore(DEFAULT_CONCURRENCY_LIMIT),
-                DEFAULT_ACQUIRE_TIMEOUT_MS,
-                SttEngineNames.VOSK,
-                null // No publisher in basic constructor
-        );
-        this.dynamicGuard = null;
+        initializeDefaultGuard(SttEngineNames.VOSK, DEFAULT_CONCURRENCY_LIMIT, DEFAULT_ACQUIRE_TIMEOUT_MS);
         this.silenceGapMs = 0; // Disabled in basic constructor
     }
 
@@ -98,17 +85,7 @@ public class VoskSttEngine extends AbstractSttEngine {
         this.modelProvider = Objects.requireNonNull(modelProvider, "modelProvider");
         int max = Math.max(1, concurrencyProperties.getVoskMax());
         long timeoutMs = Math.max(0, concurrencyProperties.getAcquireTimeoutMs());
-
-        if (concurrencyProperties.isDynamicScalingEnabled() && concurrencyScaler != null) {
-            this.dynamicGuard = new DynamicConcurrencyGuard(max, timeoutMs, SttEngineNames.VOSK, publisher);
-            this.concurrencyGuard = null;
-            concurrencyScaler.registerGuard(SttEngineNames.VOSK, this.dynamicGuard);
-        } else {
-            this.concurrencyGuard = new ConcurrencyGuard(
-                    new Semaphore(max), timeoutMs, SttEngineNames.VOSK, publisher);
-            this.dynamicGuard = null;
-        }
-
+        initializeGuard(SttEngineNames.VOSK, max, timeoutMs, publisher, concurrencyProperties, concurrencyScaler);
         this.publisher = publisher;
         this.silenceGapMs = orchestrationProperties != null ?
                 orchestrationProperties.getSilenceGapMs() : 0;
@@ -176,35 +153,15 @@ public class VoskSttEngine extends AbstractSttEngine {
 
         acquireTranscriptionLock();
         try {
-            boolean acquired = false;
+            acquireGuard();
             try {
-                acquireGuard();
-                acquired = true;
                 org.vosk.Model localModel = getModelForTranscription();
                 return transcribeWithModel(localModel, audioData);
             } finally {
-                if (acquired) {
-                    releaseGuard();
-                }
+                releaseGuard();
             }
         } finally {
             releaseTranscriptionLock();
-        }
-    }
-
-    private void acquireGuard() {
-        if (dynamicGuard != null) {
-            dynamicGuard.acquire();
-        } else {
-            concurrencyGuard.acquire();
-        }
-    }
-
-    private void releaseGuard() {
-        if (dynamicGuard != null) {
-            dynamicGuard.release();
-        } else {
-            concurrencyGuard.release();
         }
     }
 

@@ -26,10 +26,10 @@ public class ConfidenceMonitor {
 
     public ConfidenceMonitor(SttWatchdogProperties props) {
         Objects.requireNonNull(props, "props");
-        this.blacklistThreshold = props.getConfidenceBlacklistThreshold();
-        this.windowSize = props.getConfidenceWindowSize();
-        this.minSamples = props.getConfidenceMinSamples();
-        this.graceTranscriptions = props.getConfidenceGraceTranscriptions();
+        this.blacklistThreshold = props.confidenceBlacklistThreshold();
+        this.windowSize = props.confidenceWindowSize();
+        this.minSamples = props.confidenceMinSamples();
+        this.graceTranscriptions = props.confidenceGraceTranscriptions();
     }
 
     /** Registers an engine for confidence monitoring. */

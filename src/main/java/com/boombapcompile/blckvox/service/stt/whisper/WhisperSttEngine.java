@@ -12,9 +12,7 @@ import com.boombapcompile.blckvox.service.audio.WavWriter;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
 import com.boombapcompile.blckvox.service.stt.SttEngineNames;
 import com.boombapcompile.blckvox.service.stt.TranscriptionOutput;
-import com.boombapcompile.blckvox.service.stt.util.ConcurrencyGuard;
 import com.boombapcompile.blckvox.service.stt.util.ConcurrencyScaler;
-import com.boombapcompile.blckvox.service.stt.util.DynamicConcurrencyGuard;
 import com.boombapcompile.blckvox.util.TimeUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,7 +27,6 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.concurrent.Semaphore;
 
 /**
  * Whisper-based implementation of {@link SttEngine} using the external whisper.cpp binary.
@@ -74,9 +71,6 @@ import java.util.concurrent.Semaphore;
 public final class WhisperSttEngine extends AbstractSttEngine
         implements DetailedTranscriptionEngine {
 
-    private final ConcurrencyGuard concurrencyGuard;
-    private final DynamicConcurrencyGuard dynamicGuard;
-
     private static final Logger LOG = LogManager.getLogger(WhisperSttEngine.class);
 
     private final WhisperConfig cfg;
@@ -88,13 +82,7 @@ public final class WhisperSttEngine extends AbstractSttEngine
     public WhisperSttEngine(WhisperConfig cfg, ProcessManager manager) {
         this.cfg = Objects.requireNonNull(cfg, "cfg");
         this.manager = Objects.requireNonNull(manager, "manager");
-        this.concurrencyGuard = new ConcurrencyGuard(
-                new Semaphore(2),
-                1000, // Default 1 second timeout
-                SttEngineNames.WHISPER,
-                null // No publisher in basic constructor
-        );
-        this.dynamicGuard = null;
+        initializeDefaultGuard(SttEngineNames.WHISPER, 2, 1000);
         this.jsonMode = false;
         this.silenceGapMs = 0; // Disabled in basic constructor
     }
@@ -113,17 +101,7 @@ public final class WhisperSttEngine extends AbstractSttEngine
         this.manager = Objects.requireNonNull(manager, "manager");
         int max = Math.max(1, concurrencyProperties.getWhisperMax());
         long timeoutMs = Math.max(0, concurrencyProperties.getAcquireTimeoutMs());
-
-        if (concurrencyProperties.isDynamicScalingEnabled() && concurrencyScaler != null) {
-            this.dynamicGuard = new DynamicConcurrencyGuard(max, timeoutMs, SttEngineNames.WHISPER, publisher);
-            this.concurrencyGuard = null;
-            concurrencyScaler.registerGuard(SttEngineNames.WHISPER, this.dynamicGuard);
-        } else {
-            this.concurrencyGuard = new ConcurrencyGuard(
-                    new Semaphore(max), timeoutMs, SttEngineNames.WHISPER, publisher);
-            this.dynamicGuard = null;
-        }
-
+        initializeGuard(SttEngineNames.WHISPER, max, timeoutMs, publisher, concurrencyProperties, concurrencyScaler);
         this.publisher = publisher;
         this.jsonMode = "json".equalsIgnoreCase(outputMode);
         this.silenceGapMs = orchestrationProperties != null ? orchestrationProperties.getSilenceGapMs() : 0;
@@ -151,10 +129,8 @@ public final class WhisperSttEngine extends AbstractSttEngine
         }
         acquireTranscriptionLock();
         try {
-            boolean acquired = false;
+            acquireGuard();
             try {
-                acquireGuard();
-                acquired = true;
                 ensureInitialized();
                 Path wav = null;
                 long startTime = System.nanoTime();
@@ -191,30 +167,10 @@ public final class WhisperSttEngine extends AbstractSttEngine
                     cleanupTempFile(wav);
                 }
             } finally {
-                if (acquired) {
-                    releaseGuard();
-                }
+                releaseGuard();
             }
         } finally {
             releaseTranscriptionLock();
-        }
-    }
-
-
-
-    private void acquireGuard() {
-        if (dynamicGuard != null) {
-            dynamicGuard.acquire();
-        } else {
-            concurrencyGuard.acquire();
-        }
-    }
-
-    private void releaseGuard() {
-        if (dynamicGuard != null) {
-            dynamicGuard.release();
-        } else {
-            concurrencyGuard.release();
         }
     }
 
@@ -227,7 +183,6 @@ public final class WhisperSttEngine extends AbstractSttEngine
      */
     private Path createTempWavFile(byte[] audioData) throws Exception {
         Path wav = Files.createTempFile("whisper-", ".wav");
-        wav.toFile().deleteOnExit();
         WavWriter.writePcm16LeMono16kHz(audioData, wav);
         return wav;
     }

@@ -125,18 +125,17 @@ class PropertiesRecordTest {
     @Test
     void sttWatchdogPropertiesGetters() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L, 5);
-        assertThat(props.isEnabled()).isTrue();
-        assertThat(props.getWindowMinutes()).isEqualTo(60);
-        assertThat(props.getMaxRestartsPerWindow()).isEqualTo(3);
-        assertThat(props.getCooldownMinutes()).isEqualTo(10);
-        assertThat(props.isProbeEnabled()).isFalse();
-        assertThat(props.getHealthSummaryIntervalMillis()).isEqualTo(60000L);
-        assertThat(props.getConfidenceBlacklistThreshold()).isEqualTo(0.3);
-        assertThat(props.getConfidenceWindowSize()).isEqualTo(10);
-        assertThat(props.getConfidenceMinSamples()).isEqualTo(5);
-        assertThat(props.getBackoffBaseDelayMs()).isEqualTo(1000L);
-        assertThat(props.getBackoffMultiplier()).isEqualTo(2.0);
-        assertThat(props.getBackoffMaxDelayMs()).isEqualTo(60000L);
+                true, 60, 3, 10, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L, 5);
+        assertThat(props.enabled()).isTrue();
+        assertThat(props.windowMinutes()).isEqualTo(60);
+        assertThat(props.maxRestartsPerWindow()).isEqualTo(3);
+        assertThat(props.cooldownMinutes()).isEqualTo(10);
+        assertThat(props.healthSummaryIntervalMillis()).isEqualTo(60000L);
+        assertThat(props.confidenceBlacklistThreshold()).isEqualTo(0.3);
+        assertThat(props.confidenceWindowSize()).isEqualTo(10);
+        assertThat(props.confidenceMinSamples()).isEqualTo(5);
+        assertThat(props.backoffBaseDelayMs()).isEqualTo(1000L);
+        assertThat(props.backoffMultiplier()).isEqualTo(2.0);
+        assertThat(props.backoffMaxDelayMs()).isEqualTo(60000L);
     }
 }

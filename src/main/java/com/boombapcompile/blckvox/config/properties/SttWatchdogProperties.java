@@ -34,10 +34,6 @@ public record SttWatchdogProperties(
         @Positive(message = "Cooldown minutes must be positive")
         int cooldownMinutes,
 
-        // Optional lightweight probe enabled (not used by default).
-        @DefaultValue("false")
-        boolean probeEnabled,
-
         // Health summary log interval in milliseconds.
         @DefaultValue("60000")
         @Positive(message = "Health summary interval must be positive")
@@ -78,57 +74,4 @@ public record SttWatchdogProperties(
         @DefaultValue("5")
         @Min(value = 0, message = "Confidence grace transcriptions must be >= 0")
         int confidenceGraceTranscriptions
-) {
-
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    public boolean isProbeEnabled() {
-        return probeEnabled;
-    }
-
-    public int getWindowMinutes() {
-        return windowMinutes;
-    }
-
-    public int getMaxRestartsPerWindow() {
-        return maxRestartsPerWindow;
-    }
-
-    public int getCooldownMinutes() {
-        return cooldownMinutes;
-    }
-
-    public long getHealthSummaryIntervalMillis() {
-        return healthSummaryIntervalMillis;
-    }
-
-    public double getConfidenceBlacklistThreshold() {
-        return confidenceBlacklistThreshold;
-    }
-
-    public int getConfidenceWindowSize() {
-        return confidenceWindowSize;
-    }
-
-    public int getConfidenceMinSamples() {
-        return confidenceMinSamples;
-    }
-
-    public long getBackoffBaseDelayMs() {
-        return backoffBaseDelayMs;
-    }
-
-    public double getBackoffMultiplier() {
-        return backoffMultiplier;
-    }
-
-    public long getBackoffMaxDelayMs() {
-        return backoffMaxDelayMs;
-    }
-
-    public int getConfidenceGraceTranscriptions() {
-        return confidenceGraceTranscriptions;
-    }
-}
+) { }

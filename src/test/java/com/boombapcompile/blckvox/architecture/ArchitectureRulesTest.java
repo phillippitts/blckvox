@@ -2,7 +2,7 @@ package com.boombapcompile.blckvox.architecture;
 
 import com.boombapcompile.blckvox.service.stt.AbstractSttEngine;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
-import com.boombapcompile.blckvox.service.stt.util.ConcurrencyGuard;
+import com.boombapcompile.blckvox.service.stt.util.TranscriptionGuard;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -129,12 +129,11 @@ class ArchitectureRulesTest {
         }
 
         @Test
-        @DisplayName("STT engines should use ConcurrencyGuard")
-        void sttEnginesShouldUseConcurrencyGuard() {
+        @DisplayName("AbstractSttEngine should use TranscriptionGuard")
+        void abstractSttEngineShouldUseTranscriptionGuard() {
             classes()
-                    .that().areAssignableTo(AbstractSttEngine.class)
-                    .and().doNotHaveModifier(JavaModifier.ABSTRACT)
-                    .should().dependOnClassesThat().areAssignableTo(ConcurrencyGuard.class)
+                    .that().haveSimpleName("AbstractSttEngine")
+                    .should().dependOnClassesThat().areAssignableTo(TranscriptionGuard.class)
                     .check(appClasses);
         }
     }

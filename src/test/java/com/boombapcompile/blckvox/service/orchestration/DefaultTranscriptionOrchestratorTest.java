@@ -245,7 +245,7 @@ class DefaultTranscriptionOrchestratorTest {
         SttEngine fakeVosk = new OrchestrationTestDoubles.FakeEngine("vosk", "text");
         SttEngine fakeWhisper = new OrchestrationTestDoubles.FakeEngine("whisper", "text");
         SttWatchdogProperties watchdogProps = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         // Use a real watchdog where both engines are disabled
         SttEngineWatchdog watchdog = new SttEngineWatchdog(
                 List.of(fakeVosk, fakeWhisper), watchdogProps, publisher) {
@@ -303,7 +303,7 @@ class DefaultTranscriptionOrchestratorTest {
      */
     private EngineSelectionStrategy createEngineSelectorWith(SttEngine vosk, SttEngine whisper) {
         SttWatchdogProperties watchdogProps = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
+                true, 60, 3, 10, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         SttEngineWatchdog watchdog = new SttEngineWatchdog(
                 List.of(vosk, whisper), watchdogProps, publisher);
         OrchestrationProperties orchProps = orchestrationProps(200);

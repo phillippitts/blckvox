@@ -22,7 +22,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * <p>The current permit count is always clamped to {@code [1, configuredMax]}.
  */
-public final class DynamicConcurrencyGuard {
+public final class DynamicConcurrencyGuard implements TranscriptionGuard {
 
     private static final Logger LOG = LogManager.getLogger(DynamicConcurrencyGuard.class);
 
