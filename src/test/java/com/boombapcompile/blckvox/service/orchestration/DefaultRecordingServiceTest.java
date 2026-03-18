@@ -222,6 +222,50 @@ class DefaultRecordingServiceTest {
         assertThat(service.isRecording()).isFalse();
     }
 
+    @Test
+    void checkRecordingTimeoutCancelsStaleRecording() {
+        // Use a very short timeout (1 second)
+        ApplicationStateTracker stateTracker = new ApplicationStateTracker(events::add);
+        DefaultRecordingService shortTimeoutService =
+                new DefaultRecordingService(captureOrchestrator, transcriptionOrchestrator, stateTracker, 1);
+
+        shortTimeoutService.startRecording();
+        assertThat(shortTimeoutService.isRecording()).isTrue();
+
+        // Simulate time passing by calling checkRecordingTimeout before the timeout
+        shortTimeoutService.checkRecordingTimeout();
+        assertThat(shortTimeoutService.isRecording()).isTrue(); // Still recording
+
+        // Wait just over 1 second so the timeout fires
+        try {
+            Thread.sleep(1100);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        shortTimeoutService.checkRecordingTimeout();
+        assertThat(shortTimeoutService.isRecording()).isFalse();
+        assertThat(shortTimeoutService.getState()).isEqualTo(ApplicationState.IDLE);
+    }
+
+    @Test
+    void checkRecordingTimeoutDisabledWhenZero() {
+        ApplicationStateTracker stateTracker = new ApplicationStateTracker(events::add);
+        DefaultRecordingService noTimeoutService =
+                new DefaultRecordingService(captureOrchestrator, transcriptionOrchestrator, stateTracker, 0);
+
+        noTimeoutService.startRecording();
+        noTimeoutService.checkRecordingTimeout();
+        assertThat(noTimeoutService.isRecording()).isTrue(); // Not cancelled
+    }
+
+    @Test
+    void checkRecordingTimeoutNoopWhenNotRecording() {
+        // Should not throw or change state
+        service.checkRecordingTimeout();
+        assertThat(service.getState()).isEqualTo(ApplicationState.IDLE);
+    }
+
     // --- Test fakes ---
 
     private static class FakeCaptureOrchestrator implements CaptureOrchestrator {

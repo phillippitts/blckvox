@@ -175,7 +175,8 @@ public final class HotkeyRecordingAdapterBuilder {
         RecordingService recordingService = new DefaultRecordingService(
                 captureOrchestrator,
                 transcriptionOrchestrator,
-                effectiveStateTracker
+                effectiveStateTracker,
+                orchestrationProperties.getMaxRecordingDurationSeconds()
         );
 
         return new HotkeyRecordingAdapter(recordingService, hotkeyProperties);

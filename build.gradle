@@ -177,7 +177,8 @@ def jacocoExclusions = [
     // OS process creation (requires real binary)
     '**/whisper/DefaultProcessFactory.class',
     // AWT Robot/Clipboard facades (headless CI incompatible)
-    '**/fallback/ClipboardTypingAdapter$AwtClipboardFacade.class',
+    '**/fallback/ClipboardTypingAdapter.class',
+    '**/fallback/ClipboardTypingAdapter$*.class',
     '**/fallback/RobotTypingAdapter.class',
     '**/fallback/RobotTypingAdapter$AwtRobotFacade.class',
     // Hardware-dependent audio capture (TargetDataLine, AudioSystem, real microphone)

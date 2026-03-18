@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RestartBudgetTrackerTest {
 
     private final SttWatchdogProperties props = new SttWatchdogProperties(
-            true, 60, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L);
+            true, 60, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L, 5);
 
     @Test
     void allowsRestartWhenBudgetNotExhausted() {
@@ -93,7 +93,7 @@ class RestartBudgetTrackerTest {
     void isInCooldownReturnsFalseAfterCooldownExpires() {
         // Use 0-minute cooldown so it expires immediately
         SttWatchdogProperties zeroCooldownProps = new SttWatchdogProperties(
-                true, 60, 3, 0, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L);
+                true, 60, 3, 0, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L, 5);
         RestartBudgetTracker tracker = new RestartBudgetTracker(zeroCooldownProps);
         tracker.register("vosk");
 
@@ -127,7 +127,7 @@ class RestartBudgetTrackerTest {
     void pruneOldRemovesExpiredEntries() throws InterruptedException {
         // Use 0-minute window so entries expire immediately
         SttWatchdogProperties zeroWindowProps = new SttWatchdogProperties(
-                true, 0, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L);
+                true, 0, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L, 5);
         RestartBudgetTracker tracker = new RestartBudgetTracker(zeroWindowProps);
         tracker.register("vosk");
 
@@ -155,7 +155,7 @@ class RestartBudgetTrackerTest {
     void backoffDelayCapsAtMax() {
         // backoffMaxDelayMs=100, base=1000 — cap should apply
         SttWatchdogProperties cappedProps = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 100L);
+                true, 60, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 100L, 5);
         RestartBudgetTracker tracker = new RestartBudgetTracker(cappedProps);
         tracker.register("vosk");
 

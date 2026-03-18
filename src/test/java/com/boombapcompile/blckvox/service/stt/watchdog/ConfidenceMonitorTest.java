@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ConfidenceMonitorTest {
 
     private final SttWatchdogProperties props = new SttWatchdogProperties(
-            true, 60, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L);
+            true, 60, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L, 5);
 
     @Test
     void isTrackedReturnsFalseForUnregisteredEngine() {
@@ -131,5 +131,50 @@ class ConfidenceMonitorTest {
         }
 
         assertThat(monitor.getWindow("vosk")).hasSize(10);
+    }
+
+    @Test
+    void graceSkipsSamplesAfterRecovery() {
+        // graceTranscriptions=5, so first 5 records after clearOnRecovery() return null
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+        monitor.register("vosk");
+        monitor.clearOnRecovery("vosk");
+
+        for (int i = 0; i < 5; i++) {
+            assertThat(monitor.record("vosk", 0.1))
+                    .as("Grace sample %d should be skipped", i)
+                    .isNull();
+        }
+        // Window should still be empty — grace samples are not recorded
+        assertThat(monitor.getWindow("vosk")).isEmpty();
+    }
+
+    @Test
+    void graceCountdownExpiresThenRecordsNormally() {
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+        monitor.register("vosk");
+        monitor.clearOnRecovery("vosk");
+
+        // Burn through 5 grace samples
+        for (int i = 0; i < 5; i++) {
+            monitor.record("vosk", 0.1);
+        }
+
+        // 6th sample should be recorded normally
+        monitor.record("vosk", 0.8);
+        assertThat(monitor.getWindow("vosk")).hasSize(1);
+        assertThat(monitor.averageConfidence("vosk")).isCloseTo(0.8,
+                org.assertj.core.data.Offset.offset(0.001));
+    }
+
+    @Test
+    void noGraceOnFreshRegistration() {
+        // register() initializes grace counter to 0 (no grace on first registration)
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+        monitor.register("vosk");
+
+        // First record should be tracked immediately, not skipped
+        monitor.record("vosk", 0.8);
+        assertThat(monitor.getWindow("vosk")).hasSize(1);
     }
 }

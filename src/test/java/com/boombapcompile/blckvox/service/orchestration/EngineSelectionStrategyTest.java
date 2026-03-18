@@ -8,6 +8,8 @@ import com.boombapcompile.blckvox.service.stt.SttEngineNames;
 import com.boombapcompile.blckvox.service.stt.watchdog.SttEngineWatchdog;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.anyString;
@@ -60,7 +62,8 @@ class EngineSelectionStrategyTest {
         OrchestrationProperties props = new OrchestrationProperties(
                 OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
-        EngineSelectionStrategy strategy = new EngineSelectionStrategy(vosk, whisper, watchdog, props);
+        EngineSelectionStrategy strategy = new EngineSelectionStrategy(
+                List.of(vosk, whisper), watchdog, props);
 
         assertThat(strategy.selectEngine()).isSameAs(vosk);
     }
@@ -74,13 +77,14 @@ class EngineSelectionStrategyTest {
         OrchestrationProperties props = new OrchestrationProperties(
                 OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
-        EngineSelectionStrategy strategy = new EngineSelectionStrategy(vosk, whisper, watchdog, props);
+        EngineSelectionStrategy strategy = new EngineSelectionStrategy(
+                List.of(vosk, whisper), watchdog, props);
 
         assertThat(strategy.selectEngine()).isSameAs(whisper);
     }
 
     @Test
-    void throwsWhenBothUnavailable() {
+    void throwsWhenAllUnavailable() {
         StubEngine vosk = new StubEngine(SttEngineNames.VOSK, false);
         StubEngine whisper = new StubEngine(SttEngineNames.WHISPER, false);
         SttEngineWatchdog watchdog = mock(SttEngineWatchdog.class);
@@ -88,11 +92,12 @@ class EngineSelectionStrategyTest {
         OrchestrationProperties props = new OrchestrationProperties(
                 OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
-        EngineSelectionStrategy strategy = new EngineSelectionStrategy(vosk, whisper, watchdog, props);
+        EngineSelectionStrategy strategy = new EngineSelectionStrategy(
+                List.of(vosk, whisper), watchdog, props);
 
         assertThatThrownBy(strategy::selectEngine)
                 .isInstanceOf(TranscriptionException.class)
-                .hasMessageContaining("Both engines unavailable");
+                .hasMessageContaining("All engines unavailable");
     }
 
     @Test
@@ -104,7 +109,8 @@ class EngineSelectionStrategyTest {
         OrchestrationProperties props = new OrchestrationProperties(
                 OrchestrationProperties.PrimaryEngine.WHISPER, 1000, 200, 120);
 
-        EngineSelectionStrategy strategy = new EngineSelectionStrategy(vosk, whisper, watchdog, props);
+        EngineSelectionStrategy strategy = new EngineSelectionStrategy(
+                List.of(vosk, whisper), watchdog, props);
 
         assertThat(strategy.selectEngine()).isSameAs(whisper);
     }
@@ -119,8 +125,67 @@ class EngineSelectionStrategyTest {
         OrchestrationProperties props = new OrchestrationProperties(
                 OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
 
-        EngineSelectionStrategy strategy = new EngineSelectionStrategy(vosk, whisper, watchdog, props);
+        EngineSelectionStrategy strategy = new EngineSelectionStrategy(
+                List.of(vosk, whisper), watchdog, props);
 
         assertThat(strategy.selectEngine()).isSameAs(whisper);
+    }
+
+    @Test
+    void threeEngineListSelectsFirstHealthy() {
+        StubEngine vosk = new StubEngine(SttEngineNames.VOSK, false);
+        StubEngine whisper = new StubEngine(SttEngineNames.WHISPER, false);
+        StubEngine extra = new StubEngine("extra", true);
+        SttEngineWatchdog watchdog = mock(SttEngineWatchdog.class);
+        when(watchdog.isEngineEnabled(anyString())).thenReturn(true);
+        OrchestrationProperties props = new OrchestrationProperties(
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
+
+        EngineSelectionStrategy strategy = new EngineSelectionStrategy(
+                List.of(vosk, whisper, extra), watchdog, props);
+
+        assertThat(strategy.selectEngine()).isSameAs(extra);
+    }
+
+    @Test
+    void singleEngineListWorks() {
+        StubEngine vosk = new StubEngine(SttEngineNames.VOSK, true);
+        SttEngineWatchdog watchdog = mock(SttEngineWatchdog.class);
+        when(watchdog.isEngineEnabled(anyString())).thenReturn(true);
+        OrchestrationProperties props = new OrchestrationProperties(
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
+
+        EngineSelectionStrategy strategy = new EngineSelectionStrategy(
+                List.of(vosk), watchdog, props);
+
+        assertThat(strategy.selectEngine()).isSameAs(vosk);
+    }
+
+    @Test
+    void emptyEngineListRejected() {
+        SttEngineWatchdog watchdog = mock(SttEngineWatchdog.class);
+        OrchestrationProperties props = new OrchestrationProperties(
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
+
+        assertThatThrownBy(() -> new EngineSelectionStrategy(List.of(), watchdog, props))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("empty");
+    }
+
+    @Test
+    void priorityReordersPrimaryFirst() {
+        // Pass whisper first in the list but vosk as primary — vosk should be selected
+        StubEngine vosk = new StubEngine(SttEngineNames.VOSK, true);
+        StubEngine whisper = new StubEngine(SttEngineNames.WHISPER, true);
+        SttEngineWatchdog watchdog = mock(SttEngineWatchdog.class);
+        when(watchdog.isEngineEnabled(anyString())).thenReturn(true);
+        OrchestrationProperties props = new OrchestrationProperties(
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
+
+        // whisper is first in list, but vosk should still be selected as primary
+        EngineSelectionStrategy strategy = new EngineSelectionStrategy(
+                List.of(whisper, vosk), watchdog, props);
+
+        assertThat(strategy.selectEngine()).isSameAs(vosk);
     }
 }

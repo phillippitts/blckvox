@@ -72,7 +72,12 @@ public record SttWatchdogProperties(
         // Maximum backoff delay in ms (cap).
         @DefaultValue("60000")
         @Positive(message = "Backoff max delay must be positive")
-        long backoffMaxDelayMs
+        long backoffMaxDelayMs,
+
+        // Number of transcriptions to skip confidence tracking after engine restart.
+        @DefaultValue("5")
+        @Min(value = 0, message = "Confidence grace transcriptions must be >= 0")
+        int confidenceGraceTranscriptions
 ) {
 
     public boolean isEnabled() {
@@ -121,5 +126,9 @@ public record SttWatchdogProperties(
 
     public long getBackoffMaxDelayMs() {
         return backoffMaxDelayMs;
+    }
+
+    public int getConfidenceGraceTranscriptions() {
+        return confidenceGraceTranscriptions;
     }
 }

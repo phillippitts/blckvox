@@ -20,11 +20,12 @@ import com.boombapcompile.blckvox.service.stt.SttEngine;
 import com.boombapcompile.blckvox.service.stt.watchdog.SttEngineWatchdog;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
 
 /**
  * Wires the orchestration beans: CaptureOrchestrator, TranscriptionOrchestrator,
@@ -34,8 +35,7 @@ import org.springframework.context.annotation.Configuration;
 public class OrchestrationConfig {
 
     private final AudioCaptureService captureService;
-    private final SttEngine voskSttEngine;
-    private final SttEngine whisperSttEngine;
+    private final List<SttEngine> sttEngines;
     private final SttEngineWatchdog watchdog;
     private final OrchestrationProperties orchestrationProperties;
     private final HotkeyProperties hotkeyProperties;
@@ -44,8 +44,7 @@ public class OrchestrationConfig {
     private final ReconciliationDependencies reconciliationDeps;
 
     public OrchestrationConfig(AudioCaptureService captureService,
-                               @Qualifier("voskSttEngine") SttEngine voskSttEngine,
-                               @Qualifier("whisperSttEngine") SttEngine whisperSttEngine,
+                               List<SttEngine> sttEngines,
                                SttEngineWatchdog watchdog,
                                OrchestrationProperties orchestrationProperties,
                                HotkeyProperties hotkeyProperties,
@@ -54,8 +53,7 @@ public class OrchestrationConfig {
                                @Autowired(required = false)
                                ReconciliationDependencies reconciliationDeps) {
         this.captureService = captureService;
-        this.voskSttEngine = voskSttEngine;
-        this.whisperSttEngine = whisperSttEngine;
+        this.sttEngines = List.copyOf(sttEngines);
         this.watchdog = watchdog;
         this.orchestrationProperties = orchestrationProperties;
         this.hotkeyProperties = hotkeyProperties;
@@ -71,7 +69,7 @@ public class OrchestrationConfig {
 
     @Bean
     public EngineSelectionStrategy engineSelectionStrategy() {
-        return new EngineSelectionStrategy(voskSttEngine, whisperSttEngine,
+        return new EngineSelectionStrategy(sttEngines,
                 watchdog, orchestrationProperties);
     }
 

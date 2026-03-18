@@ -185,7 +185,7 @@ public class DefaultRecordingService implements RecordingService {
         }
         Instant startedAt = recordingStartedAt;
         if (startedAt != null
-                && Duration.between(startedAt, Instant.now()).getSeconds() > maxRecordingDurationSeconds) {
+                && Duration.between(startedAt, Instant.now()).getSeconds() >= maxRecordingDurationSeconds) {
             LOG.warn("Recording exceeded max duration ({}s), auto-cancelling", maxRecordingDurationSeconds);
             cancelRecording();
         }

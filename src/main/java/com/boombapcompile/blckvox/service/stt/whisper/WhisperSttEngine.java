@@ -20,11 +20,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Component;
 import org.springframework.context.ApplicationEventPublisher;
-import java.util.HashMap;
 import java.util.Map;
 
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.Semaphore;
 
@@ -128,6 +131,7 @@ public final class WhisperSttEngine extends AbstractSttEngine
 
     @Override
     protected void doInitialize() {
+        cleanupStaleTempFiles();
         // Allow reinitialization after close() for watchdog restart support
         closed = false;
         // Fail-fast validation already ran at startup
@@ -172,17 +176,17 @@ public final class WhisperSttEngine extends AbstractSttEngine
                         text = stdout.trim();
                     }
 
-                    double confidence = jsonMode ? WhisperJsonParser.extractConfidence(stdout) : cfg.textModeConfidence();
+                    double confidence = jsonMode
+                            ? WhisperJsonParser.extractConfidence(stdout)
+                            : cfg.textModeConfidence();
                     long elapsedMs = TimeUtils.elapsedMillis(startTime);
                     LOG.debug("Whisper transcribed clip in {} ms (chars={})", elapsedMs, text.length());
 
                     TranscriptionResult result = TranscriptionResult.of(text, confidence, SttEngineNames.WHISPER);
                     return TranscriptionOutput.of(result, tokens, rawJson);
                 } catch (Exception e) {
-                    Map<String, String> ctx = new HashMap<>();
-                    ctx.put("binaryPath", cfg.binaryPath());
-                    ctx.put("modelPath", cfg.modelPath());
-                    throw handleTranscriptionError(e, publisher, ctx);
+                    throw handleTranscriptionError(e, publisher,
+                            Map.of("binaryPath", cfg.binaryPath(), "modelPath", cfg.modelPath()));
                 } finally {
                     cleanupTempFile(wav);
                 }
@@ -223,8 +227,34 @@ public final class WhisperSttEngine extends AbstractSttEngine
      */
     private Path createTempWavFile(byte[] audioData) throws Exception {
         Path wav = Files.createTempFile("whisper-", ".wav");
+        wav.toFile().deleteOnExit();
         WavWriter.writePcm16LeMono16kHz(audioData, wav);
         return wav;
+    }
+
+    /**
+     * Scans the temp directory for stale {@code whisper-*.wav} files older than 1 hour
+     * and deletes them. This handles cleanup after abnormal shutdowns where the normal
+     * finally-block cleanup didn't run.
+     */
+    private void cleanupStaleTempFiles() {
+        Path tempDir = Path.of(System.getProperty("java.io.tmpdir"));
+        Instant cutoff = Instant.now().minus(Duration.ofHours(1));
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(tempDir, "whisper-*.wav")) {
+            for (Path file : stream) {
+                try {
+                    Instant modified = Files.getLastModifiedTime(file).toInstant();
+                    if (modified.isBefore(cutoff)) {
+                        Files.deleteIfExists(file);
+                        LOG.debug("Cleaned up stale temp file: {}", file);
+                    }
+                } catch (IOException e) {
+                    LOG.debug("Failed to clean up stale temp file {}: {}", file, e.getMessage());
+                }
+            }
+        } catch (IOException e) {
+            LOG.debug("Failed to scan temp directory for stale whisper files: {}", e.getMessage());
+        }
     }
 
     /**

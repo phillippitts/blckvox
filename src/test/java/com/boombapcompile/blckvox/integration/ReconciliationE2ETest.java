@@ -49,7 +49,7 @@ class ReconciliationE2ETest {
     static SttEngineWatchdog createWatchdog(SttEngine vosk, SttEngine whisper,
                                              ApplicationEventPublisher publisher) {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L);
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         return new SttEngineWatchdog(List.of(vosk, whisper), props, publisher);
     }
 
@@ -84,7 +84,7 @@ class ReconciliationE2ETest {
                 .metricsPublisher(
                         TranscriptionMetricsPublisher.NOOP)
                 .captureStateMachine(new CaptureStateMachine())
-                .engineSelector(new EngineSelectionStrategy(vosk, whisper,
+                .engineSelector(new EngineSelectionStrategy(List.of(vosk, whisper),
                         createWatchdog(vosk, whisper, publisher),
                         new OrchestrationProperties(
                                 OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120)))
@@ -133,7 +133,7 @@ class ReconciliationE2ETest {
                 .metricsPublisher(
                         TranscriptionMetricsPublisher.NOOP)
                 .captureStateMachine(new CaptureStateMachine())
-                .engineSelector(new EngineSelectionStrategy(vosk, whisper,
+                .engineSelector(new EngineSelectionStrategy(List.of(vosk, whisper),
                         createWatchdog(vosk, whisper, publisher),
                         new OrchestrationProperties(
                                 OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120)))
@@ -184,7 +184,7 @@ class ReconciliationE2ETest {
                 .metricsPublisher(
                         TranscriptionMetricsPublisher.NOOP)
                 .captureStateMachine(new CaptureStateMachine())
-                .engineSelector(new EngineSelectionStrategy(vosk, whisper,
+                .engineSelector(new EngineSelectionStrategy(List.of(vosk, whisper),
                         createWatchdog(vosk, whisper, publisher),
                         new OrchestrationProperties(
                                 OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120)))
@@ -235,7 +235,7 @@ class ReconciliationE2ETest {
                 .metricsPublisher(
                         TranscriptionMetricsPublisher.NOOP)
                 .captureStateMachine(new CaptureStateMachine())
-                .engineSelector(new EngineSelectionStrategy(vosk, whisper,
+                .engineSelector(new EngineSelectionStrategy(List.of(vosk, whisper),
                         createWatchdog(vosk, whisper, publisher),
                         new OrchestrationProperties(
                                 OrchestrationProperties.PrimaryEngine.WHISPER, 1000, 200, 120)))
@@ -285,7 +285,7 @@ class ReconciliationE2ETest {
                 .metricsPublisher(
                         TranscriptionMetricsPublisher.NOOP)
                 .captureStateMachine(new CaptureStateMachine())
-                .engineSelector(new EngineSelectionStrategy(vosk, whisper,
+                .engineSelector(new EngineSelectionStrategy(List.of(vosk, whisper),
                         createWatchdog(vosk, whisper, publisher),
                         new OrchestrationProperties(
                                 OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120)))
@@ -362,7 +362,7 @@ class ReconciliationE2ETest {
                 .metricsPublisher(
                         TranscriptionMetricsPublisher.NOOP)
                 .captureStateMachine(new CaptureStateMachine())
-                .engineSelector(new EngineSelectionStrategy(vosk, whisper,
+                .engineSelector(new EngineSelectionStrategy(List.of(vosk, whisper),
                         createWatchdog(vosk, whisper, publisher),
                         new OrchestrationProperties(
                                 OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120)))
@@ -408,7 +408,7 @@ class ReconciliationE2ETest {
                 .metricsPublisher(
                         TranscriptionMetricsPublisher.NOOP)
                 .captureStateMachine(new CaptureStateMachine())
-                .engineSelector(new EngineSelectionStrategy(vosk, whisper,
+                .engineSelector(new EngineSelectionStrategy(List.of(vosk, whisper),
                         createWatchdog(vosk, whisper, publisher),
                         new OrchestrationProperties(
                                 OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120)))

@@ -1,15 +1,16 @@
 package com.boombapcompile.blckvox.service.orchestration;
 
 import com.boombapcompile.blckvox.config.properties.OrchestrationProperties;
-import com.boombapcompile.blckvox.config.properties.OrchestrationProperties.PrimaryEngine;
 import com.boombapcompile.blckvox.exception.TranscriptionException;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
 import com.boombapcompile.blckvox.service.stt.watchdog.SttEngineWatchdog;
-import com.boombapcompile.blckvox.service.stt.SttEngineNames;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
 
 /**
  * Strategy for selecting healthy STT engines based on configuration and watchdog health.
@@ -19,10 +20,10 @@ import java.util.Objects;
  *
  * <p><b>Selection Algorithm:</b>
  * <ol>
- *   <li>Check if primary engine (configured preference) is healthy</li>
- *   <li>If primary is healthy, return it</li>
- *   <li>If primary is unhealthy, return secondary (fallback) engine</li>
- *   <li>If both are unhealthy, return primary anyway (fail gracefully)</li>
+ *   <li>Iterate engines in priority order (configured primary first)</li>
+ *   <li>Return the first engine that is enabled and healthy</li>
+ *   <li>For non-primary engines, attempt lazy initialization if enabled but not yet healthy</li>
+ *   <li>If no engine is available, throw {@link TranscriptionException}</li>
  * </ol>
  *
  * <p><b>Thread Safety:</b> This class is thread-safe. The watchdog health checks
@@ -34,106 +35,77 @@ public final class EngineSelectionStrategy {
 
     private static final Logger LOG = LogManager.getLogger(EngineSelectionStrategy.class);
 
-
-    private final SttEngine vosk;
-    private final SttEngine whisper;
+    private final List<SttEngine> engines;
     private final SttEngineWatchdog watchdog;
-    private final OrchestrationProperties props;
 
     /**
      * Constructs an engine selection strategy.
      *
-     * @param vosk Vosk STT engine
-     * @param whisper Whisper STT engine
+     * @param engines list of STT engines (must not be empty)
      * @param watchdog engine health monitor
      * @param props orchestration configuration (primary engine preference)
      * @throws NullPointerException if any parameter is null
+     * @throws IllegalArgumentException if engines list is empty
      */
-    public EngineSelectionStrategy(SttEngine vosk,
-                                    SttEngine whisper,
+    public EngineSelectionStrategy(List<SttEngine> engines,
                                     SttEngineWatchdog watchdog,
                                     OrchestrationProperties props) {
-        this.vosk = Objects.requireNonNull(vosk, SttEngineNames.VOSK);
-        this.whisper = Objects.requireNonNull(whisper, SttEngineNames.WHISPER);
-        this.watchdog = Objects.requireNonNull(watchdog, "watchdog");
-        this.props = Objects.requireNonNull(props, "props");
+        Objects.requireNonNull(engines, "engines");
+        Objects.requireNonNull(watchdog, "watchdog");
+        Objects.requireNonNull(props, "props");
+        if (engines.isEmpty()) {
+            throw new IllegalArgumentException("engines list must not be empty");
+        }
+
+        String primaryName = props.getPrimaryEngine().name().toLowerCase();
+        // Sort so configured primary engine is first
+        List<SttEngine> sorted = new ArrayList<>(engines);
+        sorted.sort((a, b) -> {
+            boolean aIsPrimary = a.getEngineName().equals(primaryName);
+            boolean bIsPrimary = b.getEngineName().equals(primaryName);
+            return Boolean.compare(bIsPrimary, aIsPrimary);
+        });
+        this.engines = List.copyOf(sorted);
+        this.watchdog = watchdog;
     }
 
     /**
-     * Selects a healthy engine based on primary preference and watchdog health.
-     *
-     * <p>This method prefers the configured primary engine but falls back to
-     * the secondary if the primary is unhealthy. If both engines are unavailable,
-     * throws {@link TranscriptionException}.
+     * Selects a healthy engine based on priority order and watchdog health.
      *
      * @return selected STT engine (never null)
-     * @throws TranscriptionException if both engines are unavailable
+     * @throws TranscriptionException if all engines are unavailable
      */
     public SttEngine selectEngine() {
-        SttEngine primary = getPrimaryEngine();
-        SttEngine secondary = getSecondaryEngine();
-        String primaryName = getPrimaryEngineName();
-        String secondaryName = getSecondaryEngineName();
+        SttEngine primary = engines.getFirst();
+        String primaryName = primary.getEngineName();
 
-        boolean primaryHealthy = watchdog.isEngineEnabled(primaryName) && primary.isHealthy();
-
-        if (primaryHealthy) {
+        if (watchdog.isEngineEnabled(primaryName) && primary.isHealthy()) {
             LOG.debug("Selected primary engine: {}", primaryName);
             return primary;
         }
 
-        // Primary unhealthy — attempt lazy init of secondary if needed
-        boolean secondaryHealthy = watchdog.isEngineEnabled(secondaryName) && secondary.isHealthy();
-        if (!secondaryHealthy && watchdog.isEngineEnabled(secondaryName)) {
-            secondaryHealthy = watchdog.initializeOnDemand(secondaryName);
+        // Primary unhealthy — try fallback engines
+        for (int i = 1; i < engines.size(); i++) {
+            SttEngine fallback = engines.get(i);
+            String name = fallback.getEngineName();
+
+            boolean healthy = watchdog.isEngineEnabled(name) && fallback.isHealthy();
+            if (!healthy && watchdog.isEngineEnabled(name)) {
+                healthy = watchdog.initializeOnDemand(name);
+            }
+
+            if (healthy) {
+                LOG.warn("Primary engine {} unhealthy, falling back to {}", primaryName, name);
+                return fallback;
+            }
         }
 
-        if (secondaryHealthy) {
-            LOG.warn("Primary engine {} unhealthy, falling back to {}", primaryName, secondaryName);
-            return secondary;
+        StringJoiner sj = new StringJoiner(", ");
+        for (SttEngine e : engines) {
+            String name = e.getEngineName();
+            sj.add(String.format("%s.enabled=%s, %s.healthy=%s",
+                    name, watchdog.isEngineEnabled(name), name, e.isHealthy()));
         }
-
-        throw new TranscriptionException(String.format(
-                "Both engines unavailable (vosk.enabled=%s, vosk.healthy=%s, "
-                        + "whisper.enabled=%s, whisper.healthy=%s)",
-                watchdog.isEngineEnabled(SttEngineNames.VOSK), vosk.isHealthy(),
-                watchdog.isEngineEnabled(SttEngineNames.WHISPER), whisper.isHealthy()));
+        throw new TranscriptionException("All engines unavailable (" + sj + ")");
     }
-
-    /**
-     * Returns the primary engine based on configuration.
-     *
-     * @return primary STT engine
-     */
-    private SttEngine getPrimaryEngine() {
-        return props.getPrimaryEngine() == PrimaryEngine.VOSK ? vosk : whisper;
-    }
-
-    /**
-     * Returns the secondary (fallback) engine.
-     *
-     * @return secondary STT engine
-     */
-    private SttEngine getSecondaryEngine() {
-        return props.getPrimaryEngine() == PrimaryEngine.VOSK ? whisper : vosk;
-    }
-
-    /**
-     * Returns the name of the primary engine.
-     *
-     * @return SttEngineNames.VOSK or SttEngineNames.WHISPER
-     */
-    private String getPrimaryEngineName() {
-        return props.getPrimaryEngine() == PrimaryEngine.VOSK ? SttEngineNames.VOSK : SttEngineNames.WHISPER;
-    }
-
-    /**
-     * Returns the name of the secondary engine.
-     *
-     * @return SttEngineNames.VOSK or SttEngineNames.WHISPER
-     */
-    private String getSecondaryEngineName() {
-        return props.getPrimaryEngine() == PrimaryEngine.VOSK ? SttEngineNames.WHISPER : SttEngineNames.VOSK;
-    }
-
 }

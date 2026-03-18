@@ -16,7 +16,14 @@ import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.filter.AbstractFilter;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -432,6 +439,103 @@ class WhisperSttEngineTest {
         assertThatThrownBy(() -> engine.transcribe(pcm))
                 .isInstanceOf(com.boombapcompile.blckvox.exception.TranscriptionException.class);
         engine.close();
+    }
+
+    @Test
+    void cleanupStaleTempFilesDeletesOldFiles(@TempDir Path tempDir) throws IOException {
+        // Override java.io.tmpdir for this test
+        String originalTmpDir = System.getProperty("java.io.tmpdir");
+        System.setProperty("java.io.tmpdir", tempDir.toString());
+        try {
+            // Create a stale file (2 hours old)
+            Path stale = Files.createFile(tempDir.resolve("whisper-stale.wav"));
+            Files.setLastModifiedTime(stale,
+                    FileTime.from(Instant.now().minus(2, ChronoUnit.HOURS)));
+
+            WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
+                    new TestProcess(new ProcessBehavior("ok", "", 0, 0))
+            ));
+            WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
+            WhisperSttEngine engine = new WhisperSttEngine(cfg, mgr);
+            engine.initialize(); // triggers cleanupStaleTempFiles()
+
+            assertThat(Files.exists(stale)).isFalse();
+            engine.close();
+        } finally {
+            System.setProperty("java.io.tmpdir", originalTmpDir);
+        }
+    }
+
+    @Test
+    void cleanupStaleTempFilesHandlesDeleteFailure(@TempDir Path tempDir) throws IOException {
+        String originalTmpDir = System.getProperty("java.io.tmpdir");
+        System.setProperty("java.io.tmpdir", tempDir.toString());
+        try {
+            // Create a stale file and make its parent read-only after creation
+            Path stale = Files.createFile(tempDir.resolve("whisper-undeletable.wav"));
+            Files.setLastModifiedTime(stale,
+                    FileTime.from(Instant.now().minus(2, ChronoUnit.HOURS)));
+            // Make the file not deletable by setting parent dir permissions
+            // On macOS/Linux, removing write permission on dir prevents deletion
+            tempDir.toFile().setWritable(false);
+
+            WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
+                    new TestProcess(new ProcessBehavior("ok", "", 0, 0))
+            ));
+            WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
+            // initialize() calls cleanupStaleTempFiles() — inner IOException catch is exercised
+            WhisperSttEngine engine = new WhisperSttEngine(cfg, mgr);
+            engine.initialize();
+            // Should not throw — exception is caught and logged
+            engine.close();
+        } finally {
+            tempDir.toFile().setWritable(true);
+            System.setProperty("java.io.tmpdir", originalTmpDir);
+        }
+    }
+
+    @Test
+    void cleanupStaleTempFilesScanFailure() {
+        String originalTmpDir = System.getProperty("java.io.tmpdir");
+        // Point to a non-existent directory to trigger outer IOException catch
+        System.setProperty("java.io.tmpdir", "/nonexistent/path/for/whisper/test");
+        try {
+            WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
+                    new TestProcess(new ProcessBehavior("ok", "", 0, 0))
+            ));
+            WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
+            WhisperSttEngine engine = new WhisperSttEngine(cfg, mgr);
+            // initialize() calls cleanupStaleTempFiles() — outer IOException catch is exercised
+            engine.initialize();
+            // Should not throw
+            engine.close();
+        } finally {
+            System.setProperty("java.io.tmpdir", originalTmpDir);
+        }
+    }
+
+    @Test
+    void cleanupStaleTempFilesPreservesRecentFiles(@TempDir Path tempDir) throws IOException {
+        String originalTmpDir = System.getProperty("java.io.tmpdir");
+        System.setProperty("java.io.tmpdir", tempDir.toString());
+        try {
+            // Create a recent file (5 minutes old)
+            Path recent = Files.createFile(tempDir.resolve("whisper-recent.wav"));
+            Files.setLastModifiedTime(recent,
+                    FileTime.from(Instant.now().minus(5, ChronoUnit.MINUTES)));
+
+            WhisperProcessManager mgr = new WhisperProcessManager(new StubProcessFactory(
+                    new TestProcess(new ProcessBehavior("ok", "", 0, 0))
+            ));
+            WhisperConfig cfg = new WhisperConfig("/bin/echo", "/tmp/model.bin", 2, "en", 2, 1048576, 0.85);
+            WhisperSttEngine engine = new WhisperSttEngine(cfg, mgr);
+            engine.initialize();
+
+            assertThat(Files.exists(recent)).isTrue();
+            engine.close();
+        } finally {
+            System.setProperty("java.io.tmpdir", originalTmpDir);
+        }
     }
 
     /**

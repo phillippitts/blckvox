@@ -26,7 +26,7 @@ public class StartupTimingLogger {
     @Autowired
     public StartupTimingLogger(List<SttEngine> engines,
                                @Autowired(required = false) SttEngineWatchdog watchdog) {
-        this.engines = engines;
+        this.engines = List.copyOf(engines);
         this.watchdog = watchdog;
     }
 

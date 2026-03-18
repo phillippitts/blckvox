@@ -311,6 +311,35 @@ class ThreadPoolConfigTest {
     }
 
     @Test
+    void sttExecutorRejectionThrowsWhenSaturated() throws InterruptedException {
+        // sttExecutor uses AbortPolicy — should throw RejectedExecutionException
+        ThreadPoolProperties properties = new ThreadPoolProperties(
+                new ThreadPoolProperties.SttPoolProperties(1, 1, 1, 60, "stt-pool-"),
+                new ThreadPoolProperties.EventPoolProperties(2, 4, 10, 60, "event-pool-"));
+        ThreadPoolConfig config = new ThreadPoolConfig(properties, new SimpleMeterRegistry());
+        ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) config.sttExecutor();
+
+        CountDownLatch blockingLatch = new CountDownLatch(1);
+
+        // Fill pool: 1 thread blocked + 1 queued = saturated
+        executor.execute(() -> {
+            try {
+                blockingLatch.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException ignored) {
+            }
+        });
+        executor.execute(() -> { }); // fills queue
+
+        // Third submission should be rejected
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> executor.execute(() -> { }))
+                .isInstanceOf(java.util.concurrent.RejectedExecutionException.class);
+
+        blockingLatch.countDown();
+        executor.shutdown();
+    }
+
+    @Test
     void eventExecutorRejectionWithEmptyQueue() throws InterruptedException {
         // Directly test rejection handler when queue.poll() returns null
         ThreadPoolProperties properties = defaultThreadPoolProperties();

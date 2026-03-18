@@ -16,7 +16,7 @@ class StartupTimingLoggerTest {
     void onApplicationStartedWithWatchdogDoesNotThrow() {
         RecordingEngine vosk = new RecordingEngine("vosk");
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L);
+                true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5);
         SttEngineWatchdog watchdog = new SttEngineWatchdog(
                 List.of(vosk), props, event -> { });
 
@@ -31,6 +31,25 @@ class StartupTimingLoggerTest {
 
         StartupTimingLogger logger = new StartupTimingLogger(List.of(vosk), null);
 
+        assertThatCode(() -> logger.onApplicationStarted(null)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void onApplicationStartedLogsDisabledEngine() {
+        RecordingEngine vosk = new RecordingEngine("vosk");
+        SttWatchdogProperties props = new SttWatchdogProperties(
+                true, 60, 1, 10, false, 60_000L, 0.3, 10, 5, 0L, 2.0, 60_000L, 5);
+        SttEngineWatchdog watchdog = new SttEngineWatchdog(
+                List.of(vosk), props, event -> { });
+
+        // Disable vosk by exhausting restart budget
+        watchdog.onFailure(new com.boombapcompile.blckvox.service.stt.watchdog.EngineFailureEvent(
+                "vosk", java.time.Instant.now(), "f1", null, java.util.Map.of()));
+        watchdog.onFailure(new com.boombapcompile.blckvox.service.stt.watchdog.EngineFailureEvent(
+                "vosk", java.time.Instant.now(), "f2", null, java.util.Map.of()));
+
+        StartupTimingLogger logger = new StartupTimingLogger(List.of(vosk), watchdog);
+        // Should log "vosk=disabled" — exercises the false branch of ternary at line 44
         assertThatCode(() -> logger.onApplicationStarted(null)).doesNotThrowAnyException();
     }
 

@@ -125,7 +125,7 @@ class PropertiesRecordTest {
     @Test
     void sttWatchdogPropertiesGetters() {
         SttWatchdogProperties props = new SttWatchdogProperties(
-                true, 60, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L);
+                true, 60, 3, 10, false, 60000L, 0.3, 10, 5, 1000L, 2.0, 60000L, 5);
         assertThat(props.isEnabled()).isTrue();
         assertThat(props.getWindowMinutes()).isEqualTo(60);
         assertThat(props.getMaxRestartsPerWindow()).isEqualTo(3);

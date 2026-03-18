@@ -161,7 +161,7 @@ class HotkeyRecordingAdapterBuilderTest {
                         TriggerType.SINGLE_KEY, "D", 300, List.of(), List.of(), false))
                 .publisher(e -> { })
                 .captureStateMachine(new CaptureStateMachine())
-                .engineSelector(new EngineSelectionStrategy(vosk, whisper, wd, orchProps));
+                .engineSelector(new EngineSelectionStrategy(List.of(vosk, whisper), wd, orchProps));
     }
 
     static class FakeCapture implements AudioCaptureService {
@@ -196,7 +196,7 @@ class HotkeyRecordingAdapterBuilderTest {
     static class FakeWatchdog extends SttEngineWatchdog {
         FakeWatchdog() {
             super(List.of(),
-                    new SttWatchdogProperties(true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L),
+                    new SttWatchdogProperties(true, 60, 3, 10, false, 60_000L, 0.3, 10, 5, 1000L, 2.0, 60_000L, 5),
                     e -> { });
         }
         @Override

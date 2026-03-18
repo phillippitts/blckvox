@@ -816,4 +816,50 @@ class WhisperJsonParserTest {
         assertThat(WhisperJsonParser.extractConfidence(json))
                 .isCloseTo(Math.exp(-0.5), org.assertj.core.data.Offset.offset(0.001));
     }
+
+    @Test
+    void extractConfidenceSegmentsNotArrayReturnsDefault() {
+        // "segments" key exists but value is not a JSON array → optJSONArray returns null
+        String json = "{\"segments\": \"not-an-array\"}";
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.85);
+    }
+
+    @Test
+    void extractConfidenceAvgLogprobSkipsNullSegments() {
+        // No word-level probs → falls back to extractConfidenceFromAvgLogprob
+        // The segments array contains a null entry → seg == null → continue
+        String json = """
+            {
+              "segments": [
+                null,
+                {"text": "hello", "avg_logprob": -0.5}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json))
+                .isCloseTo(Math.exp(-0.5), org.assertj.core.data.Offset.offset(0.001));
+    }
+
+    @Test
+    void extractTokensSegmentsNotArrayReturnsEmpty() {
+        // "segments" key exists but value is not a JSON array → segs is null → tokens empty
+        String json = "{\"segments\": \"not-an-array\"}";
+        assertThat(WhisperJsonParser.extractTokens(json)).isEmpty();
+    }
+
+    @Test
+    void extractConfidenceAvgLogprobSkipsNaNValues() {
+        // Segment has avg_logprob key but value is NaN → should be skipped
+        String json = """
+            {
+              "segments": [
+                {"text": "first", "avg_logprob": "NaN"},
+                {"text": "second", "avg_logprob": -0.5}
+              ]
+            }
+            """;
+        // Only the second segment contributes (NaN is skipped)
+        assertThat(WhisperJsonParser.extractConfidence(json))
+                .isCloseTo(Math.exp(-0.5), org.assertj.core.data.Offset.offset(0.001));
+    }
 }

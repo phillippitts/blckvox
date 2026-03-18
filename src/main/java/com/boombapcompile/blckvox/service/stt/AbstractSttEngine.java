@@ -290,11 +290,11 @@ public abstract class AbstractSttEngine implements SttEngine {
 
         // Preserve TranscriptionException without double-wrapping
         if (exception instanceof TranscriptionException te) {
-            throw te;
+            return te;
         }
 
         // Wrap other exceptions with engine context
-        throw new TranscriptionException(
+        return new TranscriptionException(
             getEngineName() + " transcription failed: " + exception.getMessage(),
             getEngineName(),
             exception

@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -177,6 +178,7 @@ public class SttEngineWatchdog {
         return !budgetTracker.isInCooldown(engine);
     }
 
+    @Async("sttExecutor")
     @EventListener
     public void onFailure(EngineFailureEvent event) {
         String engine = event.engine();

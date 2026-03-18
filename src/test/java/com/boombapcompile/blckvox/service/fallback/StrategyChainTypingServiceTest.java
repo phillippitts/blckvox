@@ -186,21 +186,9 @@ class StrategyChainTypingServiceTest {
     @Test
     void unknownAdapterIsIncludedInChainAfterClipboardBeforeNotify() {
         List<String> callOrder = new ArrayList<>();
-        TypingAdapter unknown = new TypingAdapter() {
-            @Override public boolean canType() { return true; }
-            @Override public boolean type(String text) { callOrder.add("other"); return false; }
-            @Override public String name() { return "other"; }
-        };
-        TypingAdapter clipboard = new TypingAdapter() {
-            @Override public boolean canType() { return true; }
-            @Override public boolean type(String text) { callOrder.add("clipboard"); return false; }
-            @Override public String name() { return "clipboard"; }
-        };
-        TypingAdapter notify = new TypingAdapter() {
-            @Override public boolean canType() { return true; }
-            @Override public boolean type(String text) { callOrder.add("notify"); return false; }
-            @Override public String name() { return "notify"; }
-        };
+        TypingAdapter unknown = trackingAdapter("other", callOrder);
+        TypingAdapter clipboard = trackingAdapter("clipboard", callOrder);
+        TypingAdapter notify = trackingAdapter("notify", callOrder);
         StrategyChainTypingService svc = new StrategyChainTypingService(
                 List.of(unknown, notify, clipboard), PROPS, e -> { });
 
@@ -226,6 +214,24 @@ class StrategyChainTypingServiceTest {
         } finally {
             Configurator.setLevel(StrategyChainTypingService.class, Level.INFO);
         }
+    }
+
+    private static TypingAdapter trackingAdapter(String adapterName, List<String> callOrder) {
+        return new TypingAdapter() {
+            @Override
+            public boolean canType() {
+                return true;
+            }
+            @Override
+            public boolean type(String text) {
+                callOrder.add(adapterName);
+                return false;
+            }
+            @Override
+            public String name() {
+                return adapterName;
+            }
+        };
     }
 
     private static TypingAdapter adapter(String name, boolean canType, boolean typeResult) {

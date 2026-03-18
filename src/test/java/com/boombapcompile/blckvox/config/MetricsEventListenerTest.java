@@ -92,4 +92,5 @@ class MetricsEventListenerTest {
 
         assertThat(registry.find("blckvox.typing.count").counter()).isNull();
     }
+
 }

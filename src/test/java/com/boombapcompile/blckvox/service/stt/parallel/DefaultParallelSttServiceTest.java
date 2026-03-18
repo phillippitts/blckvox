@@ -3,6 +3,7 @@ package com.boombapcompile.blckvox.service.stt.parallel;
 import com.boombapcompile.blckvox.domain.TranscriptionResult;
 import com.boombapcompile.blckvox.exception.TranscriptionException;
 import com.boombapcompile.blckvox.service.stt.DetailedTranscriptionEngine;
+import com.boombapcompile.blckvox.service.stt.EngineResult;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
 import com.boombapcompile.blckvox.service.stt.TranscriptionOutput;
 import org.junit.jupiter.api.Test;
@@ -253,6 +254,126 @@ class DefaultParallelSttServiceTest {
         var pair = svc.transcribeBoth(new byte[3200], 50);
         // At least whisper should succeed, vosk may be null
         assertThat(pair.whisper()).isNotNull();
+    }
+
+    @Test
+    void transcribeVoskOnlySucceeds() {
+        SttEngine vosk = new StubEngine("vosk", 10, false);
+        SttEngine whisper = new StubEngine("whisper", 10, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+
+        EngineResult result = svc.transcribeVoskOnly(new byte[3200], 1000);
+        assertThat(result).isNotNull();
+        assertThat(result.engineName()).isEqualTo("vosk");
+    }
+
+    @Test
+    void transcribeVoskOnlyTimeoutThrows() {
+        SttEngine vosk = new StubEngine("vosk", 5000, false);
+        SttEngine whisper = new StubEngine("whisper", 10, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+
+        assertThatThrownBy(() -> svc.transcribeVoskOnly(new byte[3200], 50))
+                .isInstanceOf(TranscriptionException.class)
+                .hasMessageContaining("Vosk engine failed or timed out");
+    }
+
+    @Test
+    void transcribeVoskOnlyFailureThrows() {
+        SttEngine vosk = new StubEngine("vosk", 10, true);
+        SttEngine whisper = new StubEngine("whisper", 10, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+
+        assertThatThrownBy(() -> svc.transcribeVoskOnly(new byte[3200], 1000))
+                .isInstanceOf(TranscriptionException.class);
+    }
+
+    @Test
+    void transcribeWhisperOnlySucceeds() {
+        SttEngine vosk = new StubEngine("vosk", 10, false);
+        SttEngine whisper = new StubEngine("whisper", 10, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+
+        EngineResult precomputed = new EngineResult("vosk-text", 0.9,
+                java.util.List.of("vosk", "text"), 100, "vosk", null);
+        var pair = svc.transcribeWhisperOnly(new byte[3200], 1000, precomputed);
+        assertThat(pair.vosk()).isSameAs(precomputed);
+        assertThat(pair.whisper()).isNotNull();
+    }
+
+    @Test
+    void transcribeWhisperOnlyTimeoutThrows() {
+        SttEngine vosk = new StubEngine("vosk", 10, false);
+        SttEngine whisper = new StubEngine("whisper", 5000, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+
+        EngineResult precomputed = new EngineResult("vosk-text", 0.9,
+                java.util.List.of("vosk", "text"), 100, "vosk", null);
+        assertThatThrownBy(() -> svc.transcribeWhisperOnly(new byte[3200], 50, precomputed))
+                .isInstanceOf(TranscriptionException.class)
+                .hasMessageContaining("Whisper engine failed or timed out");
+    }
+
+    @Test
+    void transcribeWhisperOnlyFailureThrows() {
+        SttEngine vosk = new StubEngine("vosk", 10, false);
+        SttEngine whisper = new StubEngine("whisper", 10, true);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 5000);
+
+        EngineResult precomputed = new EngineResult("vosk-text", 0.9,
+                java.util.List.of("vosk", "text"), 100, "vosk", null);
+        assertThatThrownBy(() -> svc.transcribeWhisperOnly(new byte[3200], 1000, precomputed))
+                .isInstanceOf(TranscriptionException.class);
+    }
+
+    @Test
+    void transcribeVoskOnlyInterruptedSetsFlag() throws InterruptedException {
+        SttEngine vosk = new StubEngine("vosk", 5000, false);
+        SttEngine whisper = new StubEngine("whisper", 10, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 10000);
+
+        Thread testThread = Thread.currentThread();
+        new Thread(() -> {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
+            testThread.interrupt();
+        }).start();
+
+        assertThatThrownBy(() -> svc.transcribeVoskOnly(new byte[3200], 10000))
+                .isInstanceOf(TranscriptionException.class);
+        Thread.interrupted(); // clear flag
+    }
+
+    @Test
+    void transcribeWhisperOnlyInterruptedSetsFlag() throws InterruptedException {
+        SttEngine vosk = new StubEngine("vosk", 10, false);
+        SttEngine whisper = new StubEngine("whisper", 5000, false);
+        Executor exec = Executors.newFixedThreadPool(2);
+        DefaultParallelSttService svc = new DefaultParallelSttService(vosk, whisper, exec, 10000);
+
+        EngineResult precomputed = new EngineResult("vosk-text", 0.9,
+                java.util.List.of("vosk", "text"), 100, "vosk", null);
+        Thread testThread = Thread.currentThread();
+        new Thread(() -> {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
+            testThread.interrupt();
+        }).start();
+
+        assertThatThrownBy(() -> svc.transcribeWhisperOnly(new byte[3200], 10000, precomputed))
+                .isInstanceOf(TranscriptionException.class);
+        Thread.interrupted(); // clear flag
     }
 
     static class RuntimeExceptionEngine implements SttEngine {

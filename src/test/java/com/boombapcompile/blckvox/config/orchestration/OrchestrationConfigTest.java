@@ -24,13 +24,21 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class OrchestrationConfigTest {
 
     private final AudioCaptureService captureService = mock(AudioCaptureService.class);
-    private final SttEngine voskEngine = mock(SttEngine.class);
-    private final SttEngine whisperEngine = mock(SttEngine.class);
+    private final SttEngine voskEngine = createMockEngine("vosk");
+    private final SttEngine whisperEngine = createMockEngine("whisper");
+    private final List<SttEngine> sttEngines = List.of(voskEngine, whisperEngine);
     private final SttEngineWatchdog watchdog = mock(SttEngineWatchdog.class);
+
+    private static SttEngine createMockEngine(String name) {
+        SttEngine engine = mock(SttEngine.class);
+        when(engine.getEngineName()).thenReturn(name);
+        return engine;
+    }
     private final OrchestrationProperties orchProps = new OrchestrationProperties(
             OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
     private final HotkeyProperties hotkeyProps = new HotkeyProperties(
@@ -41,7 +49,7 @@ class OrchestrationConfigTest {
     @Test
     void captureStateMachineCreatesNewInstance() {
         OrchestrationConfig config = new OrchestrationConfig(
-                captureService, voskEngine, whisperEngine, watchdog,
+                captureService, sttEngines, watchdog,
                 orchProps, hotkeyProps, publisher, metricsPublisher, null);
 
         CaptureStateMachine csm = config.captureStateMachine();
@@ -51,7 +59,7 @@ class OrchestrationConfigTest {
     @Test
     void engineSelectionStrategyCreatesNewInstance() {
         OrchestrationConfig config = new OrchestrationConfig(
-                captureService, voskEngine, whisperEngine, watchdog,
+                captureService, sttEngines, watchdog,
                 orchProps, hotkeyProps, publisher, metricsPublisher, null);
 
         EngineSelectionStrategy strategy = config.engineSelectionStrategy();
@@ -61,7 +69,7 @@ class OrchestrationConfigTest {
     @Test
     void captureOrchestratorCreatesDefaultInstance() {
         OrchestrationConfig config = new OrchestrationConfig(
-                captureService, voskEngine, whisperEngine, watchdog,
+                captureService, sttEngines, watchdog,
                 orchProps, hotkeyProps, publisher, metricsPublisher, null);
 
         CaptureOrchestrator orchestrator = config.captureOrchestrator(new CaptureStateMachine());
@@ -71,7 +79,7 @@ class OrchestrationConfigTest {
     @Test
     void transcriptionOrchestratorCreatesNonReconciledInstance() {
         OrchestrationConfig config = new OrchestrationConfig(
-                captureService, voskEngine, whisperEngine, watchdog,
+                captureService, sttEngines, watchdog,
                 orchProps, hotkeyProps, publisher, metricsPublisher, null);
 
         EngineSelectionStrategy strategy = config.engineSelectionStrategy();
@@ -89,7 +97,7 @@ class OrchestrationConfigTest {
                 parallelSttService, reconciler, recProps);
 
         OrchestrationConfig config = new OrchestrationConfig(
-                captureService, voskEngine, whisperEngine, watchdog,
+                captureService, sttEngines, watchdog,
                 orchProps, hotkeyProps, publisher, metricsPublisher, deps);
 
         EngineSelectionStrategy strategy = config.engineSelectionStrategy();
@@ -100,7 +108,7 @@ class OrchestrationConfigTest {
     @Test
     void recordingServiceCreatesDefaultInstance() {
         OrchestrationConfig config = new OrchestrationConfig(
-                captureService, voskEngine, whisperEngine, watchdog,
+                captureService, sttEngines, watchdog,
                 orchProps, hotkeyProps, publisher, metricsPublisher, null);
 
         CaptureOrchestrator captureOrch = config.captureOrchestrator(new CaptureStateMachine());
@@ -116,7 +124,7 @@ class OrchestrationConfigTest {
     @Test
     void hotkeyRecordingAdapterCreatesInstance() {
         OrchestrationConfig config = new OrchestrationConfig(
-                captureService, voskEngine, whisperEngine, watchdog,
+                captureService, sttEngines, watchdog,
                 orchProps, hotkeyProps, publisher, metricsPublisher, null);
 
         RecordingService recordingService = mock(RecordingService.class);

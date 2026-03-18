@@ -7,6 +7,7 @@ import java.util.Deque;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Tracks per-engine confidence scores in a sliding window and detects degradation.
@@ -18,19 +19,23 @@ public class ConfidenceMonitor {
     private final double blacklistThreshold;
     private final int windowSize;
     private final int minSamples;
+    private final int graceTranscriptions;
 
     private final ConcurrentMap<String, Deque<Double>> windows = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, AtomicInteger> graceCounters = new ConcurrentHashMap<>();
 
     public ConfidenceMonitor(SttWatchdogProperties props) {
         Objects.requireNonNull(props, "props");
         this.blacklistThreshold = props.getConfidenceBlacklistThreshold();
         this.windowSize = props.getConfidenceWindowSize();
         this.minSamples = props.getConfidenceMinSamples();
+        this.graceTranscriptions = props.getConfidenceGraceTranscriptions();
     }
 
     /** Registers an engine for confidence monitoring. */
     public void register(String engine) {
         windows.put(engine, new ArrayDeque<>());
+        graceCounters.put(engine, new AtomicInteger(0));
     }
 
     /** Returns true if the given engine is tracked by this monitor. */
@@ -50,6 +55,12 @@ public class ConfidenceMonitor {
             return null;
         }
 
+        AtomicInteger grace = graceCounters.get(engine);
+        if (grace != null && grace.get() > 0) {
+            grace.decrementAndGet();
+            return null;
+        }
+
         synchronized (window) {
             window.addLast(confidence);
             while (window.size() > windowSize) {
@@ -65,13 +76,17 @@ public class ConfidenceMonitor {
         }
     }
 
-    /** Clears all confidence data for the given engine. */
+    /** Clears all confidence data for the given engine and activates grace period. */
     public void clearOnRecovery(String engine) {
         Deque<Double> window = windows.get(engine);
         if (window != null) {
             synchronized (window) {
                 window.clear();
             }
+        }
+        AtomicInteger grace = graceCounters.get(engine);
+        if (grace != null) {
+            grace.set(graceTranscriptions);
         }
     }
 

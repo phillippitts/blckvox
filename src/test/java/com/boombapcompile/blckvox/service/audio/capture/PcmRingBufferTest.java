@@ -129,4 +129,110 @@ class PcmRingBufferTest {
         buf.write(src, 2, 3); // write bytes at offset 2, len 3
         assertThat(buf.toByteArray()).containsExactly(1, 2, 3);
     }
+
+    // --- Lazy allocation tests ---
+
+    @Test
+    void startsWithSmallAllocation() {
+        // maxCapacity = 1MB, but initial should be INITIAL_CAPACITY (320_000)
+        PcmRingBuffer buf = new PcmRingBuffer(1_000_000);
+        assertThat(buf.currentCapacity()).isEqualTo(320_000);
+    }
+
+    @Test
+    void growsOnDemand() {
+        PcmRingBuffer buf = new PcmRingBuffer(1_000_000);
+        int initial = buf.currentCapacity();
+
+        // Write more than initial capacity to force growth
+        byte[] data = new byte[initial + 1];
+        buf.write(data, 0, data.length);
+
+        assertThat(buf.currentCapacity()).isGreaterThan(initial);
+        // Data should be fully preserved (no overflow since maxCapacity is large)
+        assertThat(buf.toByteArray()).hasSize(initial + 1);
+    }
+
+    @Test
+    void stopsGrowingAtMaxCapacity() {
+        int maxCap = 500_000;
+        PcmRingBuffer buf = new PcmRingBuffer(maxCap);
+
+        // Write enough data to exceed maxCapacity
+        byte[] data = new byte[maxCap + 100];
+        buf.write(data, 0, data.length);
+
+        assertThat(buf.currentCapacity()).isEqualTo(maxCap);
+        // Only the last maxCap bytes should be kept
+        assertThat(buf.toByteArray()).hasSize(maxCap);
+    }
+
+    @Test
+    void growBufferLinearizesWrappedData() {
+        // Use a maxCapacity large enough to trigger growth.
+        // INITIAL_CAPACITY = 320_000, so we need maxCapacity > 320_000.
+        int maxCap = 640_000;
+        PcmRingBuffer buf = new PcmRingBuffer(maxCap);
+
+        // Fill the initial buffer to capacity
+        byte[] fill = new byte[320_000];
+        java.util.Arrays.fill(fill, (byte) 1);
+        buf.write(fill, 0, fill.length);
+        assertThat(buf.currentCapacity()).isEqualTo(320_000);
+
+        // Read all data and overwrite to position writePos near end, then wrap around
+        buf.clear();
+        // Write 310_000 bytes to advance writePos to 310_000
+        byte[] advance = new byte[310_000];
+        java.util.Arrays.fill(advance, (byte) 2);
+        buf.write(advance, 0, advance.length);
+        // Clear but keep buffer (doesn't shrink)
+        buf.clear();
+        // Now writePos is at 0, size is 0
+
+        // Write 310_000 bytes to advance writePos near end
+        buf.write(advance, 0, advance.length);
+        // writePos is at 310_000, size is 310_000
+
+        // Now write more data that wraps around: 20_000 bytes fits (capacity=320_000, used=310_000, space=10_000)
+        // 20_000 > 10_000 remaining, so part wraps to beginning
+        byte[] wrap = new byte[20_000];
+        java.util.Arrays.fill(wrap, (byte) 3);
+        buf.write(wrap, 0, wrap.length);
+        // Buffer is 320_000, used=320_000 (full, with some old data dropped)
+
+        // Now trigger growth by writing more data that exceeds current capacity
+        // but fits in maxCapacity — this triggers growBuffer() with size > 0
+        // and wrapped data (writePos < size means first < size in growBuffer)
+        byte[] triggerGrow = new byte[100_000];
+        java.util.Arrays.fill(triggerGrow, (byte) 4);
+        buf.write(triggerGrow, 0, triggerGrow.length);
+
+        // Buffer should have grown
+        assertThat(buf.currentCapacity()).isGreaterThan(320_000);
+        // Data should be linearized and readable
+        byte[] result = buf.toByteArray();
+        assertThat(result.length).isGreaterThan(0);
+        // The last 100_000 bytes should be 4s
+        byte[] tail = java.util.Arrays.copyOfRange(result, result.length - 100_000, result.length);
+        assertThat(tail).containsOnly((byte) 4);
+    }
+
+    @Test
+    void clearDoesNotShrinkBuffer() {
+        PcmRingBuffer buf = new PcmRingBuffer(1_000_000);
+        int initial = buf.currentCapacity();
+
+        // Force growth
+        byte[] data = new byte[initial + 1];
+        buf.write(data, 0, data.length);
+        int grown = buf.currentCapacity();
+        assertThat(grown).isGreaterThan(initial);
+
+        buf.clear();
+
+        // Buffer capacity should be retained after clear
+        assertThat(buf.currentCapacity()).isEqualTo(grown);
+        assertThat(buf.toByteArray()).isEmpty();
+    }
 }

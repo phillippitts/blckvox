@@ -128,8 +128,7 @@ class AbstractSttEngineTest {
 
         TranscriptionException original = new TranscriptionException("original error", "testable");
 
-        assertThatThrownBy(() -> engine.testHandleError(original))
-                .isSameAs(original);
+        assertThat(engine.testHandleError(original)).isSameAs(original);
     }
 
     @Test
@@ -139,8 +138,8 @@ class AbstractSttEngineTest {
 
         RuntimeException cause = new RuntimeException("something went wrong");
 
-        assertThatThrownBy(() -> engine.testHandleError(cause))
-                .isInstanceOf(TranscriptionException.class)
+        TranscriptionException result = engine.testHandleError(cause);
+        assertThat(result).isInstanceOf(TranscriptionException.class)
                 .hasCause(cause)
                 .hasMessageContaining("testable")
                 .hasMessageContaining("something went wrong");
@@ -160,9 +159,9 @@ class AbstractSttEngineTest {
         List<Object> events = new ArrayList<>();
         ApplicationEventPublisher publisher = events::add;
 
-        assertThatThrownBy(() -> engine.handleTranscriptionError(
-                new RuntimeException("test"), publisher, Map.of("key", "val")))
-                .isInstanceOf(TranscriptionException.class);
+        TranscriptionException result = engine.handleTranscriptionError(
+                new RuntimeException("test"), publisher, Map.of("key", "val"));
+        assertThat(result).isInstanceOf(TranscriptionException.class);
 
         // Publisher should have received a failure event
         assertThat(events).hasSize(1);
@@ -177,8 +176,8 @@ class AbstractSttEngineTest {
         ApplicationEventPublisher publisher = events::add;
 
         TranscriptionException original = new TranscriptionException("original", "testable");
-        assertThatThrownBy(() -> engine.handleTranscriptionError(original, publisher, null))
-                .isSameAs(original);
+        TranscriptionException result = engine.handleTranscriptionError(original, publisher, null);
+        assertThat(result).isSameAs(original);
 
         // Publisher should still get the event
         assertThat(events).hasSize(1);
