@@ -164,6 +164,12 @@ Settings for production tuning, monitoring, and reliability.
 | `stt.parallel.timeout-ms` | int | `120000` | Timeout in milliseconds for parallel dual-engine transcription (reconciliation mode only). |
 | `stt.orchestration.silence-gap-ms` | int | `1000` | Silence gap threshold in milliseconds. If silence within audio exceeds this, a paragraph break (newline) is inserted. Set to 0 to disable. |
 | `stt.orchestration.silence-threshold` | int | `200` | RMS amplitude threshold for silence detection (0-32767 for 16-bit PCM). Lower = captures quieter speech. |
+| `stt.orchestration.max-recording-duration-seconds` | int | `120` | Maximum recording duration in seconds. Auto-cancels stale recordings as a safety net. Set to 0 to disable. |
+
+**Duration Limits:** Three overlapping duration limits apply to recordings. The shortest active limit fires first:
+1. **Auto-cancel** (`stt.orchestration.max-recording-duration-seconds`, default 2 min) — cancels stale recordings at the orchestration layer.
+2. **Audio validation** (`audio.validation.max-duration-ms`, default 5 min) — rejects clips that exceed the validation ceiling.
+3. **Capture hard cap** (`audio.capture.max-duration-ms`, default 10 min) — hardware-level guard that stops the microphone.
 
 **Single-Engine Mode (Whisper only):**
 ```properties
@@ -204,7 +210,6 @@ stt.reconciliation.enabled=false
 | `stt.watchdog.window-minutes` | int | `60` | Sliding window duration for restart budget (minutes). |
 | `stt.watchdog.max-restarts-per-window` | int | `3` | Maximum restarts allowed within the sliding window. Prevents restart loops. |
 | `stt.watchdog.cooldown-minutes` | int | `10` | Cooldown period after max restarts exhausted before allowing new restarts. |
-| `stt.watchdog.probe-enabled` | boolean | `false` | Enable lightweight health probe for engines. |
 | `stt.watchdog.health-summary-interval-millis` | long | `60000` | Interval in milliseconds at which the watchdog logs a health summary for all engines. |
 | `stt.watchdog.confidence-blacklist-threshold` | double | `0.3` | Average confidence below this threshold triggers engine blacklisting (0.0-1.0). |
 | `stt.watchdog.confidence-window-size` | int | `10` | Number of recent confidence scores to average for blacklisting. |
@@ -212,6 +217,7 @@ stt.reconciliation.enabled=false
 | `stt.watchdog.backoff-base-delay-ms` | long | `1000` | Base delay in milliseconds for exponential backoff between restart attempts. Set to `0` to disable backoff. |
 | `stt.watchdog.backoff-multiplier` | double | `2.0` | Multiplier applied to backoff delay on each successive restart attempt. Formula: `base * multiplier^(attempt-1)`. Must be >= 1.0. |
 | `stt.watchdog.backoff-max-delay-ms` | long | `60000` | Maximum backoff delay cap in milliseconds. Prevents backoff from growing unboundedly regardless of multiplier. |
+| `stt.watchdog.confidence-grace-transcriptions` | int | `5` | Number of initial transcriptions to skip before evaluating confidence trends. Allows engines to warm up before being judged. |
 
 **How It Works:**
 1. Engine fails 3 times within 60 minutes -> watchdog disables it

@@ -17,3 +17,6 @@ logs/
 /.claude/
 /tools/
 /.playwright-mcp/console-2026-03-11T16-51-10-360Z.log
+
+# Blog drafts (personal, not part of project)
+docs/blog/

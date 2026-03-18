@@ -40,14 +40,14 @@ dependencies {
     implementation 'com.lmax:disruptor:3.4.4'  // For async logging performance
 
     // STT engines
-    implementation 'net.java.dev.jna:jna:5.13.0'           // Required by Vosk
+    implementation 'net.java.dev.jna:jna:5.16.0'           // Required by Vosk
     implementation 'com.alphacephei:vosk:0.3.38'          // Vosk STT (0.3.45 has native lib issue on macOS)
 
     // Hotkey support
     implementation 'com.github.kwhat:jnativehook:2.2.2'    // Global hotkeys
 
     // Utilities
-    implementation 'org.json:json:20231013'                // JSON parsing for Vosk
+    implementation 'org.json:json:20250107'                // JSON parsing for Vosk
 
     // Metrics (JMX-based runtime observability)
     implementation 'io.micrometer:micrometer-core'
@@ -58,7 +58,7 @@ dependencies {
 
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.awaitility:awaitility:4.2.0'   // Async testing
+    testImplementation 'org.awaitility:awaitility:4.2.2'   // Async testing
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
@@ -123,7 +123,7 @@ javafx {
 }
 
 checkstyle {
-    toolVersion = '10.12.0'
+    toolVersion = '10.21.3'
     configFile = file("${rootDir}/config/checkstyle/checkstyle.xml")
     // Fail build on violations
     maxWarnings = 0

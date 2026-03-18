@@ -80,7 +80,7 @@ type: short description
 Longer explanation if needed.
 ```
 
-Types: `add`, `fix`, `update`, `refactor`, `test`, `docs`
+Types: `add`, `feat`, `fix`, `update`, `refactor`, `test`, `docs`
 
 ## Architecture Quick Reference
 

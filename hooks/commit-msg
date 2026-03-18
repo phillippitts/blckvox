@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+#
+# commit-msg hook — validates commit message format against CONTRIBUTING.md conventions.
+# Install: ./hooks/install-hooks.sh
+
+set -euo pipefail
+
+commit_msg_file="$1"
+first_line=$(head -n 1 "$commit_msg_file")
+
+# Allow merge and revert commits
+if [[ "$first_line" =~ ^Merge\ |^Revert\  ]]; then
+    exit 0
+fi
+
+# Allow Co-Authored-By lines (for amend/squash scenarios where it's the first line)
+if [[ "$first_line" =~ ^Co-Authored-By: ]]; then
+    exit 0
+fi
+
+# Validate: type: description
+if [[ ! "$first_line" =~ ^(add|fix|update|refactor|test|docs|feat):\ .+ ]]; then
+    echo ""
+    echo "ERROR: Invalid commit message format."
+    echo ""
+    echo "  First line must match:  type: short description"
+    echo ""
+    echo "  Valid types: add, feat, fix, update, refactor, test, docs"
+    echo ""
+    echo "  Examples:"
+    echo "    add: exponential backoff in watchdog restart"
+    echo "    fix: null pointer in audio capture"
+    echo "    update: dependency versions for Spring Boot 3.5"
+    echo "    refactor: extract reconciliation strategies"
+    echo "    test: improve watchdog coverage"
+    echo "    docs: add ADR for reconciliation strategies"
+    echo ""
+    echo "  Your message was:"
+    echo "    $first_line"
+    echo ""
+    exit 1
+fi

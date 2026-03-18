@@ -94,7 +94,6 @@ jobs:
 
       - name: OWASP Dependency Check
         run: ./gradlew dependencyCheckAnalyze
-        continue-on-error: true
 
       - name: Generate SBOM (CycloneDX)
         run: ./gradlew cyclonedxBom

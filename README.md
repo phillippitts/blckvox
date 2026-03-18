@@ -502,6 +502,7 @@ GIT_REF=v1.8.0 ./build-whisper.sh
 - [ADR-010: Whisper Process Isolation](docs/adr/010-whisper-process-isolation.md)
 - [ADR-011: Spring Boot for Desktop](docs/adr/011-spring-boot-desktop.md)
 - [ADR-012: Audio Format Constraints](docs/adr/012-audio-format-constraints.md)
+- [ADR-013: Reconciliation Strategy Selection](docs/adr/013-reconciliation-strategy-selection.md)
 
 ### Diagrams & Runbooks
 
