@@ -120,6 +120,22 @@ class PropertiesRecordTest {
         assertThat(props.getSilenceThreshold()).isEqualTo(300);
     }
 
+    // --- HealthProperties ---
+
+    @Test
+    void healthPropertiesGetters() {
+        HealthProperties props = new HealthProperties(true, "/tmp/heartbeat", 30000L);
+        assertThat(props.enabled()).isTrue();
+        assertThat(props.path()).isEqualTo("/tmp/heartbeat");
+        assertThat(props.intervalMs()).isEqualTo(30000L);
+    }
+
+    @Test
+    void healthPropertiesDisabled() {
+        HealthProperties props = new HealthProperties(false, "/tmp/heartbeat", 30000L);
+        assertThat(props.enabled()).isFalse();
+    }
+
     // --- SttWatchdogProperties ---
 
     @Test

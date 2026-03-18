@@ -2,6 +2,7 @@ package com.boombapcompile.blckvox;
 
 import com.boombapcompile.blckvox.config.properties.AudioCaptureProperties;
 import com.boombapcompile.blckvox.config.properties.AudioValidationProperties;
+import com.boombapcompile.blckvox.config.properties.HealthProperties;
 import com.boombapcompile.blckvox.config.properties.HotkeyProperties;
 import com.boombapcompile.blckvox.config.properties.LiveCaptionProperties;
 import com.boombapcompile.blckvox.config.properties.OrchestrationProperties;
@@ -22,6 +23,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableConfigurationProperties({
         VoskConfig.class,
         WhisperConfig.class,
+        HealthProperties.class,
         SttConcurrencyProperties.class,
         SttWatchdogProperties.class,
         AudioCaptureProperties.class,

@@ -145,6 +145,13 @@ public class SttEngineWatchdog {
         }
     }
 
+    /**
+     * Returns a snapshot of all engine states (thread-safe copy).
+     */
+    public Map<String, EngineState> getEngineStates() {
+        return Map.copyOf(state);
+    }
+
     /** Visible for tests. */
     EngineState getState(String engine) {
         return state.get(engine);

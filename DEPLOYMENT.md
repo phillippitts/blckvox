@@ -297,6 +297,74 @@ ps aux | grep blckvox | grep -v grep
 ps -o etime= -p $(pgrep -f blckvox)
 ```
 
+### JMX Health MBean
+
+The application registers a JMX MBean at `com.boombapcompile.blckvox:type=Health` that provides real-time health status. This is richer than process-level checks — it detects deadlocked engines, all-disabled states, and degraded operation.
+
+**Attributes:**
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `Status` | String | `UP`, `DEGRADED`, or `DOWN` |
+| `Details` | String | Per-engine states and uptime |
+| `LastCheckEpochMs` | long | Epoch millis of last health check |
+| `UptimeMs` | long | JVM uptime in milliseconds |
+
+**Querying via JConsole:**
+1. Start the JVM with JMX enabled (or use `jcmd <pid> ManagementAgent.start`)
+2. Connect JConsole to the process
+3. Navigate to MBeans → `com.boombapcompile.blckvox` → `Health`
+
+**Querying via command line (jmxterm):**
+```bash
+# Using jmxterm
+echo "get -b com.boombapcompile.blckvox:type=Health Status" | \
+  java -jar jmxterm.jar -l localhost:9010
+```
+
+### File-Based Heartbeat
+
+The application writes a heartbeat file at a configurable interval (default: 30s). This is designed for init systems (systemd, launchd) and simple monitoring scripts that can check file freshness.
+
+**Configuration:**
+```properties
+health.heartbeat.enabled=true
+health.heartbeat.path=${java.io.tmpdir}/blckvox-heartbeat
+health.heartbeat.interval-ms=30000
+```
+
+**File format:** `<epoch_ms> <STATUS>` (e.g., `1711234567890 UP`)
+
+**Staleness contract:** If the file is not updated within `2 × interval-ms` (default: 60s), the application should be considered unhealthy.
+
+**Checking heartbeat (macOS):**
+```bash
+# Check if heartbeat file was updated in the last 2 minutes
+if [ -f /tmp/blckvox-heartbeat ] && \
+   [ "$(( $(date +%s) - $(stat -f %m /tmp/blckvox-heartbeat) ))" -lt 120 ]; then
+  echo "HEALTHY: $(cat /tmp/blckvox-heartbeat)"
+else
+  echo "UNHEALTHY: heartbeat stale or missing"
+fi
+```
+
+**Checking heartbeat (Linux):**
+```bash
+# Check if heartbeat file was updated in the last 2 minutes
+if find /tmp/blckvox-heartbeat -mmin -2 -print -quit 2>/dev/null | grep -q .; then
+  echo "HEALTHY: $(cat /tmp/blckvox-heartbeat)"
+else
+  echo "UNHEALTHY: heartbeat stale or missing"
+fi
+```
+
+**systemd integration (watchdog-style):**
+```ini
+# In blckvox.service [Service] section:
+ExecStartPost=/bin/sh -c 'sleep 5 && test -f /tmp/blckvox-heartbeat'
+ExecCondition=/bin/sh -c 'test -f /tmp/blckvox-heartbeat && \
+  test "$(($(date +%%s) - $(stat -c %%Y /tmp/blckvox-heartbeat)))" -lt 120'
+```
+
 ### Log Monitoring
 
 ```bash
