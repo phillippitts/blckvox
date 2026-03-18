@@ -11,51 +11,53 @@ class AudioSilenceDetectorTest {
     private static final int SAMPLE_RATE = 16000;
     private static final int SILENCE_GAP_MS = 500;
 
+    private final AudioSilenceDetector detector = new AudioSilenceDetector();
+
     // --- Guard clauses ---
 
     @Test
     void shouldReturnEmptyForNullPcm() {
-        assertThat(AudioSilenceDetector.detectSilenceBoundaries(null, SILENCE_GAP_MS, SAMPLE_RATE))
+        assertThat(detector.detectSilenceBoundaries(null, SILENCE_GAP_MS, SAMPLE_RATE))
                 .isEmpty();
     }
 
     @Test
     void shouldReturnEmptyForEmptyPcm() {
-        assertThat(AudioSilenceDetector.detectSilenceBoundaries(new byte[0], SILENCE_GAP_MS, SAMPLE_RATE))
+        assertThat(detector.detectSilenceBoundaries(new byte[0], SILENCE_GAP_MS, SAMPLE_RATE))
                 .isEmpty();
     }
 
     @Test
     void shouldReturnEmptyForSingleBytePcm() {
-        assertThat(AudioSilenceDetector.detectSilenceBoundaries(new byte[1], SILENCE_GAP_MS, SAMPLE_RATE))
+        assertThat(detector.detectSilenceBoundaries(new byte[1], SILENCE_GAP_MS, SAMPLE_RATE))
                 .isEmpty();
     }
 
     @Test
     void shouldReturnEmptyForZeroSilenceGapMs() {
         byte[] pcm = generateSilence(1000);
-        assertThat(AudioSilenceDetector.detectSilenceBoundaries(pcm, 0, SAMPLE_RATE))
+        assertThat(detector.detectSilenceBoundaries(pcm, 0, SAMPLE_RATE))
                 .isEmpty();
     }
 
     @Test
     void shouldReturnEmptyForNegativeSilenceGapMs() {
         byte[] pcm = generateSilence(1000);
-        assertThat(AudioSilenceDetector.detectSilenceBoundaries(pcm, -100, SAMPLE_RATE))
+        assertThat(detector.detectSilenceBoundaries(pcm, -100, SAMPLE_RATE))
                 .isEmpty();
     }
 
     @Test
     void shouldReturnEmptyForZeroSampleRate() {
         byte[] pcm = generateSilence(1000);
-        assertThat(AudioSilenceDetector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, 0))
+        assertThat(detector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, 0))
                 .isEmpty();
     }
 
     @Test
     void shouldReturnEmptyForNegativeSampleRate() {
         byte[] pcm = generateSilence(1000);
-        assertThat(AudioSilenceDetector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, -16000))
+        assertThat(detector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, -16000))
                 .isEmpty();
     }
 
@@ -65,7 +67,7 @@ class AudioSilenceDetectorTest {
     void shouldDetectTrailingSilenceBoundary() {
         // Pure silence longer than threshold → boundary at end
         byte[] pcm = generateSilence(durationToSamples(SILENCE_GAP_MS + 100));
-        List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
+        List<Integer> boundaries = detector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
         assertThat(boundaries).hasSize(1);
         assertThat(boundaries.getFirst()).isEqualTo(pcm.length);
     }
@@ -73,7 +75,7 @@ class AudioSilenceDetectorTest {
     @Test
     void shouldReturnEmptyForContinuousLoudAudio() {
         byte[] pcm = generateLoud(durationToSamples(1000));
-        List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
+        List<Integer> boundaries = detector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
         assertThat(boundaries).isEmpty();
     }
 
@@ -85,7 +87,7 @@ class AudioSilenceDetectorTest {
         byte[] loud2 = generateLoud(durationToSamples(300));
         byte[] pcm = concat(loud1, silence, loud2);
 
-        List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
+        List<Integer> boundaries = detector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
         assertThat(boundaries).hasSize(1);
         // Boundary should be after silence region, before loud2
         assertThat(boundaries.getFirst()).isGreaterThan(loud1.length)
@@ -100,7 +102,7 @@ class AudioSilenceDetectorTest {
         byte[] loud2 = generateLoud(durationToSamples(500));
         byte[] pcm = concat(loud1, silence, loud2);
 
-        List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
+        List<Integer> boundaries = detector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
         assertThat(boundaries).isEmpty();
     }
 
@@ -112,7 +114,7 @@ class AudioSilenceDetectorTest {
         // loud + silence + loud + silence + loud
         byte[] pcm = concat(loud, silence, loud, silence, loud);
 
-        List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
+        List<Integer> boundaries = detector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
         assertThat(boundaries).hasSize(2);
     }
 
@@ -122,12 +124,12 @@ class AudioSilenceDetectorTest {
         byte[] moderate = generateModerate(durationToSamples(1000));
 
         // With default threshold (800), moderate audio is "silence" → boundary detected
-        List<Integer> withDefault = AudioSilenceDetector.detectSilenceBoundaries(
+        List<Integer> withDefault = detector.detectSilenceBoundaries(
                 moderate, SILENCE_GAP_MS, SAMPLE_RATE, 800);
         assertThat(withDefault).hasSize(1);
 
         // With low threshold (100), moderate audio is "loud" → no boundary
-        List<Integer> withLow = AudioSilenceDetector.detectSilenceBoundaries(
+        List<Integer> withLow = detector.detectSilenceBoundaries(
                 moderate, SILENCE_GAP_MS, SAMPLE_RATE, 100);
         assertThat(withLow).isEmpty();
     }
@@ -136,32 +138,32 @@ class AudioSilenceDetectorTest {
 
     @Test
     void maxWindowRmsShouldReturnZeroForNull() {
-        assertThat(AudioSilenceDetector.calculateMaxWindowRMS(null)).isEqualTo(0);
+        assertThat(detector.calculateMaxWindowRMS(null)).isEqualTo(0);
     }
 
     @Test
     void maxWindowRmsShouldReturnZeroForEmpty() {
-        assertThat(AudioSilenceDetector.calculateMaxWindowRMS(new byte[0])).isEqualTo(0);
+        assertThat(detector.calculateMaxWindowRMS(new byte[0])).isEqualTo(0);
     }
 
     @Test
     void maxWindowRmsShouldReturnZeroForSingleByte() {
-        assertThat(AudioSilenceDetector.calculateMaxWindowRMS(new byte[1])).isEqualTo(0);
+        assertThat(detector.calculateMaxWindowRMS(new byte[1])).isEqualTo(0);
     }
 
     @Test
     void isSilentMaxWindowShouldReturnTrueForNull() {
-        assertThat(AudioSilenceDetector.isSilentMaxWindow(null, 200)).isTrue();
+        assertThat(detector.isSilentMaxWindow(null, 200)).isTrue();
     }
 
     @Test
     void isSilentMaxWindowShouldReturnTrueForEmpty() {
-        assertThat(AudioSilenceDetector.isSilentMaxWindow(new byte[0], 200)).isTrue();
+        assertThat(detector.isSilentMaxWindow(new byte[0], 200)).isTrue();
     }
 
     @Test
     void isSilentMaxWindowShouldReturnTrueForSingleByte() {
-        assertThat(AudioSilenceDetector.isSilentMaxWindow(new byte[1], 200)).isTrue();
+        assertThat(detector.isSilentMaxWindow(new byte[1], 200)).isTrue();
     }
 
     // --- Max-window RMS: Core detection ---
@@ -169,13 +171,13 @@ class AudioSilenceDetectorTest {
     @Test
     void maxWindowRmsShouldBeZeroForPureSilence() {
         byte[] pcm = generateSilence(durationToSamples(500));
-        assertThat(AudioSilenceDetector.calculateMaxWindowRMS(pcm)).isEqualTo(0);
+        assertThat(detector.calculateMaxWindowRMS(pcm)).isEqualTo(0);
     }
 
     @Test
     void maxWindowRmsShouldBeHighForPureLoudAudio() {
         byte[] pcm = generateLoud(durationToSamples(500));
-        assertThat(AudioSilenceDetector.calculateMaxWindowRMS(pcm)).isGreaterThan(9000);
+        assertThat(detector.calculateMaxWindowRMS(pcm)).isGreaterThan(9000);
     }
 
     @Test
@@ -190,9 +192,9 @@ class AudioSilenceDetectorTest {
         byte[] silence2 = generateSilence(durationToSamples(800));
         byte[] pcm = concat(silence1, speech, silence2);
 
-        assertThat(AudioSilenceDetector.isSilentMaxWindow(pcm, 200)).isFalse();
+        assertThat(detector.isSilentMaxWindow(pcm, 200)).isFalse();
         // Overall RMS is diluted — verify the old method would miss it
-        assertThat(AudioSilenceDetector.isSilent(pcm, 200)).isTrue();
+        assertThat(detector.isSilent(pcm, 200)).isTrue();
     }
 
     @Test
@@ -204,10 +206,10 @@ class AudioSilenceDetectorTest {
         byte[] silence2 = generateSilence(durationToSamples(2000));
         byte[] pcm = concat(silence1, speech, silence2);
 
-        assertThat(AudioSilenceDetector.isSilentMaxWindow(pcm, 200)).isFalse();
-        assertThat(AudioSilenceDetector.calculateMaxWindowRMS(pcm)).isGreaterThan(200);
+        assertThat(detector.isSilentMaxWindow(pcm, 200)).isFalse();
+        assertThat(detector.calculateMaxWindowRMS(pcm)).isGreaterThan(200);
         // Overall RMS is heavily diluted
-        assertThat(AudioSilenceDetector.calculateOverallRMS(pcm)).isLessThan(200);
+        assertThat(detector.calculateOverallRMS(pcm)).isLessThan(200);
     }
 
     @Test
@@ -215,8 +217,8 @@ class AudioSilenceDetectorTest {
         // Moderate audio (RMS ~500): not silent at threshold 200, silent at threshold 800
         byte[] pcm = generateModerate(durationToSamples(500));
 
-        assertThat(AudioSilenceDetector.isSilentMaxWindow(pcm, 200)).isFalse();
-        assertThat(AudioSilenceDetector.isSilentMaxWindow(pcm, 800)).isTrue();
+        assertThat(detector.isSilentMaxWindow(pcm, 200)).isFalse();
+        assertThat(detector.isSilentMaxWindow(pcm, 800)).isTrue();
     }
 
     @Test
@@ -226,87 +228,87 @@ class AudioSilenceDetectorTest {
         byte[] pcm = generateLoud(samplesFor10ms);
 
         // Should not throw and should return a reasonable value
-        double maxRms = AudioSilenceDetector.calculateMaxWindowRMS(pcm);
+        double maxRms = detector.calculateMaxWindowRMS(pcm);
         assertThat(maxRms).isGreaterThan(0);
         // Fallback should equal overall RMS
-        assertThat(maxRms).isEqualTo(AudioSilenceDetector.calculateOverallRMS(pcm));
+        assertThat(maxRms).isEqualTo(detector.calculateOverallRMS(pcm));
     }
 
     @Test
     void isSilentMaxWindowShouldReturnTrueForPureSilence() {
         byte[] pcm = generateSilence(durationToSamples(1000));
-        assertThat(AudioSilenceDetector.isSilentMaxWindow(pcm, 200)).isTrue();
+        assertThat(detector.isSilentMaxWindow(pcm, 200)).isTrue();
     }
 
     // --- isSilent() basic tests ---
 
     @Test
     void isSilentReturnsTrueForNull() {
-        assertThat(AudioSilenceDetector.isSilent(null, 800)).isTrue();
+        assertThat(detector.isSilent(null, 800)).isTrue();
     }
 
     @Test
     void isSilentReturnsTrueForEmpty() {
-        assertThat(AudioSilenceDetector.isSilent(new byte[0], 800)).isTrue();
+        assertThat(detector.isSilent(new byte[0], 800)).isTrue();
     }
 
     @Test
     void isSilentReturnsTrueForSingleByte() {
-        assertThat(AudioSilenceDetector.isSilent(new byte[1], 800)).isTrue();
+        assertThat(detector.isSilent(new byte[1], 800)).isTrue();
     }
 
     @Test
     void isSilentReturnsTrueForSilentAudio() {
         byte[] pcm = generateSilence(durationToSamples(500));
-        assertThat(AudioSilenceDetector.isSilent(pcm, 800)).isTrue();
+        assertThat(detector.isSilent(pcm, 800)).isTrue();
     }
 
     @Test
     void isSilentReturnsFalseForLoudAudio() {
         byte[] pcm = generateLoud(durationToSamples(500));
-        assertThat(AudioSilenceDetector.isSilent(pcm, 800)).isFalse();
+        assertThat(detector.isSilent(pcm, 800)).isFalse();
     }
 
     // --- calculateOverallRMS() basic tests ---
 
     @Test
     void overallRmsReturnsZeroForNull() {
-        assertThat(AudioSilenceDetector.calculateOverallRMS(null)).isEqualTo(0);
+        assertThat(detector.calculateOverallRMS(null)).isEqualTo(0);
     }
 
     @Test
     void overallRmsReturnsZeroForEmpty() {
-        assertThat(AudioSilenceDetector.calculateOverallRMS(new byte[0])).isEqualTo(0);
+        assertThat(detector.calculateOverallRMS(new byte[0])).isEqualTo(0);
     }
 
     @Test
     void overallRmsReturnsZeroForSingleByte() {
-        assertThat(AudioSilenceDetector.calculateOverallRMS(new byte[1])).isEqualTo(0);
+        assertThat(detector.calculateOverallRMS(new byte[1])).isEqualTo(0);
     }
 
     @Test
     void overallRmsReturnsZeroForSilence() {
         byte[] pcm = generateSilence(durationToSamples(500));
-        assertThat(AudioSilenceDetector.calculateOverallRMS(pcm)).isEqualTo(0);
+        assertThat(detector.calculateOverallRMS(pcm)).isEqualTo(0);
     }
 
     @Test
     void overallRmsIsHighForLoudAudio() {
         byte[] pcm = generateLoud(durationToSamples(500));
-        assertThat(AudioSilenceDetector.calculateOverallRMS(pcm)).isGreaterThan(9000);
+        assertThat(detector.calculateOverallRMS(pcm)).isGreaterThan(9000);
     }
 
     @Test
     void calculateRMSWithAllZeroAudio() {
         byte[] zeros = new byte[640]; // 20ms at 16kHz
-        assertThat(AudioSilenceDetector.calculateOverallRMS(zeros)).isEqualTo(0.0);
+        assertThat(detector.calculateOverallRMS(zeros)).isEqualTo(0.0);
     }
 
     @Test
     void calculateRMSWithSingleSample() {
         // 2 bytes = 1 sample
         byte[] single = new byte[]{(byte) 0x00, (byte) 0x40}; // sample value = 16384
-        double rms = AudioSilenceDetector.calculateOverallRMS(single);
+        double rms = detector.calculateOverallRMS(single);
         assertThat(rms).isGreaterThan(0);
     }
 
@@ -314,7 +316,7 @@ class AudioSilenceDetectorTest {
     void detectSilenceBoundariesWithAudioShorterThanWindow() {
         // 4 bytes = 2 samples, much shorter than one 20ms window (640 bytes at 16kHz)
         byte[] tiny = new byte[]{0, 0, 0, 0};
-        List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(tiny, 500, SAMPLE_RATE);
+        List<Integer> boundaries = detector.detectSilenceBoundaries(tiny, 500, SAMPLE_RATE);
         // Audio is shorter than window — no windows to analyze
         assertThat(boundaries).isEmpty();
     }
@@ -323,7 +325,7 @@ class AudioSilenceDetectorTest {
     void calculateMaxWindowRMSWithBufferSmallerThanWindow() {
         // 4 bytes — smaller than one 20ms window
         byte[] tiny = new byte[]{0, 0, 0, 0};
-        double rms = AudioSilenceDetector.calculateMaxWindowRMS(tiny);
+        double rms = detector.calculateMaxWindowRMS(tiny);
         assertThat(rms).isEqualTo(0.0);
     }
 
@@ -334,7 +336,7 @@ class AudioSilenceDetectorTest {
         int loudSamples = durationToSamples(500);
         int shortSilenceSamples = durationToSamples(200);
         byte[] audio = concat(generateLoud(loudSamples), generateSilence(shortSilenceSamples));
-        List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(audio, 500, SAMPLE_RATE);
+        List<Integer> boundaries = detector.detectSilenceBoundaries(audio, 500, SAMPLE_RATE);
         assertThat(boundaries).isEmpty();
     }
 
@@ -343,21 +345,21 @@ class AudioSilenceDetectorTest {
         // 3 bytes = 1 complete sample (2 bytes) + 1 leftover byte
         // The loop processes only complete 2-byte samples
         byte[] odd = new byte[]{0, 0, 42};
-        double rms = AudioSilenceDetector.calculateOverallRMS(odd);
+        double rms = detector.calculateOverallRMS(odd);
         assertThat(rms).isEqualTo(0.0); // single zero sample
     }
 
     @Test
     void detectSilenceBoundariesWithZeroGapMs() {
         byte[] audio = generateSilence(durationToSamples(100));
-        List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(audio, 0, SAMPLE_RATE);
+        List<Integer> boundaries = detector.detectSilenceBoundaries(audio, 0, SAMPLE_RATE);
         assertThat(boundaries).isEmpty(); // silenceGapMs <= 0 returns empty
     }
 
     @Test
     void detectSilenceBoundariesWithZeroSampleRate() {
         byte[] audio = generateSilence(durationToSamples(100));
-        List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(audio, 500, 0);
+        List<Integer> boundaries = detector.detectSilenceBoundaries(audio, 500, 0);
         assertThat(boundaries).isEmpty(); // sampleRate <= 0 returns empty
     }
 

@@ -1,12 +1,14 @@
 package com.boombapcompile.blckvox.service.audio;
 
+import org.springframework.stereotype.Component;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Detects silence regions in PCM16LE audio using Voice Activity Detection (VAD).
  *
- * <p>This utility analyzes raw PCM audio buffers to identify continuous silence regions
+ * <p>This component analyzes raw PCM audio buffers to identify continuous silence regions
  * that exceed a configurable threshold. It uses RMS (Root Mean Square) amplitude analysis
  * in sliding time windows to distinguish speech from silence.
  *
@@ -26,11 +28,8 @@ import java.util.List;
  *
  * @since 1.0
  */
-public final class AudioSilenceDetector {
-
-    private AudioSilenceDetector() {
-        // Utility class
-    }
+@Component
+public class AudioSilenceDetector implements SilenceDetector {
 
     /**
      * Default RMS amplitude threshold for silence boundary detection within audio.
@@ -46,14 +45,8 @@ public final class AudioSilenceDetector {
      */
     private static final int DEFAULT_WINDOW_MS = 20;
 
-    /**
-     * Checks if the entire PCM audio buffer is effectively silent using a custom threshold.
-     *
-     * @param pcmData PCM16LE mono audio buffer (16-bit signed little-endian)
-     * @param silenceThreshold RMS amplitude threshold (0-32767 for 16-bit PCM)
-     * @return {@code true} if the audio is below the silence threshold
-     */
-    public static boolean isSilent(byte[] pcmData, int silenceThreshold) {
+    @Override
+    public boolean isSilent(byte[] pcmData, int silenceThreshold) {
         if (pcmData == null || pcmData.length < 2) {
             return true;
         }
@@ -61,32 +54,16 @@ public final class AudioSilenceDetector {
         return rms < silenceThreshold;
     }
 
-    /**
-     * Returns the overall RMS amplitude of the audio buffer for diagnostic logging.
-     *
-     * @param pcmData PCM16LE mono audio buffer
-     * @return RMS amplitude, or 0 if input is null/empty
-     */
-    public static double calculateOverallRMS(byte[] pcmData) {
+    @Override
+    public double calculateOverallRMS(byte[] pcmData) {
         if (pcmData == null || pcmData.length < 2) {
             return 0;
         }
         return calculateRMS(pcmData, 0, pcmData.length);
     }
 
-    /**
-     * Returns the highest RMS amplitude found in any non-overlapping 20ms window of the buffer.
-     *
-     * <p>Unlike {@link #calculateOverallRMS(byte[])}, which averages energy across the entire
-     * buffer (diluting speech energy with leading/trailing silence), this method detects
-     * speech even when it occupies a small fraction of the recording.
-     *
-     * <p>Falls back to full-buffer RMS for buffers smaller than one 20ms window.
-     *
-     * @param pcmData PCM16LE mono audio buffer
-     * @return maximum window RMS amplitude, or 0 if input is null/empty
-     */
-    public static double calculateMaxWindowRMS(byte[] pcmData) {
+    @Override
+    public double calculateMaxWindowRMS(byte[] pcmData) {
         if (pcmData == null || pcmData.length < 2) {
             return 0;
         }
@@ -110,50 +87,21 @@ public final class AudioSilenceDetector {
         return maxRms;
     }
 
-    /**
-     * Checks if the audio buffer is effectively silent using max-window RMS analysis.
-     *
-     * <p>Returns {@code true} only if <em>every</em> 20ms window in the buffer has RMS below
-     * the threshold. This avoids false-positive silence detection when speech is surrounded
-     * by silence (e.g., short utterance in a long recording).
-     *
-     * @param pcmData PCM16LE mono audio buffer
-     * @param silenceThreshold RMS amplitude threshold (0-32767 for 16-bit PCM)
-     * @return {@code true} if the audio is below the silence threshold in all windows
-     */
-    public static boolean isSilentMaxWindow(byte[] pcmData, int silenceThreshold) {
+    @Override
+    public boolean isSilentMaxWindow(byte[] pcmData, int silenceThreshold) {
         if (pcmData == null || pcmData.length < 2) {
             return true;
         }
         return calculateMaxWindowRMS(pcmData) < silenceThreshold;
     }
 
-    /**
-     * Detects silence regions in PCM audio and returns their byte positions.
-     *
-     * <p>Analyzes the audio buffer using RMS amplitude in sliding windows to identify
-     * continuous silence regions exceeding the minimum gap duration.
-     *
-     * @param pcmData PCM16LE mono audio buffer (16-bit signed little-endian)
-     * @param silenceGapMs minimum silence duration to detect (milliseconds)
-     * @param sampleRate audio sample rate (typically 16000 Hz)
-     * @return list of byte positions marking the END of each detected silence region
-     *         (empty list if no silence detected or invalid input)
-     */
-    public static List<Integer> detectSilenceBoundaries(byte[] pcmData, int silenceGapMs, int sampleRate) {
+    @Override
+    public List<Integer> detectSilenceBoundaries(byte[] pcmData, int silenceGapMs, int sampleRate) {
         return detectSilenceBoundaries(pcmData, silenceGapMs, sampleRate, DEFAULT_BOUNDARY_THRESHOLD);
     }
 
-    /**
-     * Detects silence regions in PCM audio with custom threshold.
-     *
-     * @param pcmData PCM16LE mono audio buffer
-     * @param silenceGapMs minimum silence duration to detect (milliseconds)
-     * @param sampleRate audio sample rate (typically 16000 Hz)
-     * @param silenceThreshold RMS amplitude threshold for silence (0-32767 for 16-bit PCM)
-     * @return list of byte positions marking the END of each detected silence region
-     */
-    public static List<Integer> detectSilenceBoundaries(
+    @Override
+    public List<Integer> detectSilenceBoundaries(
             byte[] pcmData,
             int silenceGapMs,
             int sampleRate,
@@ -203,30 +151,12 @@ public final class AudioSilenceDetector {
         return boundaries;
     }
 
-    /**
-     * Calculates the number of bytes corresponding to a time duration.
-     *
-     * @param durationMs time duration in milliseconds
-     * @param sampleRate audio sample rate in Hz
-     * @return number of bytes (aligned to 2-byte samples)
-     */
-    private static int calculateWindowBytes(int durationMs, int sampleRate) {
+    private int calculateWindowBytes(int durationMs, int sampleRate) {
         int samples = (sampleRate * durationMs) / 1000;
         return samples * 2; // 2 bytes per sample (16-bit PCM)
     }
 
-    /**
-     * Calculates RMS (Root Mean Square) amplitude for a PCM audio window.
-     *
-     * <p>RMS provides a measure of the audio signal's energy. Higher RMS indicates
-     * louder audio (speech), lower RMS indicates quiet audio (silence).
-     *
-     * @param pcmData PCM16LE audio buffer
-     * @param offset starting byte position
-     * @param length number of bytes to analyze (must be even)
-     * @return RMS amplitude (0-32767 range for 16-bit PCM)
-     */
-    private static double calculateRMS(byte[] pcmData, int offset, int length) {
+    private double calculateRMS(byte[] pcmData, int offset, int length) {
         long sumSquares = 0;
         int sampleCount = 0;
 

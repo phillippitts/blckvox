@@ -3,6 +3,8 @@ package com.boombapcompile.blckvox.service.orchestration;
 import com.boombapcompile.blckvox.config.properties.HotkeyProperties;
 import com.boombapcompile.blckvox.config.properties.OrchestrationProperties;
 import com.boombapcompile.blckvox.config.properties.ReconciliationProperties;
+import com.boombapcompile.blckvox.service.audio.AudioSilenceDetector;
+import com.boombapcompile.blckvox.service.audio.SilenceDetector;
 import com.boombapcompile.blckvox.service.audio.capture.AudioCaptureService;
 import com.boombapcompile.blckvox.service.reconcile.TranscriptReconciler;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
@@ -39,6 +41,7 @@ public final class HotkeyRecordingAdapterBuilder {
     private TranscriptReconciler transcriptReconciler;
     private ReconciliationProperties reconciliationProperties;
     private TranscriptionMetricsPublisher metricsPublisher;
+    private SilenceDetector silenceDetector;
 
     private HotkeyRecordingAdapterBuilder() {
         // Private constructor - use builder() factory method
@@ -120,6 +123,11 @@ public final class HotkeyRecordingAdapterBuilder {
         return this;
     }
 
+    public HotkeyRecordingAdapterBuilder silenceDetector(SilenceDetector silenceDetector) {
+        this.silenceDetector = silenceDetector;
+        return this;
+    }
+
     /**
      * Builds the HotkeyRecordingAdapter instance.
      *
@@ -162,13 +170,19 @@ public final class HotkeyRecordingAdapterBuilder {
             reconciliation = DefaultReconciliationService.disabled();
         }
 
+        // Provide default silence detector if not set
+        SilenceDetector effectiveSilenceDetector = silenceDetector != null
+                ? silenceDetector
+                : new AudioSilenceDetector();
+
         // Create TranscriptionOrchestrator from all transcription-related dependencies
         TranscriptionOrchestrator transcriptionOrchestrator = new DefaultTranscriptionOrchestrator(
                 orchestrationProperties,
                 publisher,
                 reconciliation,
                 engineSelector,
-                effectiveMetricsPublisher
+                effectiveMetricsPublisher,
+                effectiveSilenceDetector
         );
 
         ApplicationStateTracker effectiveStateTracker = new ApplicationStateTracker(publisher);

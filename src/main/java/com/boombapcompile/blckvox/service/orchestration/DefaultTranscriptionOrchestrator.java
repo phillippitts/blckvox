@@ -4,7 +4,7 @@ import com.boombapcompile.blckvox.config.properties.OrchestrationProperties;
 import com.boombapcompile.blckvox.domain.TranscriptionResult;
 import com.boombapcompile.blckvox.exception.TranscriptionException;
 import com.boombapcompile.blckvox.service.audio.AudioDurationCalculator;
-import com.boombapcompile.blckvox.service.audio.AudioSilenceDetector;
+import com.boombapcompile.blckvox.service.audio.SilenceDetector;
 import com.boombapcompile.blckvox.service.orchestration.event.TranscriptionCompletedEvent;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
 import com.boombapcompile.blckvox.util.TimeUtils;
@@ -43,6 +43,7 @@ public class DefaultTranscriptionOrchestrator implements TranscriptionOrchestrat
 
     private final ApplicationEventPublisher publisher;
     private final int silenceThreshold;
+    private final SilenceDetector silenceDetector;
 
     // Reconciliation service (encapsulates parallel, reconciler, recProps)
     private final ReconciliationService reconciliation;
@@ -59,19 +60,22 @@ public class DefaultTranscriptionOrchestrator implements TranscriptionOrchestrat
      * @param reconciliation service for dual-engine reconciliation (encapsulates parallel, reconciler, recProps)
      * @param engineSelector strategy for selecting STT engine (also manages vosk, whisper, watchdog)
      * @param metricsPublisher metrics publishing service
+     * @param silenceDetector silence detection service
      * @throws NullPointerException if any required parameter is null
      */
     public DefaultTranscriptionOrchestrator(OrchestrationProperties props,
                                             ApplicationEventPublisher publisher,
                                             ReconciliationService reconciliation,
                                             EngineSelectionStrategy engineSelector,
-                                            TranscriptionMetricsPublisher metricsPublisher) {
+                                            TranscriptionMetricsPublisher metricsPublisher,
+                                            SilenceDetector silenceDetector) {
         Objects.requireNonNull(props, "props must not be null");
         this.silenceThreshold = props.getSilenceThreshold();
         this.publisher = Objects.requireNonNull(publisher, "publisher must not be null");
         this.reconciliation = Objects.requireNonNull(reconciliation, "reconciliation must not be null");
         this.engineSelector = Objects.requireNonNull(engineSelector, "engineSelector must not be null");
         this.metricsPublisher = Objects.requireNonNull(metricsPublisher, "metricsPublisher must not be null");
+        this.silenceDetector = Objects.requireNonNull(silenceDetector, "silenceDetector must not be null");
     }
 
     @Override
@@ -79,9 +83,9 @@ public class DefaultTranscriptionOrchestrator implements TranscriptionOrchestrat
         Objects.requireNonNull(pcm, "pcm must not be null");
 
         // Skip transcription if audio is effectively silent to avoid STT hallucinations
-        double maxWindowRms = AudioSilenceDetector.calculateMaxWindowRMS(pcm);
-        if (AudioSilenceDetector.isSilentMaxWindow(pcm, silenceThreshold)) {
-            double overallRms = AudioSilenceDetector.calculateOverallRMS(pcm);
+        double maxWindowRms = silenceDetector.calculateMaxWindowRMS(pcm);
+        if (silenceDetector.isSilentMaxWindow(pcm, silenceThreshold)) {
+            double overallRms = silenceDetector.calculateOverallRMS(pcm);
             LOG.info("Audio is silent (maxWindowRms={}, overallRms={}, threshold={}); skipping transcription",
                     String.format("%.1f", maxWindowRms), String.format("%.1f", overallRms), silenceThreshold);
             publishResult(TranscriptionResult.of("", 1.0, "silent"), "silent");

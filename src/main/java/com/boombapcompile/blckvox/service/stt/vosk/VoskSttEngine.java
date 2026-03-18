@@ -8,6 +8,7 @@ import com.boombapcompile.blckvox.config.stt.VoskConfig;
 import com.boombapcompile.blckvox.domain.TranscriptionResult;
 import com.boombapcompile.blckvox.exception.TranscriptionException;
 import com.boombapcompile.blckvox.service.audio.AudioSilenceDetector;
+import com.boombapcompile.blckvox.service.audio.SilenceDetector;
 import com.boombapcompile.blckvox.service.stt.SttEngineNames;
 import com.boombapcompile.blckvox.service.stt.util.ConcurrencyScaler;
 import com.boombapcompile.blckvox.service.stt.util.EngineEventPublisher;
@@ -52,6 +53,7 @@ public class VoskSttEngine extends AbstractSttEngine {
 
     private final VoskConfig config;
     private final VoskModelProvider modelProvider;
+    private final SilenceDetector silenceDetector;
 
     // Optional event publisher for watchdog events
     private ApplicationEventPublisher publisher;
@@ -66,6 +68,7 @@ public class VoskSttEngine extends AbstractSttEngine {
     public VoskSttEngine(VoskConfig config) {
         this.config = Objects.requireNonNull(config, "config");
         this.modelProvider = null;
+        this.silenceDetector = new AudioSilenceDetector();
         initializeDefaultGuard(SttEngineNames.VOSK, DEFAULT_CONCURRENCY_LIMIT, DEFAULT_ACQUIRE_TIMEOUT_MS);
         this.silenceGapMs = 0; // Disabled in basic constructor
     }
@@ -79,10 +82,12 @@ public class VoskSttEngine extends AbstractSttEngine {
             SttConcurrencyProperties concurrencyProperties,
             ApplicationEventPublisher publisher,
             OrchestrationProperties orchestrationProperties,
+            SilenceDetector silenceDetector,
             @org.springframework.beans.factory.annotation.Autowired(required = false)
             ConcurrencyScaler concurrencyScaler) {
         this.config = Objects.requireNonNull(config, "config");
         this.modelProvider = Objects.requireNonNull(modelProvider, "modelProvider");
+        this.silenceDetector = Objects.requireNonNull(silenceDetector, "silenceDetector");
         int max = Math.max(1, concurrencyProperties.getVoskMax());
         long timeoutMs = Math.max(0, concurrencyProperties.getAcquireTimeoutMs());
         initializeGuard(SttEngineNames.VOSK, max, timeoutMs, publisher, concurrencyProperties, concurrencyScaler);
@@ -234,7 +239,7 @@ public class VoskSttEngine extends AbstractSttEngine {
     private TranscriptionResult transcribeWithPauseDetection(org.vosk.Model localModel, byte[] audioData) {
         try {
             // Detect silence boundaries in the audio
-            List<Integer> boundaries = AudioSilenceDetector.detectSilenceBoundaries(
+            List<Integer> boundaries = silenceDetector.detectSilenceBoundaries(
                     audioData, silenceGapMs, config.sampleRate());
 
             if (boundaries.isEmpty()) {

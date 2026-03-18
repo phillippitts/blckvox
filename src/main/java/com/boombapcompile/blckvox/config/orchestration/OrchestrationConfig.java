@@ -16,6 +16,7 @@ import com.boombapcompile.blckvox.service.orchestration.ReconciliationService;
 import com.boombapcompile.blckvox.service.orchestration.RecordingService;
 import com.boombapcompile.blckvox.service.orchestration.TranscriptionMetricsPublisher;
 import com.boombapcompile.blckvox.service.orchestration.TranscriptionOrchestrator;
+import com.boombapcompile.blckvox.service.audio.SilenceDetector;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
 import com.boombapcompile.blckvox.service.stt.watchdog.SttEngineWatchdog;
 
@@ -41,6 +42,7 @@ public class OrchestrationConfig {
     private final HotkeyProperties hotkeyProperties;
     private final ApplicationEventPublisher publisher;
     private final TranscriptionMetricsPublisher metricsPublisher;
+    private final SilenceDetector silenceDetector;
     private final ReconciliationDependencies reconciliationDeps;
 
     public OrchestrationConfig(AudioCaptureService captureService,
@@ -50,6 +52,7 @@ public class OrchestrationConfig {
                                HotkeyProperties hotkeyProperties,
                                ApplicationEventPublisher publisher,
                                TranscriptionMetricsPublisher metricsPublisher,
+                               SilenceDetector silenceDetector,
                                @Autowired(required = false)
                                ReconciliationDependencies reconciliationDeps) {
         this.captureService = captureService;
@@ -59,6 +62,7 @@ public class OrchestrationConfig {
         this.hotkeyProperties = hotkeyProperties;
         this.publisher = publisher;
         this.metricsPublisher = metricsPublisher;
+        this.silenceDetector = silenceDetector;
         this.reconciliationDeps = reconciliationDeps;
     }
 
@@ -85,7 +89,7 @@ public class OrchestrationConfig {
         return new DefaultTranscriptionOrchestrator(
                 orchestrationProperties, publisher,
                 DefaultReconciliationService.disabled(),
-                engineSelector, metricsPublisher);
+                engineSelector, metricsPublisher, silenceDetector);
     }
 
     @Bean
@@ -97,7 +101,7 @@ public class OrchestrationConfig {
                 reconciliationDeps.getReconciliationProperties());
         return new DefaultTranscriptionOrchestrator(
                 orchestrationProperties, publisher,
-                reconciliation, engineSelector, metricsPublisher);
+                reconciliation, engineSelector, metricsPublisher, silenceDetector);
     }
 
     @Bean

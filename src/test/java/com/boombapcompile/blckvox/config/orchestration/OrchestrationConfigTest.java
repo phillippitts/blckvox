@@ -13,6 +13,8 @@ import com.boombapcompile.blckvox.service.orchestration.HotkeyRecordingAdapter;
 import com.boombapcompile.blckvox.service.orchestration.RecordingService;
 import com.boombapcompile.blckvox.service.orchestration.TranscriptionMetricsPublisher;
 import com.boombapcompile.blckvox.service.orchestration.TranscriptionOrchestrator;
+import com.boombapcompile.blckvox.service.audio.AudioSilenceDetector;
+import com.boombapcompile.blckvox.service.audio.SilenceDetector;
 import com.boombapcompile.blckvox.service.reconcile.TranscriptReconciler;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
 import com.boombapcompile.blckvox.service.stt.parallel.ParallelSttService;
@@ -45,12 +47,13 @@ class OrchestrationConfigTest {
             TriggerType.MODIFIER_COMBO, "J", 300, List.of("META"), List.of(), false);
     private final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
     private final TranscriptionMetricsPublisher metricsPublisher = TranscriptionMetricsPublisher.NOOP;
+    private final SilenceDetector silenceDetector = new AudioSilenceDetector();
 
     @Test
     void captureStateMachineCreatesNewInstance() {
         OrchestrationConfig config = new OrchestrationConfig(
                 captureService, sttEngines, watchdog,
-                orchProps, hotkeyProps, publisher, metricsPublisher, null);
+                orchProps, hotkeyProps, publisher, metricsPublisher, silenceDetector, null);
 
         CaptureStateMachine csm = config.captureStateMachine();
         assertThat(csm).isNotNull();
@@ -60,7 +63,7 @@ class OrchestrationConfigTest {
     void engineSelectionStrategyCreatesNewInstance() {
         OrchestrationConfig config = new OrchestrationConfig(
                 captureService, sttEngines, watchdog,
-                orchProps, hotkeyProps, publisher, metricsPublisher, null);
+                orchProps, hotkeyProps, publisher, metricsPublisher, silenceDetector, null);
 
         EngineSelectionStrategy strategy = config.engineSelectionStrategy();
         assertThat(strategy).isNotNull();
@@ -70,7 +73,7 @@ class OrchestrationConfigTest {
     void captureOrchestratorCreatesDefaultInstance() {
         OrchestrationConfig config = new OrchestrationConfig(
                 captureService, sttEngines, watchdog,
-                orchProps, hotkeyProps, publisher, metricsPublisher, null);
+                orchProps, hotkeyProps, publisher, metricsPublisher, silenceDetector, null);
 
         CaptureOrchestrator orchestrator = config.captureOrchestrator(new CaptureStateMachine());
         assertThat(orchestrator).isNotNull();
@@ -80,7 +83,7 @@ class OrchestrationConfigTest {
     void transcriptionOrchestratorCreatesNonReconciledInstance() {
         OrchestrationConfig config = new OrchestrationConfig(
                 captureService, sttEngines, watchdog,
-                orchProps, hotkeyProps, publisher, metricsPublisher, null);
+                orchProps, hotkeyProps, publisher, metricsPublisher, silenceDetector, null);
 
         EngineSelectionStrategy strategy = config.engineSelectionStrategy();
         TranscriptionOrchestrator orchestrator = config.transcriptionOrchestrator(strategy);
@@ -98,7 +101,7 @@ class OrchestrationConfigTest {
 
         OrchestrationConfig config = new OrchestrationConfig(
                 captureService, sttEngines, watchdog,
-                orchProps, hotkeyProps, publisher, metricsPublisher, deps);
+                orchProps, hotkeyProps, publisher, metricsPublisher, silenceDetector, deps);
 
         EngineSelectionStrategy strategy = config.engineSelectionStrategy();
         TranscriptionOrchestrator orchestrator = config.reconciledTranscriptionOrchestrator(strategy);
@@ -109,7 +112,7 @@ class OrchestrationConfigTest {
     void recordingServiceCreatesDefaultInstance() {
         OrchestrationConfig config = new OrchestrationConfig(
                 captureService, sttEngines, watchdog,
-                orchProps, hotkeyProps, publisher, metricsPublisher, null);
+                orchProps, hotkeyProps, publisher, metricsPublisher, silenceDetector, null);
 
         CaptureOrchestrator captureOrch = config.captureOrchestrator(new CaptureStateMachine());
         EngineSelectionStrategy strategy = config.engineSelectionStrategy();
@@ -125,7 +128,7 @@ class OrchestrationConfigTest {
     void hotkeyRecordingAdapterCreatesInstance() {
         OrchestrationConfig config = new OrchestrationConfig(
                 captureService, sttEngines, watchdog,
-                orchProps, hotkeyProps, publisher, metricsPublisher, null);
+                orchProps, hotkeyProps, publisher, metricsPublisher, silenceDetector, null);
 
         RecordingService recordingService = mock(RecordingService.class);
         HotkeyRecordingAdapter adapter = config.hotkeyRecordingAdapter(recordingService);

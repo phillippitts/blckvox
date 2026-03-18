@@ -5,6 +5,8 @@ import com.boombapcompile.blckvox.config.properties.OrchestrationProperties.Prim
 import com.boombapcompile.blckvox.config.properties.SttWatchdogProperties;
 import com.boombapcompile.blckvox.domain.TranscriptionResult;
 import com.boombapcompile.blckvox.exception.TranscriptionException;
+import com.boombapcompile.blckvox.service.audio.AudioSilenceDetector;
+import com.boombapcompile.blckvox.service.audio.SilenceDetector;
 import com.boombapcompile.blckvox.service.orchestration.event.TranscriptionCompletedEvent;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
 import com.boombapcompile.blckvox.service.stt.watchdog.SttEngineWatchdog;
@@ -29,6 +31,7 @@ class DefaultTranscriptionOrchestratorTest {
     private CapturingPublisher publisher;
     private StubReconciliationService reconciliation;
     private TranscriptionMetricsPublisher metrics;
+    private final SilenceDetector silenceDetector = new AudioSilenceDetector();
 
     @BeforeEach
     void setUp() {
@@ -43,7 +46,7 @@ class DefaultTranscriptionOrchestratorTest {
     void shouldRejectNullProps() {
         EngineSelectionStrategy selector = createEngineSelector("vosk text", "whisper text");
         assertThatThrownBy(() -> new DefaultTranscriptionOrchestrator(
-                null, publisher, reconciliation, selector, metrics))
+                null, publisher, reconciliation, selector, metrics, silenceDetector))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("props");
     }
@@ -52,7 +55,7 @@ class DefaultTranscriptionOrchestratorTest {
     void shouldRejectNullPublisher() {
         EngineSelectionStrategy selector = createEngineSelector("vosk text", "whisper text");
         assertThatThrownBy(() -> new DefaultTranscriptionOrchestrator(
-                orchestrationProps(200), null, reconciliation, selector, metrics))
+                orchestrationProps(200), null, reconciliation, selector, metrics, silenceDetector))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("publisher");
     }
@@ -61,7 +64,7 @@ class DefaultTranscriptionOrchestratorTest {
     void shouldRejectNullReconciliation() {
         EngineSelectionStrategy selector = createEngineSelector("vosk text", "whisper text");
         assertThatThrownBy(() -> new DefaultTranscriptionOrchestrator(
-                orchestrationProps(200), publisher, null, selector, metrics))
+                orchestrationProps(200), publisher, null, selector, metrics, silenceDetector))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("reconciliation");
     }
@@ -69,7 +72,7 @@ class DefaultTranscriptionOrchestratorTest {
     @Test
     void shouldRejectNullEngineSelector() {
         assertThatThrownBy(() -> new DefaultTranscriptionOrchestrator(
-                orchestrationProps(200), publisher, reconciliation, null, metrics))
+                orchestrationProps(200), publisher, reconciliation, null, metrics, silenceDetector))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("engineSelector");
     }
@@ -78,7 +81,7 @@ class DefaultTranscriptionOrchestratorTest {
     void shouldRejectNullMetricsPublisher() {
         EngineSelectionStrategy selector = createEngineSelector("vosk text", "whisper text");
         assertThatThrownBy(() -> new DefaultTranscriptionOrchestrator(
-                orchestrationProps(200), publisher, reconciliation, selector, null))
+                orchestrationProps(200), publisher, reconciliation, selector, null, silenceDetector))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("metricsPublisher");
     }
@@ -141,7 +144,7 @@ class DefaultTranscriptionOrchestratorTest {
         EngineSelectionStrategy selector = createEngineSelectorWith(failingVosk, healthyWhisper);
 
         DefaultTranscriptionOrchestrator orchestrator = new DefaultTranscriptionOrchestrator(
-                orchestrationProps(200), publisher, reconciliation, selector, metrics);
+                orchestrationProps(200), publisher, reconciliation, selector, metrics, silenceDetector);
 
         orchestrator.transcribe(loudPcm());
 
@@ -228,7 +231,7 @@ class DefaultTranscriptionOrchestratorTest {
         EngineSelectionStrategy selector = createEngineSelectorWith(runtimeFailingEngine, healthyWhisper);
 
         DefaultTranscriptionOrchestrator orchestrator = new DefaultTranscriptionOrchestrator(
-                orchestrationProps(200), publisher, reconciliation, selector, metrics);
+                orchestrationProps(200), publisher, reconciliation, selector, metrics, silenceDetector);
 
         orchestrator.transcribe(loudPcm());
 
@@ -259,7 +262,7 @@ class DefaultTranscriptionOrchestratorTest {
                 List.of(fakeVosk, fakeWhisper), watchdog, orchProps);
 
         DefaultTranscriptionOrchestrator orchestrator = new DefaultTranscriptionOrchestrator(
-                orchProps, publisher, reconciliation, selector, metrics);
+                orchProps, publisher, reconciliation, selector, metrics, silenceDetector);
 
         orchestrator.transcribe(loudPcm());
 
@@ -280,7 +283,8 @@ class DefaultTranscriptionOrchestratorTest {
                 publisher,
                 reconciliation,
                 selector,
-                metrics
+                metrics,
+                silenceDetector
         );
     }
 
