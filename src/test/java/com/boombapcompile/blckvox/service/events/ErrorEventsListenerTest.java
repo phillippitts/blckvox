@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 class ErrorEventsListenerTest {
 
@@ -36,27 +35,25 @@ class ErrorEventsListenerTest {
     }
 
     @Test
-    void onHotkeyPermissionDeniedDoesNotThrow() {
+    void onHotkeyPermissionDeniedRecordsThrottleKey() {
         ErrorEventsListener listener = new ErrorEventsListener();
-        assertThatCode(() -> listener.onHotkeyPermissionDenied(
-                new HotkeyPermissionDeniedEvent(Instant.now())))
-                .doesNotThrowAnyException();
+        listener.onHotkeyPermissionDenied(new HotkeyPermissionDeniedEvent(Instant.now()));
+        assertThat(listener.shouldLog("hotkey-permission")).isFalse();
     }
 
     @Test
-    void onHotkeyConflictDoesNotThrow() {
+    void onHotkeyConflictRecordsThrottleKey() {
         ErrorEventsListener listener = new ErrorEventsListener();
-        assertThatCode(() -> listener.onHotkeyConflict(
-                new HotkeyConflictEvent("TAB", List.of("META"), Instant.now())))
-                .doesNotThrowAnyException();
+        listener.onHotkeyConflict(
+                new HotkeyConflictEvent("TAB", List.of("META"), Instant.now()));
+        assertThat(listener.shouldLog("hotkey-conflict-TAB-[META]")).isFalse();
     }
 
     @Test
-    void onCaptureErrorDoesNotThrow() {
+    void onCaptureErrorRecordsThrottleKey() {
         ErrorEventsListener listener = new ErrorEventsListener();
-        assertThatCode(() -> listener.onCaptureError(
-                new CaptureErrorEvent("test-reason", Instant.now())))
-                .doesNotThrowAnyException();
+        listener.onCaptureError(new CaptureErrorEvent("test-reason", Instant.now()));
+        assertThat(listener.shouldLog("capture-test-reason")).isFalse();
     }
 
     @Test
@@ -118,33 +115,32 @@ class ErrorEventsListenerTest {
     }
 
     @Test
-    void onHotkeyPermissionDeniedCalledTwiceDoesNotThrow() {
+    void onHotkeyPermissionDeniedCalledTwiceStaysThrottled() {
         ErrorEventsListener listener = new ErrorEventsListener();
-        // First call triggers logging, second call hits the throttled (false) branch
         listener.onHotkeyPermissionDenied(new HotkeyPermissionDeniedEvent(Instant.now()));
-        assertThatCode(() -> listener.onHotkeyPermissionDenied(
-                new HotkeyPermissionDeniedEvent(Instant.now())))
-                .doesNotThrowAnyException();
+        // Second call exercises the throttled (false) branch
+        listener.onHotkeyPermissionDenied(new HotkeyPermissionDeniedEvent(Instant.now()));
+        assertThat(listener.shouldLog("hotkey-permission")).isFalse();
     }
 
     @Test
-    void onHotkeyConflictCalledTwiceDoesNotThrow() {
+    void onHotkeyConflictCalledTwiceStaysThrottled() {
         ErrorEventsListener listener = new ErrorEventsListener();
         HotkeyConflictEvent event = new HotkeyConflictEvent("TAB", List.of("META"), Instant.now());
         listener.onHotkeyConflict(event);
-        // Second call exercises the false branch of if(shouldLog(key))
-        assertThatCode(() -> listener.onHotkeyConflict(event))
-                .doesNotThrowAnyException();
+        // Second call exercises the throttled (false) branch
+        listener.onHotkeyConflict(event);
+        assertThat(listener.shouldLog("hotkey-conflict-TAB-[META]")).isFalse();
     }
 
     @Test
-    void onCaptureErrorCalledTwiceDoesNotThrow() {
+    void onCaptureErrorCalledTwiceStaysThrottled() {
         ErrorEventsListener listener = new ErrorEventsListener();
         CaptureErrorEvent event = new CaptureErrorEvent("mic-fail", Instant.now());
         listener.onCaptureError(event);
-        // Second call exercises the false branch of if(shouldLog(key))
-        assertThatCode(() -> listener.onCaptureError(event))
-                .doesNotThrowAnyException();
+        // Second call exercises the throttled (false) branch
+        listener.onCaptureError(event);
+        assertThat(listener.shouldLog("capture-mic-fail")).isFalse();
     }
 
     // --- Mutation-killing boundary tests ---

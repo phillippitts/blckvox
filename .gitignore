@@ -24,3 +24,5 @@ docs/blog/
 /${java.io.tmpdir}/blckvox-heartbeat
 /hs_err_pid*.log
 /.playwright-mcp/
+.env
+

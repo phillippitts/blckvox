@@ -285,8 +285,8 @@ pitest {
     timeoutConstInMillis = 8000
     timeoutFactor = 1.5
 
-    // Discovery mode: no threshold enforcement on first run
-    mutationThreshold = 0
+    // Quality gate: fail build if mutation score drops below 80%
+    mutationThreshold = 80
 
     // Skip logging mutations (they never add value)
     avoidCallsTo = [

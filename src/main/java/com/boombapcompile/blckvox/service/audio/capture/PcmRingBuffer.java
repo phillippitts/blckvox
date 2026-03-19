@@ -119,20 +119,19 @@ final class PcmRingBuffer {
 
     /**
      * Linearizes existing ring data into a larger array.
+     *
+     * <p>Growth always occurs before overflow (see {@code write()}), so data
+     * is contiguous starting at position 0. A single copy suffices.
+     * After copying, {@code writePos} is reset to {@code size} so subsequent
+     * writes append correctly.
      */
     private void growBuffer(int newCapacity) {
-        byte[] old = buffer;
         byte[] grown = new byte[newCapacity];
         if (size > 0) {
-            int start = (writePos - size + old.length) % old.length;
-            int first = Math.min(size, old.length - start);
-            System.arraycopy(old, start, grown, 0, first);
-            if (first < size) {
-                System.arraycopy(old, 0, grown, first, size - first);
-            }
+            System.arraycopy(buffer, 0, grown, 0, size);
         }
         buffer = grown;
-        writePos = size; // data is now linearized at position 0..size-1
+        writePos = size;
     }
 
     private void notifyOverflow() {
