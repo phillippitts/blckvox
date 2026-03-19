@@ -51,11 +51,15 @@ class ErrorEventsListener {
     // Package-private for tests
     boolean shouldLog(String key) {
         Instant now = Instant.now();
-        Instant prev = lastLog.get(key);
-        if (prev == null || Duration.between(prev, now).compareTo(THROTTLE) > 0) {
-            lastLog.put(key, now);
-            return true;
-        }
-        return false;
+        // Atomic check-and-update to prevent duplicate logs under concurrent events
+        boolean[] allowed = {false};
+        lastLog.compute(key, (k, prev) -> {
+            if (prev == null || Duration.between(prev, now).compareTo(THROTTLE) > 0) {
+                allowed[0] = true;
+                return now;
+            }
+            return prev;
+        });
+        return allowed[0];
     }
 }

@@ -47,7 +47,7 @@ public class OrchestrationConfig {
 
     public OrchestrationConfig(AudioCaptureService captureService,
                                List<SttEngine> sttEngines,
-                               SttEngineWatchdog watchdog,
+                               @Autowired(required = false) SttEngineWatchdog watchdog,
                                OrchestrationProperties orchestrationProperties,
                                HotkeyProperties hotkeyProperties,
                                ApplicationEventPublisher publisher,

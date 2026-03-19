@@ -10,6 +10,7 @@ import org.json.JSONObject;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PreDestroy;
@@ -51,6 +52,7 @@ public class VoskStreamingService {
         }
     }
 
+    @Async("eventExecutor")
     @EventListener
     public void onPcmChunk(PcmChunkCapturedEvent event) {
         synchronized (recognizerLock) {

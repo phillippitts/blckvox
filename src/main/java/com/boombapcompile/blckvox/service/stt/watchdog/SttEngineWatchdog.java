@@ -240,12 +240,17 @@ public class SttEngineWatchdog {
             LOG.warn("Engine {} confidence degraded: avg={} (window tracked by monitor)",
                     engine, String.format("%.3f", eval.average()));
             updateState(engine, EngineState.DEGRADED);
-            publisher.publishEvent(new EngineFailureEvent(
-                    engine, Instant.now(),
-                    "low-confidence: avg=" + String.format("%.3f", eval.average()),
-                    null, Map.of("reason", "low-confidence",
-                                 "avgConfidence", String.format("%.3f", eval.average()))
-            ));
+            try {
+                publisher.publishEvent(new EngineFailureEvent(
+                        engine, Instant.now(),
+                        "low-confidence: avg=" + String.format("%.3f", eval.average()),
+                        null, Map.of("reason", "low-confidence",
+                                     "avgConfidence", String.format("%.3f", eval.average()))
+                ));
+            } catch (RuntimeException ex) {
+                // Guard against RejectedExecutionException if sttExecutor is saturated
+                LOG.warn("Failed to publish EngineFailureEvent for {}: {}", engine, ex.getMessage());
+            }
         }
     }
 

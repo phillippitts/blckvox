@@ -4,6 +4,7 @@ import com.boombapcompile.blckvox.service.orchestration.event.TranscriptionCompl
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -63,6 +64,7 @@ public class FallbackManager {
      * @see TranscriptionCompletedEvent
      * @see TypingService#paste(String)
      */
+    @Async("eventExecutor")
     @EventListener
     public void onTranscription(TranscriptionCompletedEvent evt) {
         if (evt.result().isFailure()) {

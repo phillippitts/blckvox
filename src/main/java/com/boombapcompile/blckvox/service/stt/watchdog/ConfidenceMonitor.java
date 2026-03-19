@@ -56,9 +56,12 @@ public class ConfidenceMonitor {
         }
 
         AtomicInteger grace = graceCounters.get(engine);
-        if (grace != null && grace.get() > 0) {
-            grace.decrementAndGet();
+        if (grace != null && grace.getAndDecrement() > 0) {
             return null;
+        }
+        // Restore if we decremented past zero
+        if (grace != null && grace.get() < 0) {
+            grace.compareAndSet(grace.get(), 0);
         }
 
         synchronized (window) {
@@ -93,10 +96,13 @@ public class ConfidenceMonitor {
     /** Returns the average confidence for the given engine, or 0.0 if no data. */
     public double averageConfidence(String engine) {
         Deque<Double> window = windows.get(engine);
-        if (window == null || window.isEmpty()) {
+        if (window == null) {
             return 0.0;
         }
         synchronized (window) {
+            if (window.isEmpty()) {
+                return 0.0;
+            }
             return window.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
         }
     }

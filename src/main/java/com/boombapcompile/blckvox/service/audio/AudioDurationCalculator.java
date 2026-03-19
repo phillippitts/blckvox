@@ -27,7 +27,7 @@ public final class AudioDurationCalculator {
         if (pcmByteLength <= 0) {
             return 0.0;
         }
-        return (double) pcmByteLength / (sampleRate * bytesPerSample * channels) * 1000.0;
+        return (double) pcmByteLength / ((long) sampleRate * bytesPerSample * channels) * 1000.0;
     }
 
     /**

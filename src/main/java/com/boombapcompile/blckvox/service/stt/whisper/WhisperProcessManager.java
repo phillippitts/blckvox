@@ -208,9 +208,11 @@ public final class WhisperProcessManager implements ProcessManager {
      */
     @Override
     public void close() {
-        for (ProcessLifecycleManager.ProcessExecution exec : activeExecutions) {
+        // Atomically drain to prevent zombie processes from concurrent transcribe() calls
+        var snapshot = new java.util.ArrayList<>(activeExecutions);
+        activeExecutions.removeAll(snapshot);
+        for (ProcessLifecycleManager.ProcessExecution exec : snapshot) {
             lifecycleManager.cleanup(exec);
         }
-        activeExecutions.clear();
     }
 }

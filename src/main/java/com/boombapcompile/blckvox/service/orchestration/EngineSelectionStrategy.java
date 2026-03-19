@@ -42,16 +42,15 @@ public final class EngineSelectionStrategy {
      * Constructs an engine selection strategy.
      *
      * @param engines list of STT engines (must not be empty)
-     * @param watchdog engine health monitor
+     * @param watchdog engine health monitor (may be null if watchdog is disabled)
      * @param props orchestration configuration (primary engine preference)
-     * @throws NullPointerException if any parameter is null
+     * @throws NullPointerException if engines or props is null
      * @throws IllegalArgumentException if engines list is empty
      */
     public EngineSelectionStrategy(List<SttEngine> engines,
                                     SttEngineWatchdog watchdog,
                                     OrchestrationProperties props) {
         Objects.requireNonNull(engines, "engines");
-        Objects.requireNonNull(watchdog, "watchdog");
         Objects.requireNonNull(props, "props");
         if (engines.isEmpty()) {
             throw new IllegalArgumentException("engines list must not be empty");
@@ -79,7 +78,7 @@ public final class EngineSelectionStrategy {
         SttEngine primary = engines.getFirst();
         String primaryName = primary.getEngineName();
 
-        if (watchdog.isEngineEnabled(primaryName) && primary.isHealthy()) {
+        if (isEnabled(primaryName) && primary.isHealthy()) {
             LOG.debug("Selected primary engine: {}", primaryName);
             return primary;
         }
@@ -89,8 +88,8 @@ public final class EngineSelectionStrategy {
             SttEngine fallback = engines.get(i);
             String name = fallback.getEngineName();
 
-            boolean healthy = watchdog.isEngineEnabled(name) && fallback.isHealthy();
-            if (!healthy && watchdog.isEngineEnabled(name)) {
+            boolean healthy = isEnabled(name) && fallback.isHealthy();
+            if (!healthy && isEnabled(name) && watchdog != null) {
                 healthy = watchdog.initializeOnDemand(name);
             }
 
@@ -104,8 +103,12 @@ public final class EngineSelectionStrategy {
         for (SttEngine e : engines) {
             String name = e.getEngineName();
             sj.add(String.format("%s.enabled=%s, %s.healthy=%s",
-                    name, watchdog.isEngineEnabled(name), name, e.isHealthy()));
+                    name, isEnabled(name), name, e.isHealthy()));
         }
         throw new TranscriptionException("All engines unavailable (" + sj + ")");
+    }
+
+    private boolean isEnabled(String engineName) {
+        return watchdog == null || watchdog.isEngineEnabled(engineName);
     }
 }

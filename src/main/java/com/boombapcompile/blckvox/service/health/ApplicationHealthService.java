@@ -2,6 +2,7 @@ package com.boombapcompile.blckvox.service.health;
 
 import com.boombapcompile.blckvox.service.stt.watchdog.SttEngineWatchdog;
 import com.boombapcompile.blckvox.service.stt.watchdog.SttEngineWatchdog.EngineState;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.lang.management.ManagementFactory;
@@ -17,7 +18,7 @@ public class ApplicationHealthService {
 
     private final SttEngineWatchdog watchdog;
 
-    public ApplicationHealthService(SttEngineWatchdog watchdog) {
+    public ApplicationHealthService(@Autowired(required = false) SttEngineWatchdog watchdog) {
         this.watchdog = watchdog;
     }
 
@@ -31,6 +32,14 @@ public class ApplicationHealthService {
      * </ul>
      */
     public HealthStatus check() {
+        if (watchdog == null) {
+            Map<String, String> details = new LinkedHashMap<>();
+            details.put("watchdog", "disabled");
+            long uptimeMs = ManagementFactory.getRuntimeMXBean().getUptime();
+            details.put("uptimeMs", String.valueOf(uptimeMs));
+            return new HealthStatus(HealthStatus.Status.UP, Instant.now(), details);
+        }
+
         Map<String, EngineState> states = watchdog.getEngineStates();
         Map<String, String> details = buildDetails(states);
 

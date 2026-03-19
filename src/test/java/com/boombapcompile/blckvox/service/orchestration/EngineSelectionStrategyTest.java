@@ -173,6 +173,32 @@ class EngineSelectionStrategyTest {
     }
 
     @Test
+    void nullWatchdogTreatsAllEnginesAsEnabled() {
+        StubEngine vosk = new StubEngine(SttEngineNames.VOSK, true);
+        StubEngine whisper = new StubEngine(SttEngineNames.WHISPER, true);
+        OrchestrationProperties props = new OrchestrationProperties(
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
+
+        EngineSelectionStrategy strategy = new EngineSelectionStrategy(
+                List.of(vosk, whisper), null, props);
+
+        assertThat(strategy.selectEngine()).isSameAs(vosk);
+    }
+
+    @Test
+    void nullWatchdogFallsBackOnHealth() {
+        StubEngine vosk = new StubEngine(SttEngineNames.VOSK, false);
+        StubEngine whisper = new StubEngine(SttEngineNames.WHISPER, true);
+        OrchestrationProperties props = new OrchestrationProperties(
+                OrchestrationProperties.PrimaryEngine.VOSK, 1000, 200, 120);
+
+        EngineSelectionStrategy strategy = new EngineSelectionStrategy(
+                List.of(vosk, whisper), null, props);
+
+        assertThat(strategy.selectEngine()).isSameAs(whisper);
+    }
+
+    @Test
     void priorityReordersPrimaryFirst() {
         // Pass whisper first in the list but vosk as primary — vosk should be selected
         StubEngine vosk = new StubEngine(SttEngineNames.VOSK, true);
