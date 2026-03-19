@@ -168,54 +168,36 @@ class PcmRingBufferTest {
     }
 
     @Test
-    void growBufferLinearizesWrappedData() {
-        // Use a maxCapacity large enough to trigger growth.
-        // INITIAL_CAPACITY = 320_000, so we need maxCapacity > 320_000.
-        int maxCap = 640_000;
+    void growBufferPreservesDataAndTriggersOverflowAfterGrowth() {
+        // Growth always fires BEFORE overflow in write(), so growBuffer()
+        // never encounters wrapped data (linearization branch is a defensive guard).
+        // This test verifies growth + post-growth overflow in a single write.
+        // maxCap barely larger than initial → growth leaves limited headroom.
+        int maxCap = 325_000; // INITIAL_CAPACITY=320_000, just 5K headroom
         PcmRingBuffer buf = new PcmRingBuffer(maxCap);
-
-        // Fill the initial buffer to capacity
-        byte[] fill = new byte[320_000];
-        java.util.Arrays.fill(fill, (byte) 1);
-        buf.write(fill, 0, fill.length);
         assertThat(buf.currentCapacity()).isEqualTo(320_000);
 
-        // Read all data and overwrite to position writePos near end, then wrap around
-        buf.clear();
-        // Write 310_000 bytes to advance writePos to 310_000
-        byte[] advance = new byte[310_000];
-        java.util.Arrays.fill(advance, (byte) 2);
-        buf.write(advance, 0, advance.length);
-        // Clear but keep buffer (doesn't shrink)
-        buf.clear();
-        // Now writePos is at 0, size is 0
+        // Fill to capacity via massive write path (writePos=0, size=320_000)
+        byte[] fill = new byte[320_000];
+        java.util.Arrays.fill(fill, (byte) 0x0A);
+        buf.write(fill, 0, fill.length);
 
-        // Write 310_000 bytes to advance writePos near end
-        buf.write(advance, 0, advance.length);
-        // writePos is at 310_000, size is 310_000
+        // Write 10K: triggers growth (320K+10K > 320K, 320K < 325K) → grows to 325K
+        // Then overflow: space=325K-320K=5K, 10K>5K → drops 5K oldest, wraps at end
+        byte[] extra = new byte[10_000];
+        java.util.Arrays.fill(extra, (byte) 0x0B);
+        buf.write(extra, 0, extra.length);
 
-        // Now write more data that wraps around: 20_000 bytes fits (capacity=320_000, used=310_000, space=10_000)
-        // 20_000 > 10_000 remaining, so part wraps to beginning
-        byte[] wrap = new byte[20_000];
-        java.util.Arrays.fill(wrap, (byte) 3);
-        buf.write(wrap, 0, wrap.length);
-        // Buffer is 320_000, used=320_000 (full, with some old data dropped)
+        assertThat(buf.currentCapacity()).isEqualTo(325_000);
 
-        // Now trigger growth by writing more data that exceeds current capacity
-        // but fits in maxCapacity — this triggers growBuffer() with size > 0
-        // and wrapped data (writePos < size means first < size in growBuffer)
-        byte[] triggerGrow = new byte[100_000];
-        java.util.Arrays.fill(triggerGrow, (byte) 4);
-        buf.write(triggerGrow, 0, triggerGrow.length);
-
-        // Buffer should have grown
-        assertThat(buf.currentCapacity()).isGreaterThan(320_000);
-        // Data should be linearized and readable
         byte[] result = buf.toByteArray();
-        assertThat(result.length).isGreaterThan(0);
-        // The last 100_000 bytes should be 4s
-        byte[] tail = java.util.Arrays.copyOfRange(result, result.length - 100_000, result.length);
-        assertThat(tail).containsOnly((byte) 4);
+        assertThat(result).hasSize(325_000);
+        // Last 10K should be 0x0B
+        byte[] tail = java.util.Arrays.copyOfRange(result, result.length - 10_000, result.length);
+        assertThat(tail).containsOnly((byte) 0x0B);
+        // First 315K should be 0x0A (5K oldest dropped)
+        assertThat(result[0]).isEqualTo((byte) 0x0A);
+        assertThat(result[314_999]).isEqualTo((byte) 0x0A);
     }
 
     @Test

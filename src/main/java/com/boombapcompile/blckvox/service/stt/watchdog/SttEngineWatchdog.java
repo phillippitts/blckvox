@@ -274,11 +274,10 @@ public class SttEngineWatchdog {
                 LOG.debug("Engine {} in backoff until {}", engine, budgetTracker.getBackoffUntil(engine));
                 return;
             }
-            if (!budgetTracker.allowsRestart(engine)) {
+            if (!budgetTracker.tryRecordRestart(engine)) {
                 disableEngine(engine);
                 return;
             }
-            budgetTracker.recordRestart(engine);
             if (tryRestart(engine)) {
                 publisher.publishEvent(new EngineRecoveredEvent(engine, Instant.now()));
                 LOG.info("Engine {} restarted successfully", engine);

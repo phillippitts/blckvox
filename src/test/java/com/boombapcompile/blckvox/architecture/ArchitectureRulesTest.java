@@ -1,5 +1,6 @@
 package com.boombapcompile.blckvox.architecture;
 
+import com.boombapcompile.blckvox.exception.BlckvoxException;
 import com.boombapcompile.blckvox.service.stt.AbstractSttEngine;
 import com.boombapcompile.blckvox.service.stt.SttEngine;
 import com.boombapcompile.blckvox.service.stt.util.TranscriptionGuard;
@@ -272,6 +273,65 @@ class ArchitectureRulesTest {
                     .that().resideInAPackage(BASE + ".service..")
                     .should().dependOnClassesThat()
                     .resideInAnyPackage("jakarta.servlet..", "org.springframework.web..")
+                    .check(appClasses);
+        }
+    }
+
+    @Nested
+    @DisplayName("Immutability & Type Safety")
+    class ImmutabilityAndTypeSafety {
+
+        @Test
+        @DisplayName("Event records should have 'Event' suffix")
+        void eventRecordsShouldHaveEventSuffix() {
+            classes()
+                    .that().resideInAnyPackage(
+                            BASE + ".service..event..",
+                            BASE + ".service.stt.watchdog..",
+                            BASE + ".service.audio.capture..",
+                            BASE + ".service.stt.vosk..")
+                    .and().areRecords()
+                    .and().arePublic()
+                    .and().areTopLevelClasses()
+                    .and().haveSimpleNameNotContaining("Output")
+                    .and().haveSimpleNameNotContaining("Result")
+                    .and().haveSimpleNameNotContaining("KeyEvent")
+                    .should().haveSimpleNameEndingWith("Event")
+                    .because("public top-level event records should follow naming convention")
+                    .check(appClasses);
+        }
+
+        @Test
+        @DisplayName("Domain classes should be records (immutable)")
+        void domainClassesShouldBeRecords() {
+            classes()
+                    .that().resideInAPackage(BASE + ".domain..")
+                    .and().arePublic()
+                    .and().haveSimpleNameNotContaining("package-info")
+                    .should().beRecords()
+                    .because("domain objects should be immutable records")
+                    .check(appClasses);
+        }
+
+        @Test
+        @DisplayName("Custom exceptions should extend BlckvoxException")
+        void customExceptionsShouldExtendBase() {
+            classes()
+                    .that().resideInAPackage(BASE + ".exception..")
+                    .and().areAssignableTo(Exception.class)
+                    .should().beAssignableTo(BlckvoxException.class)
+                    .because("all custom exceptions must share the BlckvoxException hierarchy")
+                    .check(appClasses);
+        }
+
+        @Test
+        @DisplayName("No SLF4J dependencies — project uses Log4j2")
+        void noSlf4jDirectDependencies() {
+            noClasses()
+                    .that().resideInAPackage(BASE + "..")
+                    .should().dependOnClassesThat()
+                    .resideInAPackage("org.slf4j..")
+                    .because("project uses Log4j2 directly; SLF4J facade is excluded")
                     .check(appClasses);
         }
     }

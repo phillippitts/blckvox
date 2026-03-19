@@ -206,7 +206,13 @@ public class DefaultParallelSttService implements ParallelSttService {
     private EngineResult getResultSilently(CompletableFuture<EngineResult> f) {
         try {
             return f.isDone() && !f.isCompletedExceptionally() && !f.isCancelled() ? f.get() : null;
-        } catch (Exception e) {
+        } catch (java.util.concurrent.CancellationException e) {
+            return null;
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            return null;
+        } catch (ExecutionException ee) {
+            LOG.debug("Engine task completed exceptionally: {}", ee.getMessage());
             return null;
         }
     }

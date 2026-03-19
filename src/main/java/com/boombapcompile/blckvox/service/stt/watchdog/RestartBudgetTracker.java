@@ -67,6 +67,37 @@ public class RestartBudgetTracker {
         }
     }
 
+    /**
+     * Atomically checks the restart budget and records a restart if allowed.
+     *
+     * <p>This method combines {@link #allowsRestart(String)} and {@link #recordRestart(String)}
+     * into a single atomic operation, eliminating the TOCTOU race that would exist if callers
+     * checked the budget and recorded separately without holding the per-engine lock.
+     *
+     * @param engine the engine name
+     * @return true if the restart was allowed and recorded; false if the budget is exhausted
+     */
+    public boolean tryRecordRestart(String engine) {
+        ReentrantLock lock = locks.get(engine);
+        lock.lock();
+        try {
+            Deque<Instant> window = restartWindow.get(engine);
+            pruneOld(window);
+            if (window.size() >= maxRestartsPerWindow) {
+                return false;
+            }
+            window.addLast(Instant.now());
+            int attempts = window.size();
+            long delayMs = Math.min(
+                    (long) (backoffBaseDelayMs * Math.pow(backoffMultiplier, attempts - 1)),
+                    backoffMaxDelayMs);
+            nextAllowedRestart.put(engine, Instant.now().plus(Duration.ofMillis(delayMs)));
+            return true;
+        } finally {
+            lock.unlock();
+        }
+    }
+
     /** Records a restart attempt for the given engine and sets the backoff expiry. */
     public void recordRestart(String engine) {
         ReentrantLock lock = locks.get(engine);

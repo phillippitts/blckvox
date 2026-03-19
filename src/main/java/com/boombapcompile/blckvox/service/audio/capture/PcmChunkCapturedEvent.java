@@ -12,4 +12,10 @@ import java.util.UUID;
  * @param length number of valid bytes in pcmData
  * @param sessionId capture session that produced this chunk
  */
-public record PcmChunkCapturedEvent(byte[] pcmData, int length, UUID sessionId) { }
+public record PcmChunkCapturedEvent(byte[] pcmData, int length, UUID sessionId) {
+
+    /** Compact constructor performs defensive copy to prevent caller mutation. */
+    public PcmChunkCapturedEvent {
+        pcmData = pcmData.clone();
+    }
+}

@@ -181,6 +181,31 @@ class RestartBudgetTrackerTest {
     }
 
     @Test
+    void tryRecordRestartSucceedsWhenBudgetAvailable() {
+        RestartBudgetTracker tracker = new RestartBudgetTracker(props);
+        tracker.register("vosk");
+
+        assertThat(tracker.tryRecordRestart("vosk")).isTrue();
+        assertThat(tracker.getRestartCount("vosk")).isEqualTo(1);
+        assertThat(tracker.isBackoffActive("vosk")).isTrue();
+    }
+
+    @Test
+    void tryRecordRestartFailsWhenBudgetExhausted() {
+        RestartBudgetTracker tracker = new RestartBudgetTracker(props);
+        tracker.register("vosk");
+
+        // Exhaust budget (max 3 restarts)
+        assertThat(tracker.tryRecordRestart("vosk")).isTrue();
+        assertThat(tracker.tryRecordRestart("vosk")).isTrue();
+        assertThat(tracker.tryRecordRestart("vosk")).isTrue();
+
+        // Fourth should fail atomically — no restart recorded
+        assertThat(tracker.tryRecordRestart("vosk")).isFalse();
+        assertThat(tracker.getRestartCount("vosk")).isEqualTo(3);
+    }
+
+    @Test
     void tryLockRestartReturnsFalseForUnregisteredEngine() {
         RestartBudgetTracker tracker = new RestartBudgetTracker(props);
         assertThat(tracker.tryLockRestart("unknown-engine")).isFalse();

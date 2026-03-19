@@ -17,9 +17,10 @@ logs/
 /.gradle/
 /.claude/
 /tools/
-/.playwright-mcp/console-2026-03-11T16-51-10-360Z.log
+/.playwright-mcp/
 
 # Blog drafts (personal, not part of project)
 docs/blog/
 /${java.io.tmpdir}/blckvox-heartbeat
 /hs_err_pid*.log
+/.playwright-mcp/
