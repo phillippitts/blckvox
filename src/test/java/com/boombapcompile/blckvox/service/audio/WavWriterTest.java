@@ -92,4 +92,71 @@ class WavWriterTest {
             Files.deleteIfExists(tmp);
         }
     }
+
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void headerChunkSizeIsCorrect() throws IOException {
+        // Verify bytes 4-7 = 36 + pcm.length (LE int)
+        // Kills mutant on L45 (36 + subchunk2Size)
+        byte[] pcm = new byte[100]; // simple size for easy verification
+        Path wav = Files.createTempFile("wav-chunk-", ".wav");
+        try {
+            WavWriter.writePcm16LeMono16kHz(pcm, wav);
+            byte[] all = Files.readAllBytes(wav);
+
+            int chunkSize = (all[4] & 0xFF) | ((all[5] & 0xFF) << 8)
+                    | ((all[6] & 0xFF) << 16) | ((all[7] & 0xFF) << 24);
+            assertThat(chunkSize).isEqualTo(36 + pcm.length);
+        } finally {
+            Files.deleteIfExists(wav);
+        }
+    }
+
+    @Test
+    void headerDataSubchunkSizeIsCorrect() throws IOException {
+        // Verify bytes 40-43 = pcm.length (LE int)
+        // Kills mutant on L71 (writeLEInt(os, subchunk2Size))
+        byte[] pcm = new byte[200];
+        Path wav = Files.createTempFile("wav-data-", ".wav");
+        try {
+            WavWriter.writePcm16LeMono16kHz(pcm, wav);
+            byte[] all = Files.readAllBytes(wav);
+
+            int dataSize = (all[40] & 0xFF) | ((all[41] & 0xFF) << 8)
+                    | ((all[42] & 0xFF) << 16) | ((all[43] & 0xFF) << 24);
+            assertThat(dataSize).isEqualTo(pcm.length);
+        } finally {
+            Files.deleteIfExists(wav);
+        }
+    }
+
+    @Test
+    void headerByteOrderIsLittleEndian() throws IOException {
+        // Write known value 16000 (0x3E80) as sample rate at offset 24
+        // Verify individual bytes are in little-endian order
+        // Kills shift mutants on L87-90
+        byte[] pcm = new byte[32_000];
+        Path wav = Files.createTempFile("wav-le-", ".wav");
+        try {
+            WavWriter.writePcm16LeMono16kHz(pcm, wav);
+            byte[] all = Files.readAllBytes(wav);
+
+            // Sample rate at offset 24: 16000 = 0x00003E80
+            // LE: [0x80, 0x3E, 0x00, 0x00]
+            assertThat(all[24] & 0xFF).isEqualTo(0x80);
+            assertThat(all[25] & 0xFF).isEqualTo(0x3E);
+            assertThat(all[26] & 0xFF).isEqualTo(0x00);
+            assertThat(all[27] & 0xFF).isEqualTo(0x00);
+
+            // Byte rate at offset 28: 32000 = 0x00007D00
+            // LE: [0x00, 0x7D, 0x00, 0x00]
+            assertThat(all[28] & 0xFF).isEqualTo(0x00);
+            assertThat(all[29] & 0xFF).isEqualTo(0x7D);
+            assertThat(all[30] & 0xFF).isEqualTo(0x00);
+            assertThat(all[31] & 0xFF).isEqualTo(0x00);
+        } finally {
+            Files.deleteIfExists(wav);
+        }
+    }
 }

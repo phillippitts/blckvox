@@ -601,6 +601,142 @@ class AudioValidatorTest {
                 .hasMessageContaining("chunk size");
     }
 
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void isWavMutantKillerByte0NotR() {
+        // All WAV signature bytes correct EXCEPT byte 0 → should NOT enter WAV path
+        // If PIT removes `a[0]=='R'` from the AND chain, isWav returns true and WAV validation throws
+        byte[] data = new byte[32_000];
+        data[0] = 'X'; data[1] = 'I'; data[2] = 'F'; data[3] = 'F';
+        putLEInt(data, 4, 31992);
+        data[8] = 'W'; data[9] = 'A'; data[10] = 'V'; data[11] = 'E';
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void isWavMutantKillerByte1NotI() {
+        byte[] data = new byte[32_000];
+        data[0] = 'R'; data[1] = 'X'; data[2] = 'F'; data[3] = 'F';
+        putLEInt(data, 4, 31992);
+        data[8] = 'W'; data[9] = 'A'; data[10] = 'V'; data[11] = 'E';
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void isWavMutantKillerByte2NotF() {
+        byte[] data = new byte[32_000];
+        data[0] = 'R'; data[1] = 'I'; data[2] = 'X'; data[3] = 'F';
+        putLEInt(data, 4, 31992);
+        data[8] = 'W'; data[9] = 'A'; data[10] = 'V'; data[11] = 'E';
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void isWavMutantKillerByte3NotF() {
+        byte[] data = new byte[32_000];
+        data[0] = 'R'; data[1] = 'I'; data[2] = 'F'; data[3] = 'X';
+        putLEInt(data, 4, 31992);
+        data[8] = 'W'; data[9] = 'A'; data[10] = 'V'; data[11] = 'E';
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void isWavMutantKillerByte8NotW() {
+        byte[] data = new byte[32_000];
+        data[0] = 'R'; data[1] = 'I'; data[2] = 'F'; data[3] = 'F';
+        putLEInt(data, 4, 31992);
+        data[8] = 'X'; data[9] = 'A'; data[10] = 'V'; data[11] = 'E';
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void isWavMutantKillerByte9NotA() {
+        byte[] data = new byte[32_000];
+        data[0] = 'R'; data[1] = 'I'; data[2] = 'F'; data[3] = 'F';
+        putLEInt(data, 4, 31992);
+        data[8] = 'W'; data[9] = 'X'; data[10] = 'V'; data[11] = 'E';
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void isWavMutantKillerByte10NotV() {
+        byte[] data = new byte[32_000];
+        data[0] = 'R'; data[1] = 'I'; data[2] = 'F'; data[3] = 'F';
+        putLEInt(data, 4, 31992);
+        data[8] = 'W'; data[9] = 'A'; data[10] = 'X'; data[11] = 'E';
+        assertThatCode(() -> validator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void durationExactlyAtMinimumPasses() {
+        // 250ms at 32kB/s = 8000 bytes. durationMs = (8000*1000)/32000 = 250
+        // 250 < 250 is false → passes. Kills < to <= on L245
+        byte[] pcm = new byte[8000];
+        assertThatCode(() -> validator.validate(pcm)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void durationOneByteBelowMinimumFails() {
+        // 7998 bytes → durationMs = (7998*1000)/32000 = 249 (integer division) < 250 → fails
+        byte[] pcm = new byte[7998];
+        assertThatThrownBy(() -> validator.validate(pcm))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("too short");
+    }
+
+    @Test
+    void durationExactlyAtMaximumPasses() {
+        // 300_000ms at 32kB/s = 9_600_000 bytes. durationMs = (9600000*1000)/32000 = 300000
+        // 300000 > 300000 is false → passes. Kills > to >= on L249
+        byte[] pcm = new byte[9_600_000];
+        assertThatCode(() -> validator.validate(pcm)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void durationJustAboveMaximumFails() {
+        // 9_600_002 bytes → durationMs = (9600002*1000)/32000 = 300000 (integer division)
+        // Need enough bytes to push past: 9_632_000 bytes → 301000ms
+        byte[] pcm = new byte[9_632_000];
+        assertThatThrownBy(() -> validator.validate(pcm))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("too long");
+    }
+
+    @Test
+    void fileSizeExactlyAtLimitPasses() {
+        // maxFileSizeBytes is 100MB. At exact limit: data.length > max is false → passes
+        // Kills > to >= on L47
+        // Use small maxFileSize to keep test fast
+        AudioValidationProperties smallProps = new AudioValidationProperties(250, 300_000, 32_000);
+        AudioValidator smallValidator = new AudioValidator(smallProps);
+        // 32000 bytes = exactly at limit AND = 1 second duration (passes min/max)
+        byte[] data = new byte[32_000];
+        assertThatCode(() -> smallValidator.validate(data)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void fileSizeOneBytePastLimitFails() {
+        AudioValidationProperties smallProps = new AudioValidationProperties(250, 300_000, 31_999);
+        AudioValidator smallValidator = new AudioValidator(smallProps);
+        byte[] data = new byte[32_000]; // 32000 > 31999 → fails
+        assertThatThrownBy(() -> smallValidator.validate(data))
+                .isInstanceOf(InvalidAudioException.class)
+                .hasMessageContaining("too large");
+    }
+
+    @Test
+    void isWavExactly12BytesEntersWavPath() {
+        // 12 bytes with valid RIFF/WAVE header → enters WAV path
+        // Kills >= to > on L62 (12 >= 12 is true)
+        byte[] data = new byte[12];
+        data[0] = 'R'; data[1] = 'I'; data[2] = 'F'; data[3] = 'F';
+        data[8] = 'W'; data[9] = 'A'; data[10] = 'V'; data[11] = 'E';
+        // Enters WAV path → too small for RIFF header or missing chunks
+        assertThatThrownBy(() -> validator.validate(data))
+                .isInstanceOf(InvalidAudioException.class);
+    }
+
     private static void putLEShort(byte[] a, int off, int v) {
         a[off] = (byte) (v & 0xFF);
         a[off + 1] = (byte) ((v >>> 8) & 0xFF);

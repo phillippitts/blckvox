@@ -126,4 +126,51 @@ class ConfidenceReconcilerTest {
         assertThat(result.text()).isEqualTo("whisper text");
         assertThat(result.confidence()).isEqualTo(1.0);
     }
+
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void equalConfidenceTieBreakToNonEmptyText() {
+        // Equal confidence, vosk empty, whisper non-empty → picks whisper
+        // Kills conditions on L41, L44
+        var vosk = new EngineResult("", 0.9, List.of(), 100L, "vosk", null);
+        var whisper = new EngineResult("whisper text", 0.9, List.of("whisper"), 100L, "whisper", null);
+
+        var result = reconciler.reconcile(vosk, whisper);
+        assertThat(result.text()).isEqualTo("whisper text");
+        assertThat(result.confidence()).isEqualTo(0.9);
+    }
+
+    @Test
+    void tieBreakBothNonEmptyDefaultsToVosk() {
+        // Equal confidence, both non-empty → defaults to vosk (L49)
+        var vosk = new EngineResult("vosk text", 0.9, List.of("vosk"), 100L, "vosk", null);
+        var whisper = new EngineResult("whisper text", 0.9, List.of("whisper"), 100L, "whisper", null);
+
+        var result = reconciler.reconcile(vosk, whisper);
+        assertThat(result.text()).isEqualTo("vosk text");
+    }
+
+    @Test
+    void confidenceJustAbovePicksHigher() {
+        // vosk=0.91, whisper=0.90 → vosk.confidence() > whisper.confidence() is true
+        // Kills > to >= on L30
+        var vosk = new EngineResult("vosk text", 0.91, List.of("vosk"), 100L, "vosk", null);
+        var whisper = new EngineResult("whisper text", 0.90, List.of("whisper"), 100L, "whisper", null);
+
+        var result = reconciler.reconcile(vosk, whisper);
+        assertThat(result.text()).isEqualTo("vosk text");
+        assertThat(result.confidence()).isEqualTo(0.91);
+    }
+
+    @Test
+    void tieBreakVoskNonEmptyWhisperEmptyPicksVosk() {
+        // Equal confidence, vosk non-empty, whisper empty → picks vosk (L41)
+        var vosk = new EngineResult("vosk text", 0.8, List.of("vosk"), 100L, "vosk", null);
+        var whisper = new EngineResult("", 0.8, List.of(), 100L, "whisper", null);
+
+        var result = reconciler.reconcile(vosk, whisper);
+        assertThat(result.text()).isEqualTo("vosk text");
+        assertThat(result.confidence()).isEqualTo(0.8);
+    }
 }

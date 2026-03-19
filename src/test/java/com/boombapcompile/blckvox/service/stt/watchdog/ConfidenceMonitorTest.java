@@ -177,4 +177,73 @@ class ConfidenceMonitorTest {
         monitor.record("vosk", 0.8);
         assertThat(monitor.getWindow("vosk")).hasSize(1);
     }
+
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void recordReturnsEvaluationExactlyAtMinSamples() {
+        // minSamples=5. 4th record → null, 5th record → non-null
+        // Kills < to <= on L70 (window.size() < minSamples)
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+        monitor.register("vosk");
+
+        for (int i = 0; i < 4; i++) {
+            assertThat(monitor.record("vosk", 0.8)).isNull();
+        }
+        // 5th sample: window.size()=5, 5 < 5 is false → returns Evaluation
+        ConfidenceMonitor.Evaluation eval = monitor.record("vosk", 0.8);
+        assertThat(eval).isNotNull();
+        assertThat(eval.average()).isCloseTo(0.8, org.assertj.core.data.Offset.offset(0.001));
+    }
+
+    @Test
+    void evaluationDegradedBoundaryExactlyAtThreshold() {
+        // blacklistThreshold=0.3. avg=0.3 exactly → avg < 0.3 is false → NOT degraded
+        // Kills < to <= on L75
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+        monitor.register("vosk");
+
+        for (int i = 0; i < 5; i++) {
+            monitor.record("vosk", 0.3);
+        }
+        ConfidenceMonitor.Evaluation eval = monitor.record("vosk", 0.3);
+        assertThat(eval).isNotNull();
+        assertThat(eval.degraded()).isFalse(); // 0.3 < 0.3 is false
+        assertThat(eval.average()).isCloseTo(0.3, org.assertj.core.data.Offset.offset(0.001));
+    }
+
+    @Test
+    void gracePeriodExactBoundaryRecordsOnNextCall() {
+        // graceTranscriptions=5. After clearOnRecovery, 5 calls are skipped.
+        // 6th call should record normally. Kills > 0 to >= 0 on L59
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+        monitor.register("vosk");
+        monitor.clearOnRecovery("vosk");
+
+        // 5 grace samples (skipped)
+        for (int i = 0; i < 5; i++) {
+            assertThat(monitor.record("vosk", 0.1)).isNull();
+        }
+        // Grace counter is now 0. grace.get() > 0 is false → records normally
+        monitor.record("vosk", 0.8);
+        assertThat(monitor.getWindow("vosk")).hasSize(1);
+    }
+
+    @Test
+    void recordReturnValueContainsCorrectAverage() {
+        // Verify exact average in returned Evaluation
+        ConfidenceMonitor monitor = new ConfidenceMonitor(props);
+        monitor.register("vosk");
+
+        // Record: 0.2, 0.4, 0.6, 0.8, 1.0 → avg = 0.6
+        monitor.record("vosk", 0.2);
+        monitor.record("vosk", 0.4);
+        monitor.record("vosk", 0.6);
+        monitor.record("vosk", 0.8);
+        ConfidenceMonitor.Evaluation eval = monitor.record("vosk", 1.0);
+
+        assertThat(eval).isNotNull();
+        assertThat(eval.average()).isCloseTo(0.6, org.assertj.core.data.Offset.offset(0.001));
+        assertThat(eval.degraded()).isFalse(); // 0.6 > 0.3
+    }
 }

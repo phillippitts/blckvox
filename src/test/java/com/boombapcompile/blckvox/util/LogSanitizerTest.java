@@ -111,4 +111,19 @@ class LogSanitizerTest {
     void sanitizePreservesRegularText() {
         assertThat(LogSanitizer.sanitize("Hello World 123!")).isEqualTo("Hello World 123!");
     }
+
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void truncateExactlyAtMaxReturnsFullSanitized() {
+        // sanitized.length() <= max (5 <= 5) → returns full sanitized string
+        // Kills <= to < on L25
+        assertThat(LogSanitizer.truncate("abcde", 5)).isEqualTo("abcde");
+    }
+
+    @Test
+    void truncateOnePastMaxReturnsTruncated() {
+        // sanitized.length() > max (6 > 5) → truncates
+        assertThat(LogSanitizer.truncate("abcdef", 5)).isEqualTo("abcde");
+    }
 }

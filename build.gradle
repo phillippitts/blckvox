@@ -8,6 +8,7 @@ plugins {
     id 'com.github.spotbugs' version '6.1.7'  // Bytecode-level static analysis
     id 'org.owasp.dependencycheck' version '9.2.0'  // Dependency vulnerability scanning
     id 'org.cyclonedx.bom' version '1.8.2'  // SBOM generation (CycloneDX format)
+    id 'info.solidsoft.pitest' version '1.15.0'  // Mutation testing
 }
 
 group = 'com.boombapcompile'
@@ -237,6 +238,71 @@ cyclonedxBom {
     outputFormat = "json"
     outputName = "bom"
     destination = file("${layout.buildDirectory.get()}/reports/sbom")
+}
+
+pitest {
+    pitestVersion = '1.17.4'
+    junit5PluginVersion = '1.2.1'
+
+    targetClasses = ['com.boombapcompile.blckvox.*']
+    targetTests = ['com.boombapcompile.blckvox.*']
+
+    // Mirror JaCoCo + SpotBugs exclusions (FQCNs, not file paths)
+    excludedClasses = [
+        'com.boombapcompile.blckvox.BlckvoxApplication',
+        'com.boombapcompile.blckvox.service.livecaption.LiveCaptionWindow',
+        'com.boombapcompile.blckvox.service.livecaption.JavaFxLifecycle',
+        'com.boombapcompile.blckvox.service.livecaption.LiveCaptionManager',
+        'com.boombapcompile.blckvox.service.stt.vosk.VoskSttEngine',
+        'com.boombapcompile.blckvox.service.stt.vosk.VoskSttEngine$*',
+        'com.boombapcompile.blckvox.service.stt.vosk.VoskStreamingService',
+        'com.boombapcompile.blckvox.service.stt.vosk.VoskModelProvider',
+        'com.boombapcompile.blckvox.config.stt.ModelValidationService',
+        'com.boombapcompile.blckvox.service.hotkey.impl.JNativeHookGlobalKeyHook',
+        'com.boombapcompile.blckvox.service.tray.SystemTrayManager*',
+        'com.boombapcompile.blckvox.service.stt.whisper.DefaultProcessFactory',
+        'com.boombapcompile.blckvox.service.fallback.ClipboardTypingAdapter',
+        'com.boombapcompile.blckvox.service.fallback.ClipboardTypingAdapter$*',
+        'com.boombapcompile.blckvox.service.fallback.RobotTypingAdapter',
+        'com.boombapcompile.blckvox.service.fallback.RobotTypingAdapter$*',
+        'com.boombapcompile.blckvox.service.audio.capture.JavaSoundAudioCaptureService',
+        'com.boombapcompile.blckvox.service.audio.capture.JavaSoundAudioCaptureService$*',
+        'com.boombapcompile.blckvox.service.stt.util.SystemResourceMonitor',
+        'com.boombapcompile.blckvox.service.stt.whisper.WhisperProcessManager',
+        'com.boombapcompile.blckvox.service.stt.whisper.ProcessStreamHandler',
+    ]
+
+    // Exclude integration/hardware test classes from mutation runs
+    excludedTestClasses = ['*IntegrationTest', '*IT']
+
+    // STRONGER = DEFAULTS + switch mutations + remove-conditionals(EQUAL_ELSE)
+    mutators = ['STRONGER']
+
+    outputFormats = ['HTML', 'XML']
+    timestampedReports = false
+
+    threads = 4
+    timeoutConstInMillis = 8000
+    timeoutFactor = 1.5
+
+    // Discovery mode: no threshold enforcement on first run
+    mutationThreshold = 0
+
+    // Skip logging mutations (they never add value)
+    avoidCallsTo = [
+        'java.util.logging',
+        'org.apache.logging.log4j',
+        'org.slf4j',
+    ]
+
+    jvmArgs = ['-XX:+EnableDynamicAgentLoading']
+    failWhenNoMutations = false
+    detectInlinedCode = true
+    verbose = false
+
+    // Incremental: cache mutation results between runs
+    historyInputLocation = "${layout.buildDirectory.get()}/pitest-history.bin"
+    historyOutputLocation = "${layout.buildDirectory.get()}/pitest-history.bin"
 }
 
 // Configure bootRun to disable headless mode (required for Robot/Clipboard APIs)

@@ -78,4 +78,34 @@ class WhisperCommandBuilderTest {
         // relative path should be resolved to absolute
         assertThat(Path.of(cmd.get(0)).isAbsolute()).isTrue();
     }
+
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void normalizeOutputModeEmptyStringDefaultsToText() {
+        // Empty string (not just blank) → defaults to "text"
+        // Kills L99 condition (mode.isBlank())
+        List<String> cmd = new WhisperCommandBuilder("").buildCommand(cfg, wavPath);
+        assertThat(cmd).contains("-otxt");
+    }
+
+    @Test
+    void relativeModelPathIsResolvedToAbsolute() {
+        // Model path is relative → should be resolved to absolute
+        // Kills L115 path.isAbsolute() check
+        WhisperConfig relativeCfg = new WhisperConfig(
+                "/usr/local/bin/whisper", "models/base.bin", 10, "en", 4, 1048576, 0.85);
+        List<String> cmd = new WhisperCommandBuilder("text").buildCommand(relativeCfg, wavPath);
+        // model path is at index 2 (after binary, "-m")
+        String modelPath = cmd.get(2);
+        assertThat(Path.of(modelPath).isAbsolute()).isTrue();
+    }
+
+    @Test
+    void jsonModeCaseInsensitive() {
+        // "JSON" (uppercase) → normalized to "json" → adds -oj
+        // Kills L78 equalsIgnoreCase or L102 toLowerCase
+        List<String> cmd = new WhisperCommandBuilder("JSON").buildCommand(cfg, wavPath);
+        assertThat(cmd).contains("-oj");
+    }
 }
