@@ -266,6 +266,62 @@ class DefaultRecordingServiceTest {
         assertThat(service.getState()).isEqualTo(ApplicationState.IDLE);
     }
 
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void startRecordingReturnsFalseWhenTranscribing() {
+        // State=TRANSCRIBING → startRecording returns false
+        // Kills != to == mutation on L47
+        service.startRecording();
+        service.stopRecording(); // transitions to TRANSCRIBING
+        assertThat(service.getState()).isEqualTo(ApplicationState.TRANSCRIBING);
+
+        boolean started = service.startRecording();
+        assertThat(started).isFalse();
+    }
+
+    @Test
+    void toggleRecordingReturnsTrueOnStart() {
+        // Toggle from IDLE → delegates to startRecording → returns true
+        // Kills return value mutation on L143
+        boolean result = service.toggleRecording();
+        assertThat(result).isTrue();
+        assertThat(service.getState()).isEqualTo(ApplicationState.RECORDING);
+    }
+
+    @Test
+    void toggleRecordingReturnsTrueOnStop() {
+        // Toggle from RECORDING → stops + transcribes → returns true
+        // Kills return value mutation on L146
+        service.startRecording();
+        boolean result = service.toggleRecording();
+        assertThat(result).isTrue();
+        assertThat(service.getState()).isEqualTo(ApplicationState.TRANSCRIBING);
+    }
+
+    @Test
+    void stopRecordingReturnsTrueOnSuccess() {
+        // Explicit check that stopRecording returns true
+        // Kills return value mutation on doTranscribe L163
+        service.startRecording();
+        boolean result = service.stopRecording();
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void onTranscriptionCompletedIsNoOpInRecordingState() {
+        // Fire event while RECORDING → state unchanged (guard on L171)
+        service.startRecording();
+        assertThat(service.getState()).isEqualTo(ApplicationState.RECORDING);
+
+        service.onTranscriptionCompleted(
+                new TranscriptionCompletedEvent(
+                        TranscriptionResult.of("hello", 1.0, "vosk"),
+                        Instant.now(), "vosk"));
+
+        assertThat(service.getState()).isEqualTo(ApplicationState.RECORDING);
+    }
+
     // --- Test fakes ---
 
     private static class FakeCaptureOrchestrator implements CaptureOrchestrator {

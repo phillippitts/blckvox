@@ -108,4 +108,62 @@ class TranscriptionExceptionBuilderTest {
         assertThat(builder.durationMs(100)).isSameAs(builder);
         assertThat(builder.metadata("k", "v")).isSameAs(builder);
     }
+
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void buildWithOnlyExitCodeHasParens() {
+        // hasDetails = true (exitCode != null) → message gets parens
+        // Kills L147 hasDetails flag or L148 early return
+        TranscriptionException ex = TranscriptionExceptionBuilder.create("fail")
+                .exitCode(42)
+                .build();
+        // Format: "fail (exitCode=42) (engine: unknown)"
+        assertThat(ex.getMessage()).contains("(exitCode=42)");
+        assertThat(ex.getMessage()).startsWith("fail ");
+    }
+
+    @Test
+    void buildWithAllThreeFieldsVerifyCommas() {
+        // exitCode + durationMs + metadata → commas between each
+        // Kills comma separator on L161, L169
+        TranscriptionException ex = TranscriptionExceptionBuilder.create("error")
+                .exitCode(1)
+                .durationMs(500)
+                .metadata("key", "val")
+                .build();
+        String msg = ex.getMessage();
+        // Should contain: "error (exitCode=1, durationMs=500, key=val) (engine: unknown)"
+        assertThat(msg).contains("exitCode=1, durationMs=500");
+        assertThat(msg).contains("durationMs=500, key=val");
+    }
+
+    @Test
+    void buildWithOnlyDurationMsHasParens() {
+        // Only durationMs set → hasDetails true, first detail has no comma
+        TranscriptionException ex = TranscriptionExceptionBuilder.create("fail")
+                .durationMs(999)
+                .build();
+        assertThat(ex.getMessage()).contains("(durationMs=999)");
+    }
+
+    @Test
+    void buildWithOnlyMetadataHasParens() {
+        // Only metadata → hasDetails true
+        TranscriptionException ex = TranscriptionExceptionBuilder.create("fail")
+                .metadata("foo", "bar")
+                .build();
+        assertThat(ex.getMessage()).contains("(foo=bar)");
+    }
+
+    @Test
+    void buildWithExitCodeAndMetadataNoCommaBeforeExitCode() {
+        // exitCode + metadata (no durationMs) → comma only between exitCode and metadata
+        TranscriptionException ex = TranscriptionExceptionBuilder.create("fail")
+                .exitCode(5)
+                .metadata("path", "/tmp")
+                .build();
+        String msg = ex.getMessage();
+        assertThat(msg).contains("exitCode=5, path=/tmp");
+    }
 }

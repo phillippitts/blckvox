@@ -862,4 +862,154 @@ class WhisperJsonParserTest {
         assertThat(WhisperJsonParser.extractConfidence(json))
                 .isCloseTo(Math.exp(-0.5), org.assertj.core.data.Offset.offset(0.001));
     }
+
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void pauseGapExactlyAtThresholdNoNewline() {
+        // gap = silenceGapSec exactly → gap > threshold is false → space, NOT newline
+        // Kills > to >= on L120
+        String json = """
+            {
+              "segments": [
+                {"text": "Hello", "start": 0.0, "end": 1.0},
+                {"text": "World", "start": 2.0, "end": 3.0}
+              ]
+            }
+            """;
+        // silenceGapMs=1000 → silenceGapSec=1.0; gap = 2.0-1.0 = 1.0; 1.0 > 1.0 is false → space
+        String text = WhisperJsonParser.extractTextWithPauseDetection(json, 1000);
+        assertThat(text).isEqualTo("Hello World");
+    }
+
+    @Test
+    void pauseGapJustAboveThresholdInsertsNewline() {
+        // gap = threshold + 0.001 → inserts newline
+        String json = """
+            {
+              "segments": [
+                {"text": "Hello", "start": 0.0, "end": 1.0},
+                {"text": "World", "start": 2.001, "end": 3.0}
+              ]
+            }
+            """;
+        // gap = 2.001 - 1.0 = 1.001 > 1.0 → newline
+        String text = WhisperJsonParser.extractTextWithPauseDetection(json, 1000);
+        assertThat(text).isEqualTo("Hello\nWorld");
+    }
+
+    @Test
+    void prevEndNegativeSkipsGapCheck() {
+        // First segment has no "end" → prevEnd stays -1 → second segment's gap check is skipped
+        // Kills prevEnd >= 0 condition on L118
+        String json = """
+            {
+              "segments": [
+                {"text": "Hello", "start": 0.0},
+                {"text": "World", "start": 100.0, "end": 101.0}
+              ]
+            }
+            """;
+        // prevEnd=-1 after first seg (no "end"), so gap check: prevEnd >= 0 && start >= 0 → false
+        // Falls to else if (sb.length() > 0) → space
+        String text = WhisperJsonParser.extractTextWithPauseDetection(json, 1000);
+        assertThat(text).isEqualTo("Hello World");
+    }
+
+    @Test
+    void startNegativeSkipsGapCheck() {
+        // Second segment has no "start" → start=-1 → gap check skipped
+        String json = """
+            {
+              "segments": [
+                {"text": "Hello", "start": 0.0, "end": 1.0},
+                {"text": "World", "end": 100.0}
+              ]
+            }
+            """;
+        // start=-1 for second seg, prevEnd=1.0; prevEnd >= 0 is true BUT start >= 0 is false → falls through
+        String text = WhisperJsonParser.extractTextWithPauseDetection(json, 1000);
+        assertThat(text).isEqualTo("Hello World");
+    }
+
+    @Test
+    void endNegativePreservesOldPrevEnd() {
+        // Three segments; middle one missing "end" → gap from seg1 end to seg3 start
+        // Kills L135 "if (end >= 0)" — prevEnd stays at seg1's end
+        String json = """
+            {
+              "segments": [
+                {"text": "First", "start": 0.0, "end": 1.0},
+                {"text": "Second", "start": 1.1},
+                {"text": "Third", "start": 5.0, "end": 6.0}
+              ]
+            }
+            """;
+        // After seg1: prevEnd=1.0
+        // Seg2: start=1.1, gap=0.1 < 1.0 → space. end=-1 → prevEnd stays 1.0
+        // Seg3: start=5.0, gap=5.0-1.0=4.0 > 1.0 → newline
+        String text = WhisperJsonParser.extractTextWithPauseDetection(json, 1000);
+        assertThat(text).isEqualTo("First Second\nThird");
+    }
+
+    @Test
+    void confidenceEmptyWordsArrayFallsToLogprob() {
+        // "words": [] → no word-level probs → count=0 → falls to avg_logprob
+        String json = """
+            {
+              "segments": [
+                {"text": "hello", "words": [], "avg_logprob": -0.5}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json))
+                .isCloseTo(Math.exp(-0.5), org.assertj.core.data.Offset.offset(0.001));
+    }
+
+    @Test
+    void confidenceLoopCountBoundary() {
+        // Single word with prob → count=1, sum=0.75, avg=0.75
+        // Kills loop count boundary on L180
+        String json = """
+            {
+              "segments": [
+                {"words": [{"word": "test", "prob": 0.75}]}
+              ]
+            }
+            """;
+        assertThat(WhisperJsonParser.extractConfidence(json)).isEqualTo(0.75);
+    }
+
+    @Test
+    void emptySegmentsArrayReturnsEmptyTokens() {
+        // "segments": [] → no tokens extracted
+        String json = "{\"segments\": []}";
+        assertThat(WhisperJsonParser.extractTokens(json)).isEmpty();
+    }
+
+    @Test
+    void spaceSeparatorOnMultipleSegments() {
+        // Three segments, all below gap threshold → space-separated
+        // Kills space separator logic on L123, L127
+        String json = """
+            {
+              "segments": [
+                {"text": "One", "start": 0.0, "end": 0.5},
+                {"text": "Two", "start": 0.6, "end": 1.0},
+                {"text": "Three", "start": 1.1, "end": 1.5}
+              ]
+            }
+            """;
+        String text = WhisperJsonParser.extractTextWithPauseDetection(json, 1000);
+        assertThat(text).isEqualTo("One Two Three");
+    }
+
+    @Test
+    void extractTextNullSegmentsReturnsEmpty() {
+        // Missing "segments" key entirely with silenceGapMs > 0
+        // Falls through to obj.has("text") which is also false → empty
+        String json = "{}";
+        String text = WhisperJsonParser.extractTextWithPauseDetection(json, 500);
+        assertThat(text).isEmpty();
+    }
 }

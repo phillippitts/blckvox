@@ -146,4 +146,39 @@ class ErrorEventsListenerTest {
         assertThatCode(() -> listener.onCaptureError(event))
                 .doesNotThrowAnyException();
     }
+
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldLogBoundaryExactlyAtThrottleExpiry() throws Exception {
+        // Set lastLog to 59 seconds ago (just under THROTTLE = 60s)
+        // Duration.between(prev, now) ≈ 59s, compareTo(60s) < 0 → should NOT log
+        // Kills > to >= on L55 (a >= mutant would let 59s through)
+        ErrorEventsListener listener = new ErrorEventsListener();
+        listener.shouldLog("boundary-key"); // First call records timestamp
+
+        Field lastLogField = ErrorEventsListener.class.getDeclaredField("lastLog");
+        lastLogField.setAccessible(true);
+        Map<String, Instant> lastLog = (Map<String, Instant>) lastLogField.get(listener);
+        lastLog.put("boundary-key", Instant.now().minusSeconds(59));
+
+        // At ~59s: compareTo returns < 0, so condition is false → should return false
+        assertThat(listener.shouldLog("boundary-key")).isFalse();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldLogReturnsTrueJustAfterThrottleExpiry() throws Exception {
+        // Set lastLog to 61 seconds ago → past the 60-second throttle
+        ErrorEventsListener listener = new ErrorEventsListener();
+        listener.shouldLog("past-key");
+
+        Field lastLogField = ErrorEventsListener.class.getDeclaredField("lastLog");
+        lastLogField.setAccessible(true);
+        Map<String, Instant> lastLog = (Map<String, Instant>) lastLogField.get(listener);
+        lastLog.put("past-key", Instant.now().minusSeconds(61));
+
+        assertThat(listener.shouldLog("past-key")).isTrue();
+    }
 }

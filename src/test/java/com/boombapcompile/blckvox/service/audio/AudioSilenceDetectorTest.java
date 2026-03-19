@@ -363,6 +363,137 @@ class AudioSilenceDetectorTest {
         assertThat(boundaries).isEmpty(); // sampleRate <= 0 returns empty
     }
 
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void isSilentReturnsFalseAtExactThreshold() {
+        // RMS = threshold exactly → rms < threshold is false → NOT silent
+        // Kills < to <= mutant on L54
+        byte[] pcm = generateUniform(320, (short) 800);
+        assertThat(detector.isSilent(pcm, 800)).isFalse();
+    }
+
+    @Test
+    void isSilentReturnsTrueJustBelowThreshold() {
+        // RMS = 799 < 800 → IS silent
+        byte[] pcm = generateUniform(320, (short) 799);
+        assertThat(detector.isSilent(pcm, 800)).isTrue();
+    }
+
+    @Test
+    void isSilentMaxWindowReturnsFalseAtExactThreshold() {
+        // Max window RMS = threshold → < threshold is false → NOT silent
+        // Kills < to <= on L95
+        // Need >= 1 full 20ms window = 640 bytes = 320 samples
+        byte[] pcm = generateUniform(320, (short) 800);
+        assertThat(detector.isSilentMaxWindow(pcm, 800)).isFalse();
+    }
+
+    @Test
+    void calculateRmsKnownValueVerifiesLittleEndianDecoding() {
+        // {0x01, 0x00} = sample 1, RMS=1.0
+        // {0x00, 0x01} = sample 256, RMS=256.0
+        // Kills shift mutants on L166
+        byte[] low = new byte[]{0x01, 0x00};
+        assertThat(detector.calculateOverallRMS(low)).isEqualTo(1.0);
+
+        byte[] high = new byte[]{0x00, 0x01};
+        assertThat(detector.calculateOverallRMS(high)).isEqualTo(256.0);
+    }
+
+    @Test
+    void calculateRmsStepVerification() {
+        // Two samples: {0x00, 0x40} = 16384 and {0xFF, 0x7F} = 32767
+        // RMS = sqrt((16384^2 + 32767^2) / 2) = sqrt((268435456 + 1073676289) / 2) = sqrt(671055872.5)
+        byte[] buf = new byte[]{0x00, 0x40, (byte) 0xFF, 0x7F};
+        double rms = detector.calculateOverallRMS(buf);
+        double expected = Math.sqrt((16384.0 * 16384.0 + 32767.0 * 32767.0) / 2.0);
+        assertThat(rms).isCloseTo(expected, org.assertj.core.data.Offset.offset(0.01));
+    }
+
+    @Test
+    void detectSilenceBoundariesAtExactMinSilenceBytes() {
+        // Silence region exactly minSilenceBytes long → boundary SHOULD be detected (>= on L136)
+        // minSilenceBytes for 500ms at 16kHz = (16000*500/1000)*2 = 16000 bytes
+        // windowBytes for 20ms = 640 bytes → need silence = 16000/640 = 25 windows
+        int windowBytes = 640;
+        int minSilenceWindows = 25; // 16000/640 = 25
+        byte[] loud = generateLoud(durationToSamples(300));
+        byte[] silence = new byte[windowBytes * minSilenceWindows]; // exactly minSilenceBytes
+        byte[] loud2 = generateLoud(durationToSamples(300));
+        byte[] pcm = concat(loud, silence, loud2);
+
+        List<Integer> boundaries = detector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
+        assertThat(boundaries).hasSize(1);
+    }
+
+    @Test
+    void detectSilenceBoundariesSilenceOneByteBelowMinimum() {
+        // Silence one window short of minSilenceBytes → no boundary
+        int windowBytes = 640;
+        int minSilenceWindows = 25;
+        byte[] loud = generateLoud(durationToSamples(300));
+        byte[] silence = new byte[windowBytes * (minSilenceWindows - 1)]; // one window less
+        byte[] loud2 = generateLoud(durationToSamples(300));
+        byte[] pcm = concat(loud, silence, loud2);
+
+        List<Integer> boundaries = detector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
+        assertThat(boundaries).isEmpty();
+    }
+
+    @Test
+    void detectSilenceBoundariesTrailingSilenceExactlyMinimum() {
+        // loud + silence exactly at min → trailing boundary detected (>= on L147)
+        int windowBytes = 640;
+        int minSilenceWindows = 25;
+        byte[] loud = generateLoud(durationToSamples(300));
+        byte[] silence = new byte[windowBytes * minSilenceWindows];
+        byte[] pcm = concat(loud, silence);
+
+        List<Integer> boundaries = detector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
+        assertThat(boundaries).hasSize(1);
+        assertThat(boundaries.getFirst()).isEqualTo(pcm.length);
+    }
+
+    @Test
+    void detectSilenceBoundariesSilenceAtExactRmsThreshold() {
+        // Per-window RMS exactly at threshold → NOT silence (rms < threshold is false)
+        // Kills < to <= on L126
+        int windowBytes = 640; // 320 samples per window
+        int totalWindows = 30;
+        byte[] pcm = generateUniform(320 * totalWindows, (short) 800);
+
+        List<Integer> boundaries = detector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE, 800);
+        // Since no window is silent, no boundaries should be detected
+        assertThat(boundaries).isEmpty();
+    }
+
+    @Test
+    void calculateMaxWindowRmsTracksPeakNotAverage() {
+        // 2 silent windows + 1 loud window → max = loud window RMS
+        // Kills > to >= on L82
+        int windowBytes = 640; // 320 samples
+        byte[] silent1 = new byte[windowBytes];
+        byte[] silent2 = new byte[windowBytes];
+        byte[] loudWindow = generateLoud(320);
+        byte[] pcm = concat(silent1, silent2, loudWindow);
+
+        double maxRms = detector.calculateMaxWindowRMS(pcm);
+        double loudRms = detector.calculateOverallRMS(loudWindow);
+        assertThat(maxRms).isEqualTo(loudRms);
+        assertThat(maxRms).isGreaterThan(0);
+    }
+
+    @Test
+    void detectSilenceBoundariesReturnsEmptyForAllSilentBufferBelowGap() {
+        // Pure silence shorter than silenceGapMs → trailing silence < minSilenceBytes → empty
+        int windowBytes = 640;
+        int minSilenceWindows = 25;
+        byte[] pcm = new byte[windowBytes * (minSilenceWindows - 1)]; // one window less than minimum
+        List<Integer> boundaries = detector.detectSilenceBoundaries(pcm, SILENCE_GAP_MS, SAMPLE_RATE);
+        assertThat(boundaries).isEmpty();
+    }
+
     // --- Helpers ---
 
     /** Converts duration in ms to number of 16-bit samples at SAMPLE_RATE. */
@@ -396,6 +527,16 @@ class AudioSilenceDetectorTest {
             short val = (i % 2 == 0) ? amplitude : (short) -amplitude;
             pcm[i * 2] = (byte) (val & 0xFF);
             pcm[i * 2 + 1] = (byte) (val >> 8);
+        }
+        return pcm;
+    }
+
+    /** Generates PCM16LE with all samples set to the given amplitude (constant signal). */
+    private byte[] generateUniform(int sampleCount, short amplitude) {
+        byte[] pcm = new byte[sampleCount * 2];
+        for (int i = 0; i < sampleCount; i++) {
+            pcm[i * 2] = (byte) (amplitude & 0xFF);
+            pcm[i * 2 + 1] = (byte) (amplitude >> 8);
         }
         return pcm;
     }

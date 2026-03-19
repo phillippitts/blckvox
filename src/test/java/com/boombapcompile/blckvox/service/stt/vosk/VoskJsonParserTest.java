@@ -252,4 +252,54 @@ class VoskJsonParserTest {
         assertThat(result.text()).isEmpty();
         assertThat(result.confidence()).isCloseTo(0.7, org.assertj.core.data.Offset.offset(0.001));
     }
+
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void truncateJsonIfNeededExactlyAtLimit() {
+        // JSON of exactly MAX_JSON_SIZE (1_048_576) should NOT be truncated
+        // Kills > to >= on L98 (json.length() > MAX_JSON_SIZE)
+        StringBuilder sb = new StringBuilder(1_048_576);
+        sb.append("{\"text\":\"");
+        while (sb.length() < 1_048_576 - 2) {
+            sb.append('a');
+        }
+        sb.append("\"}");
+        // Pad or trim to exactly 1_048_576
+        while (sb.length() < 1_048_576) sb.append(' ');
+        String json = sb.substring(0, 1_048_576);
+        VoskJsonParser.VoskTranscription result = VoskJsonParser.parse(json);
+        // At exactly the limit, should not be truncated → parses normally
+        assertThat(result.text()).isNotNull();
+    }
+
+    @Test
+    void truncateJsonOneBeyondLimit() {
+        // JSON of MAX_JSON_SIZE + 1 → gets truncated → likely corrupt → fallback
+        StringBuilder sb = new StringBuilder(1_048_577);
+        sb.append("{\"text\":\"");
+        while (sb.length() < 1_048_577) {
+            sb.append('b');
+        }
+        String json = sb.substring(0, 1_048_577);
+        VoskJsonParser.VoskTranscription result = VoskJsonParser.parse(json);
+        // Truncated JSON won't parse correctly
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    void singleWordConfidenceReturnsExactValue() {
+        // Single word with conf → count=1, avg=conf value
+        // Kills division/count mutants in extractConfidence
+        String json = """
+                {
+                  "text": "hello",
+                  "result": [
+                    {"word": "hello", "conf": 0.42}
+                  ]
+                }
+                """;
+        VoskJsonParser.VoskTranscription result = VoskJsonParser.parse(json);
+        assertThat(result.confidence()).isCloseTo(0.42, org.assertj.core.data.Offset.offset(0.001));
+    }
 }

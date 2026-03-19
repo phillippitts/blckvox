@@ -111,4 +111,64 @@ class CaptureStateMachineTest {
         assertThatThrownBy(() -> sm.startCapture(null))
                 .isInstanceOf(NullPointerException.class);
     }
+
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void startCaptureReturnsFalseAndDoesNotChangeActiveSession() {
+        // Double start: second returns false AND session unchanged
+        // Kills return value mutation + activeSession assignment mutation
+        CaptureStateMachine sm = new CaptureStateMachine();
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        sm.startCapture(first);
+
+        boolean result = sm.startCapture(second);
+
+        assertThat(result).isFalse();
+        assertThat(sm.getActiveSession()).isEqualTo(first); // session not changed to second
+    }
+
+    @Test
+    void stopCaptureReturnsFalseAndDoesNotClearSession() {
+        // Stop with wrong ID: returns false AND session still active
+        CaptureStateMachine sm = new CaptureStateMachine();
+        UUID id = UUID.randomUUID();
+        sm.startCapture(id);
+
+        boolean result = sm.stopCapture(UUID.randomUUID());
+
+        assertThat(result).isFalse();
+        assertThat(sm.getActiveSession()).isEqualTo(id); // session not cleared
+        assertThat(sm.isActive()).isTrue();
+    }
+
+    @Test
+    void stopCaptureReturnsTrueAndClearsAllState() {
+        // Successful stop: returns true AND session null AND not active
+        // Kills return value or null-assignment mutation on L67-68
+        CaptureStateMachine sm = new CaptureStateMachine();
+        UUID id = UUID.randomUUID();
+        sm.startCapture(id);
+
+        boolean result = sm.stopCapture(id);
+
+        assertThat(result).isTrue();
+        assertThat(sm.getActiveSession()).isNull();
+        assertThat(sm.isActive()).isFalse();
+    }
+
+    @Test
+    void startCaptureReturnsTrueAndSetsSession() {
+        // Successful start: returns true AND session matches
+        // Kills return value mutation on L48 or session assignment on L47
+        CaptureStateMachine sm = new CaptureStateMachine();
+        UUID id = UUID.randomUUID();
+
+        boolean result = sm.startCapture(id);
+
+        assertThat(result).isTrue();
+        assertThat(sm.getActiveSession()).isEqualTo(id);
+        assertThat(sm.isActive()).isTrue();
+    }
 }

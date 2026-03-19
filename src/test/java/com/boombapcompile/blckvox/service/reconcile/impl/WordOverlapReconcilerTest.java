@@ -192,4 +192,93 @@ class WordOverlapReconcilerTest {
 
         assertThat(result.text()).isEqualTo("much longer text here");
     }
+
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void jaccardDivisionReturnsCorrectValue() {
+        // Vosk ["a","b"], Whisper ["b","c"] → union = {a,b,c}, size=3
+        // vosk jaccard = {a,b} ∩ {a,b,c} / 3 = 2/3 ≈ 0.6667
+        // whisper jaccard = {b,c} ∩ {a,b,c} / 3 = 2/3 ≈ 0.6667
+        // Kills division→multiplication mutant on L119
+        var reconciler = new WordOverlapReconciler(0.5);
+        var vosk = new EngineResult("a b", 0.9, List.of("a", "b"), 100L, "vosk", null);
+        var whisper = new EngineResult("b c", 0.9, List.of("b", "c"), 100L, "whisper", null);
+
+        var result = reconciler.reconcile(vosk, whisper);
+        // Both have equal similarity (0.6667), >= picks vosk
+        assertThat(result.text()).isEqualTo("a b");
+        assertThat(result.engineName()).isEqualTo("reconciled");
+    }
+
+    @Test
+    void thresholdBoundaryExactlyAtMax() {
+        // Both similarities = 0.5, threshold = 0.5
+        // Math.max(0.5, 0.5) < 0.5 is false → goes to similarity path
+        // Kills < to <= on L60
+        // vosk: ["a"] in union {a,b} → 1/2=0.5, whisper: ["b"] in union {a,b} → 1/2=0.5
+        var reconciler = new WordOverlapReconciler(0.5);
+        var vosk = new EngineResult("a", 0.9, List.of("a"), 100L, "vosk", null);
+        var whisper = new EngineResult("b", 0.9, List.of("b"), 100L, "whisper", null);
+
+        var result = reconciler.reconcile(vosk, whisper);
+        // similarity path: voskSimilarity (0.5) >= whisperSimilarity (0.5) → picks vosk
+        assertThat(result.text()).isEqualTo("a");
+    }
+
+    @Test
+    void thresholdBoundaryJustBelowThreshold() {
+        // Both similarities below threshold → falls to length fallback
+        // vosk: ["a"] in union {a,b} → 0.5 < 0.6 → below threshold
+        var reconciler = new WordOverlapReconciler(0.6);
+        var vosk = new EngineResult("a", 0.9, List.of("a"), 100L, "vosk", null);
+        var whisper = new EngineResult("bb", 0.9, List.of("b"), 100L, "whisper", null);
+
+        var result = reconciler.reconcile(vosk, whisper);
+        // Length fallback: "bb".length()=2 >= "a".length()=1 is false → picks whisper? No...
+        // len(vosk.text())=1, len(whisper.text())=2, 1 >= 2 is false → picks whisper
+        assertThat(result.text()).isEqualTo("bb");
+    }
+
+    @Test
+    void emptyUnionReturnsZeroJaccard() {
+        // Both empty tokens → union empty → jaccard returns 0.0
+        // Falls to fallback path, both texts empty, picks vosk
+        // Kills removal of union.isEmpty() on L109 and tokens.isEmpty() on L112
+        var reconciler = new WordOverlapReconciler(0.5);
+        var vosk = new EngineResult("", 0.0, List.of(), 100L, "vosk", null);
+        var whisper = new EngineResult("", 0.0, List.of(), 100L, "whisper", null);
+
+        var result = reconciler.reconcile(vosk, whisper);
+        // Both jaccard=0.0, max(0,0)=0 < 0.5 → fallback
+        // len("")=0 >= len("")=0 → picks vosk
+        assertThat(result.text()).isEmpty();
+    }
+
+    @Test
+    void equalSimilarityPicksVosk() {
+        // Identical tokens → both have jaccard = 1.0
+        // voskSimilarity (1.0) >= whisperSimilarity (1.0) → picks vosk
+        // Kills >= to > on L64
+        var reconciler = new WordOverlapReconciler(0.5);
+        var vosk = new EngineResult("hello", 0.9, List.of("hello"), 100L, "vosk", null);
+        var whisper = new EngineResult("hello", 0.95, List.of("hello"), 100L, "whisper", null);
+
+        var result = reconciler.reconcile(vosk, whisper);
+        assertThat(result.text()).isEqualTo("hello");
+        assertThat(result.confidence()).isEqualTo(0.9); // vosk's confidence
+    }
+
+    @Test
+    void fallbackPicksEqualLengthVosk() {
+        // Below threshold, equal-length texts → >= picks vosk
+        // Kills >= to > on L62
+        var reconciler = new WordOverlapReconciler(0.9);
+        var vosk = new EngineResult("abc", 0.9, List.of("abc"), 100L, "vosk", null);
+        var whisper = new EngineResult("xyz", 0.9, List.of("xyz"), 100L, "whisper", null);
+
+        var result = reconciler.reconcile(vosk, whisper);
+        // Both below threshold (0/2=0 similarity), length "abc"=3 >= "xyz"=3 → picks vosk
+        assertThat(result.text()).isEqualTo("abc");
+    }
 }

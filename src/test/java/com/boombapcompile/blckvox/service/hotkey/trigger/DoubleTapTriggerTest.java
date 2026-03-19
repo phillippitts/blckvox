@@ -75,6 +75,33 @@ class DoubleTapTriggerTest {
         assertThat(lower.onKeyPressed(press("F13", 1100))).isTrue();
     }
 
+    // --- Mutation-killing boundary tests ---
+
+    @Test
+    void secondTapExactlyAtThresholdMatches() {
+        // dt = 300 exactly. dt <= 300 is true → matched
+        // Kills <= to < on L42
+        trigger.onKeyPressed(press("F13", 1000));
+        assertThat(trigger.onKeyPressed(press("F13", 1300))).isTrue();
+    }
+
+    @Test
+    void secondTapOneMsAfterThresholdDoesNotMatch() {
+        // dt = 301 > 300 → not matched
+        trigger.onKeyPressed(press("F13", 1000));
+        assertThat(trigger.onKeyPressed(press("F13", 1301))).isFalse();
+    }
+
+    @Test
+    void firstTapAtTimeZeroDoesNotBreakSecondTap() {
+        // First tap at timestamp 0 → lastTapAt=0
+        // Second at 100ms → dt=100 <= 300 → should match
+        // Kills < 0 to <= 0 on L35 (lastTapAt=0 is NOT <0, so enters dt check)
+        DoubleTapTrigger zeroTrigger = new DoubleTapTrigger("F13", 300);
+        zeroTrigger.onKeyPressed(press("F13", 0));
+        assertThat(zeroTrigger.onKeyPressed(press("F13", 100))).isTrue();
+    }
+
     private static NormalizedKeyEvent press(String key, long when) {
         return new NormalizedKeyEvent(Type.PRESSED, key, Set.of(), when);
     }
