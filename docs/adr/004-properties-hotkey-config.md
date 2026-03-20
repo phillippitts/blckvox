@@ -17,7 +17,7 @@ Externalize hotkey configuration via `application.properties` with factory-based
 
 **Architecture:**
 ```properties
-hotkey.type=single-key            # single-key | double-tap | modifier-combo
+hotkey.type=double-tap            # single-key | double-tap | modifier-combo
 hotkey.key=RIGHT_META             # JNativeHook key name
 # hotkey.modifiers=SHIFT,CONTROL  # SHIFT, CONTROL, ALT, META (required for modifier-combo)
 ```

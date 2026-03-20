@@ -10,10 +10,10 @@ blckvox is a desktop application (macOS system tray, JavaFX overlay, local audio
 Use Spring Boot with `spring.main.web-application-type=none` to leverage:
 
 - **Dependency injection**: Constructor-based injection throughout the codebase
-- **@ConfigurationProperties**: Typed config binding across 11 property classes
-- **ApplicationEventPublisher**: Event-driven architecture with 14 event types
+- **@ConfigurationProperties**: Typed config binding across 14 property classes
+- **ApplicationEventPublisher**: Event-driven architecture with 15 event types
 - **SmartLifecycle**: Ordered startup/shutdown for tray, hotkeys, live caption
-- **@ConditionalOnProperty**: Feature toggling with 10 conditional beans
+- **@ConditionalOnProperty**: Feature toggling with 11 conditional beans
 - **Thread pool management**: `sttExecutor`, `eventExecutor` via Spring-managed beans
 - **Micrometer metrics**: JMX-based observability without a web server
 
@@ -28,7 +28,7 @@ spring.main.web-application-type=none
 - Rich DI container eliminates manual wiring and promotes testability
 - Event system decouples components without custom infrastructure
 - Lifecycle management ensures ordered startup/shutdown of system resources
-- Property binding provides type-safe, validated configuration across 11 classes
+- Property binding provides type-safe, validated configuration across 14 classes
 - Conditional beans enable runtime feature toggling without code changes
 - Proven ecosystem with extensive documentation and community support
 - Easy testing with `@SpringBootTest` and slice testing

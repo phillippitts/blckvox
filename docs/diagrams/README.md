@@ -123,7 +123,7 @@ This directory contains comprehensive visual documentation for the blckvox proje
 **Purpose:** Trace every Spring ApplicationEvent through its publishers and listeners
 
 **Contains:**
-- Complete event wiring map (all 14 event types)
+- Complete event wiring map (all 15 event types)
 - Happy path event chain (hotkey → transcription → typing)
 - Error path event chains (engine failure, capture error, typing fallback)
 - Event payload reference table
@@ -198,7 +198,7 @@ This directory contains comprehensive visual documentation for the blckvox proje
 - @Async vs sync listener classification
 - Thread pool configuration diagrams
 - MDC propagation flow (capture → restore → cleanup)
-- Rejection policy scenarios (CallerRunsPolicy vs DiscardOldestPolicy)
+- Rejection policy scenarios (AbortPolicy vs DiscardOldestPolicy)
 - Complete dictation threading sequence (8 participants, 6 phases)
 
 **Best for:** Performance tuning, debugging threading issues, understanding async behavior
@@ -227,7 +227,7 @@ This directory contains comprehensive visual documentation for the blckvox proje
 
 **Contains:**
 - High-level component diagram
-- 3-tier architecture layers
+- 2-tier architecture layers
 - Design patterns applied
 - Key architectural characteristics table
 - Links to all other diagrams
@@ -308,7 +308,7 @@ mmdc -i architecture-overview.md -o architecture-overview.svg
 - **6 diagrams** in conditional-bean-loading.md
 - **3 diagrams** in deployment-topology.md
 
-**Total: ~115 diagrams** across 15 documentation files
+**Total: ~107 diagrams** across 15 documentation files
 
 ## Recommended Reading Order
 

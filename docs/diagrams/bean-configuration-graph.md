@@ -21,7 +21,7 @@ flowchart TB
     %% ── ThreadPoolConfig ──────────────────────────────────────────────
     subgraph ThreadPoolConfig["ThreadPoolConfig"]
         direction TB
-        sttExecutor["<b>sttExecutor()</b><br/>ThreadPoolTaskExecutor<br/>core=2, max=4, queue=10<br/>prefix: stt-pool-<br/>rejection: CallerRunsPolicy<br/>MDC TaskDecorator"]
+        sttExecutor["<b>sttExecutor()</b><br/>ThreadPoolTaskExecutor<br/>core=2, max=4, queue=10<br/>prefix: stt-pool-<br/>rejection: AbortPolicy<br/>MDC TaskDecorator"]
         eventExecutor["<b>eventExecutor()</b><br/>ThreadPoolTaskExecutor<br/>core=2, max=4, queue=10<br/>prefix: event-pool-<br/>rejection: DiscardOldestPolicy<br/>MDC TaskDecorator"]
     end
 
@@ -120,8 +120,8 @@ flowchart TD
     Start([Application Startup])
     Start --> PropCheck{"stt.reconciliation.enabled"}
 
-    PropCheck -->|"true (shipped default; Java class default: false)"| SingleEngine
-    PropCheck -->|"true"| DualEngine
+    PropCheck -->|"false / missing (Java @DefaultValue: false)"| SingleEngine
+    PropCheck -->|"true (shipped default via application.properties)"| DualEngine
 
     %% ── Single-engine path ────────────────────────────────────────────
     subgraph SingleEngine["Single-Engine Mode"]

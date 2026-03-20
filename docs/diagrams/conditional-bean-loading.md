@@ -87,7 +87,7 @@ flowchart TD
     %% ── Reconciliation ───────────────────────────────────────
     START --> REC_CHECK
     subgraph reconciliation ["Reconciliation Feature (mutually exclusive beans)"]
-        REC_CHECK{{"stt.reconciliation.enabled\n(default via props: true)"}}
+        REC_CHECK{{"stt.reconciliation.enabled\n(shipped default: true; Java @DefaultValue: false)"}}
         REC_SINGLE["transcriptionOrchestrator\n(single-engine)"]:::created
         REC_DUAL["reconciledTranscriptionOrchestrator\n(dual-engine)"]:::created
         REC_STRAT["transcriptReconciler\n(strategy bean)"]:::created

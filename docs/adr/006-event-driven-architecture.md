@@ -34,7 +34,7 @@ src/main/java/com/boombapcompile/blckvox/
 
 **Event Flow:**
 1. `HotkeyTrigger` publishes `HotkeyPressedEvent` → triggers audio capture
-2. `RecordingService` transcribes audio → publishes `TranscriptionCompletedEvent`
+2. `DefaultTranscriptionOrchestrator` transcribes audio → publishes `TranscriptionCompletedEvent`
 3. `FallbackManager` listens to `TranscriptionCompletedEvent` → types text via clipboard
 
 **Design Rules:**

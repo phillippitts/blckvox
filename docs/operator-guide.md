@@ -216,7 +216,7 @@ Handles parallel STT engine transcription tasks.
 | Mid-range (4-8 cores) | 4 | 8 | 20 | Room for concurrent Vosk+Whisper |
 | High-end (8+ cores) | 8 | 16 | 50 | Maximum throughput |
 
-- **Rejection policy:** `CallerRunsPolicy` — submitting thread runs the task (backpressure)
+- **Rejection policy:** Custom `AbortPolicy` — logs and throws `RejectedExecutionException` when pool and queue are full
 - **MDC propagation:** Log4j2 ThreadContext copied to worker threads
 
 ### Event Executor (`eventExecutor`)
@@ -236,7 +236,7 @@ Offloads CPU-intensive transcription work from Spring's event bus.
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
-| `CallerRunsPolicy` warning in logs | STT pool saturated | Increase `threadpool.stt.max-pool-size` |
+| `sttExecutor rejected task -- pool and queue are full` in logs | STT pool saturated | Increase `threadpool.stt.max-pool-size` |
 | `blckvox.event.executor.discard` > 0 | Event pool saturated | Increase `threadpool.event.queue-capacity` or `max-pool-size` |
 | High CPU during idle | Thread pool too large | Reduce `core-pool-size` |
 | Slow transcription response | Not enough threads | Increase `max-pool-size` (up to CPU core count) |

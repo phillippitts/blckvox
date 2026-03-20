@@ -31,7 +31,7 @@ sequenceDiagram
     Orch->>Buffer: Get snapshot
     Buffer-->>Orch: Audio bytes
     
-    Orch->>PSS: transcribeBoth(audio, 5000ms)
+    Orch->>PSS: transcribeBoth(audio, 120000ms)
     
     par Parallel Execution
         PSS->>Vosk: Thread 1: transcribe(audio)

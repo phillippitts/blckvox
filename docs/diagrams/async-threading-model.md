@@ -114,11 +114,14 @@ thread pool or synchronously on the publisher's thread.
 
 ```mermaid
 graph TB
-    subgraph AsyncListeners["ASYNC Listeners<br/>(@Async + eventExecutor)"]
+    subgraph AsyncListeners["ASYNC Listeners<br/>(@Async)"]
         direction TB
-        A1["HotkeyRecordingAdapter<br/>.onHotkeyPressed()"]
-        A2["HotkeyRecordingAdapter<br/>.onHotkeyReleased()"]
-        A3["HotkeyRecordingAdapter<br/>.onCaptureError()"]
+        A1["HotkeyRecordingAdapter<br/>.onHotkeyPressed()<br/>(@Async eventExecutor)"]
+        A2["HotkeyRecordingAdapter<br/>.onHotkeyReleased()<br/>(@Async eventExecutor)"]
+        A3["HotkeyRecordingAdapter<br/>.onCaptureError()<br/>(@Async eventExecutor)"]
+        A4["FallbackManager<br/>.onTranscription()<br/>(@Async eventExecutor)"]
+        A5["VoskStreamingService<br/>.onPcmChunk()<br/>(@Async eventExecutor)"]
+        A6["SttEngineWatchdog<br/>.onFailure()<br/>(@Async sttExecutor)"]
     end
 
     subgraph SyncListeners["SYNC Listeners<br/>(run on publisher's thread)"]
@@ -132,7 +135,6 @@ graph TB
         subgraph RunsOnAudioThread["Runs on Audio Capture Thread"]
             S3["ErrorEventsListener<br/>.onCaptureError()"]
             S4["LiveCaptionManager<br/>.onPcmChunk()"]
-            S5["VoskStreamingService<br/>.onPcmChunk()"]
         end
 
         subgraph RunsOnCallerThread["Runs on Caller's Thread (varies)"]
@@ -141,9 +143,7 @@ graph TB
             S8["VoskStreamingService<br/>.onStateChanged()"]
             S9["SystemTrayManager<br/>.onStateChanged()"]
             S10["SystemTrayManager<br/>.onBufferOverflow()"]
-            S11["FallbackManager<br/>.onTranscription()"]
             S12["SttEngineWatchdog<br/>.onTranscriptionCompleted()"]
-            S13["SttEngineWatchdog<br/>.onFailure()"]
             S14["SttEngineWatchdog<br/>.onRecovered()"]
             S15["TypingEventsListener<br/>.onFallback()"]
             S16["TypingEventsListener<br/>.onAllFailed()"]
@@ -165,13 +165,16 @@ graph TB
     style EventPool fill:#c8e6c9
 ```
 
-### Why These Three Are Async
+### Why These Six Are Async
 
-The `HotkeyRecordingAdapter` methods are the only `@Async("eventExecutor")` listeners because:
+There are six `@Async` listeners in the application. The three `HotkeyRecordingAdapter` methods use `@Async("eventExecutor")` to avoid blocking the JNativeHook OS key listener thread; the remaining three async listeners each have their own reason for offloading work:
 
-1. **`onHotkeyPressed`** triggers `startRecording()` which starts audio capture -- must not block the JNativeHook OS key listener thread.
-2. **`onHotkeyReleased`** triggers `stopRecording()` which calls `transcriptionOrchestrator.transcribe()` -- CPU-intensive work that would block the Spring event bus for seconds.
-3. **`onCaptureError`** triggers `cancelRecording()` -- must not block the audio capture thread that publishes the error.
+1. **`HotkeyRecordingAdapter.onHotkeyPressed`** triggers `startRecording()` which starts audio capture -- must not block the JNativeHook OS key listener thread.
+2. **`HotkeyRecordingAdapter.onHotkeyReleased`** triggers `stopRecording()` which calls `transcriptionOrchestrator.transcribe()` -- CPU-intensive work that would block the Spring event bus for seconds.
+3. **`HotkeyRecordingAdapter.onCaptureError`** triggers `cancelRecording()` -- must not block the audio capture thread that publishes the error.
+4. **`FallbackManager.onTranscription`** (`@Async("eventExecutor")`) processes the transcription result and invokes the typing service -- must not block the thread that published the `TranscriptionCompletedEvent`.
+5. **`VoskStreamingService.onPcmChunk`** (`@Async("eventExecutor")`) feeds PCM data into the Vosk recognizer for streaming partial results -- must not block the audio capture thread that publishes `PcmChunkCapturedEvent`.
+6. **`SttEngineWatchdog.onFailure`** (`@Async("sttExecutor")`) handles engine failure recovery and restart logic -- runs on the `sttExecutor` pool to avoid blocking the event bus during potentially slow engine restart operations.
 
 ---
 
@@ -189,7 +192,7 @@ graph TB
         SttMax["maxPoolSize: 4"]
         SttQueue["queueCapacity: 10"]
         SttPrefix["threadNamePrefix: 'stt-pool-'"]
-        SttReject["rejectionPolicy:<br/>CallerRunsPolicy"]
+        SttReject["rejectionPolicy:<br/>Custom AbortPolicy (logs and throws RejectedExecutionException)"]
         SttShutdown["waitForTasksToCompleteOnShutdown: true<br/>awaitTerminationSeconds: 30"]
     end
 
@@ -222,7 +225,7 @@ graph TB
     SttUser --> SttExecutorPool
     EvtUser --> EventExecutorPool
 
-    SttReject -->|"When pool + queue full:<br/>caller thread runs task"| BackpressureNote["Backpressure effect:<br/>event-pool-N thread blocks<br/>until stt-pool capacity frees"]
+    SttReject -->|"When pool + queue full:<br/>logs warning and throws<br/>RejectedExecutionException"| BackpressureNote["Rejection effect:<br/>task is rejected immediately,<br/>caller receives exception"]
     EvtReject -->|"When pool + queue full:<br/>drop oldest queued event"| DropNote["Prevents blocking:<br/>Spring event bus never<br/>blocked by saturated pool"]
 
     style SttExecutorPool fill:#c8e6c9
@@ -243,7 +246,7 @@ Both pools are externally configurable via `ThreadPoolProperties`:
 | `threadpool.stt.max-pool-size` / `threadpool.event.max-pool-size` | 4 | 4 |
 | `threadpool.stt.queue-capacity` / `threadpool.event.queue-capacity` | 10 | 10 |
 | `threadpool.stt.thread-name-prefix` / `threadpool.event.thread-name-prefix` | `stt-pool-` | `event-pool-` |
-| Rejection Policy | `CallerRunsPolicy` | `DiscardOldestPolicy` (custom) |
+| Rejection Policy | Custom AbortPolicy (logs and throws `RejectedExecutionException`) | `DiscardOldestPolicy` (custom) |
 
 ---
 
@@ -312,7 +315,7 @@ The `clearAll() + putAll(previous)` pattern in the `finally` block prevents this
 
 Flowchart showing what happens when each pool reaches capacity.
 
-### sttExecutor: CallerRunsPolicy (Blocking Backpressure)
+### sttExecutor: Custom AbortPolicy (Reject on Saturation)
 
 ```mermaid
 flowchart TB
@@ -330,18 +333,18 @@ flowchart TB
 
     CheckMax -->|"No"| SpawnThread["Spawn new thread<br/>(up to max 4)"]
 
-    CheckMax -->|"Yes"| CallerRuns["CallerRunsPolicy:<br/>event-pool-1 runs<br/>the STT task itself"]
+    CheckMax -->|"Yes"| AbortReject["Custom AbortPolicy:<br/>logs warning and throws<br/>RejectedExecutionException"]
 
-    CallerRuns --> Backpressure["EFFECT: event-pool-1<br/>is BLOCKED until<br/>STT task completes"]
+    AbortReject --> RejectEffect["EFFECT: Task is rejected<br/>immediately, caller receives<br/>RejectedExecutionException"]
 
-    Backpressure --> Impact["IMPACT: Fewer event-pool<br/>threads available for<br/>new hotkey events"]
+    RejectEffect --> Impact["IMPACT: Caller must handle<br/>the rejection (e.g. log error,<br/>skip transcription)"]
 
     RunCore --> Done["Task completes on<br/>stt-pool-N thread"]
     Enqueue --> Done
     SpawnThread --> Done
 
     style Submit fill:#e1f5ff
-    style CallerRuns fill:#ffcdd2
+    style AbortReject fill:#ffcdd2
     style Backpressure fill:#ffe0b2
     style Impact fill:#ffe0b2
     style Done fill:#c8e6c9
@@ -389,13 +392,13 @@ flowchart TB
 
 ### Comparison: Why Different Policies?
 
-| Concern | sttExecutor (CallerRunsPolicy) | eventExecutor (DiscardOldestPolicy) |
+| Concern | sttExecutor (Custom AbortPolicy) | eventExecutor (DiscardOldestPolicy) |
 |---------|-------------------------------|-------------------------------------|
-| **Priority** | Every STT task must complete | Recent events more important than old |
-| **Caller** | event-pool thread (can afford to block) | JNativeHook thread (must never block) |
-| **Data loss** | No tasks dropped | Oldest queued event dropped |
-| **Backpressure** | Slows the event-pool caller | No backpressure on publisher |
-| **Risk** | Event-pool thread utilization spikes | Stale hotkey events silently discarded |
+| **Priority** | Reject overflow tasks with clear error | Recent events more important than old |
+| **Caller** | event-pool thread (receives exception on rejection) | JNativeHook thread (must never block) |
+| **Data loss** | Rejected tasks are lost (logged) | Oldest queued event dropped |
+| **Backpressure** | Immediate rejection, no caller blocking | No backpressure on publisher |
+| **Risk** | STT tasks rejected under extreme load | Stale hotkey events silently discarded |
 
 ---
 

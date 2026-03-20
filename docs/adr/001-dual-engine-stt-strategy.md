@@ -11,10 +11,10 @@ Voice dictation requires balancing speed (user experience) and accuracy (output 
 Users expect sub-3-second latency but also high-quality transcription for professional use.
 
 ## Decision
-Run Vosk and Whisper **in parallel** on separate threads, reconcile results using configurable strategy (default: prefer Vosk).
+Run Vosk and Whisper **in parallel** on separate threads, reconcile results using configurable strategy (shipped default: word-overlap; Java `@DefaultValue`: simple/prefer-Vosk).
 
 **Architecture:**
-- `ParallelSttService` uses `ExecutorService` with 2 threads
+- `DefaultParallelSttService` uses the `sttExecutor` thread pool (shipped as 2-core/4-max) to submit concurrent engine tasks
 - Both engines process same audio buffer simultaneously
 - `TranscriptReconciler` (Strategy pattern) selects final text
 - 3 reconciliation strategies: Simple, Confidence, Word-Overlap
@@ -42,7 +42,6 @@ stt.parallel.timeout-ms=120000
 
 ### Mitigation
 - Circuit breaker pattern to disable failing engine
-- Model caching (SoftReference) allows GC under memory pressure
 - Single-engine mode available via `stt.reconciliation.enabled=false`
 
 ## Alternatives Considered

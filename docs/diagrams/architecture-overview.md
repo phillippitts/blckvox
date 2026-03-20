@@ -49,7 +49,7 @@ graph LR
     style Service fill:#fff4e1
 ```
 
-**Note:** No HTTP/REST layer exists (`spring.main.web-application-type=none`). The application is entirely event-driven with hotkey input and system tray UI. Database persistence is planned for Phase 6.
+**Note:** No HTTP/REST layer exists (`spring.main.web-application-type=none`). The application is entirely event-driven with hotkey input and system tray UI. Database persistence was evaluated but rejected (see ADR-002).
 
 ## Design Patterns Applied
 

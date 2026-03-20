@@ -17,19 +17,19 @@ Use **Micrometer with a JMX registry** for runtime metrics, accessible via JCons
 ### Registry Configuration
 - `JmxMeterRegistry` bean in `MetricsConfig`
 - Common tag: `application=blckvox`
-- JMX port: 9010 (default)
+- JMX access: local attach only (no remote port configured; use JConsole/VisualVM local attach)
 - No web dependencies required
 
 ### Metrics Tracked
 
 | Metric | Type | Tags | Source |
 |--------|------|------|--------|
-| `blckvox.transcription.duration` | Timer | `engine`, `strategy` | `TranscriptionMetricsPublisher` |
-| `blckvox.transcription.count` | Counter | `engine`, `result`, `error` | `TranscriptionMetricsPublisher` |
+| `blckvox.transcription.duration` | Timer | `engine`, `strategy` (defaults to `"single"` when non-reconciled) | `TranscriptionMetricsPublisher` |
+| `blckvox.transcription.count` | Counter | `engine`, `result` (+ `error` on failure only) | `TranscriptionMetricsPublisher` |
 | `blckvox.processing.ratio` | DistributionSummary | `engine` | `TranscriptionMetricsPublisher` |
 | `blckvox.engine.failure` | Counter | `engine` | `MetricsEventListener` |
 | `blckvox.engine.restart` | Counter | `engine` | `MetricsEventListener` |
-| `blckvox.typing.fallback` | Counter | `tier`, `reason` | `MetricsEventListener` |
+| `blckvox.typing.fallback` | Counter | `tier` | `MetricsEventListener` |
 | `blckvox.typing.count` | Counter | `engine` | `MetricsEventListener` |
 | `blckvox.reconciliation.confidence` | DistributionSummary | `engine` | `MetricsEventListener` |
 | `blckvox.capture.active` | Gauge | (none) | `MetricsEventListener` |

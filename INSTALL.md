@@ -173,8 +173,8 @@ java -jar blckvox.jar --spring.config.additional-location=./application-local.pr
 
 You should see log output indicating the app started successfully:
 ```
-INFO  c.p.b.BlckvoxApplication - Started BlckvoxApplication in 3.3 seconds
-INFO  c.p.b.h.HotkeyManager - HotkeyManager started with trigger=...
+INFO  c.b.b.BlckvoxApplication - Started BlckvoxApplication in 3.3 seconds
+INFO  c.b.b.s.h.HotkeyManager - HotkeyManager started with trigger=...
 ```
 
 ### Step 8: Test Dictation

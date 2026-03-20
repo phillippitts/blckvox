@@ -28,9 +28,8 @@ classDiagram
 
     class InvalidAudioException {
         <<exception/InvalidAudioException.java>>
-        -int audioSize
-        -String reason
-        +getReason() String
+        Formats audioSize and reason
+        directly into the exception message
     }
 
     class ModelNotFoundException {

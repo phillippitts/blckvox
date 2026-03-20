@@ -44,11 +44,9 @@ shasum -a 256 -c <<< "expected_hash *$MODELS_DIR/ggml-base.en.bin"
 **Validation:**
 ```java
 @PostConstruct
-public void validateModels() {
-    if (!Files.exists(Paths.get(voskModelPath))) {
-        throw new IllegalStateException(
-            "Vosk model not found. Run ./setup-models.sh"
-        );
+void validateAllOnStartup() {
+    if (!Files.isDirectory(Paths.get(voskModelPath))) {
+        throw new ModelNotFoundException(voskModelPath);
     }
 }
 ```

@@ -1,6 +1,6 @@
 # Event Flow Map
 
-This document is the definitive reference for the Spring event wiring in the blckvox application. It covers all 14 event types, their publishers, listeners, record fields, and threading models. Blckvox is a Spring Boot event-driven desktop application with no HTTP layer; all inter-component communication flows through `ApplicationEventPublisher`. The diagrams below use Mermaid syntax and are organized from a complete wiring overview down to focused sub-flows and error paths.
+This document is the definitive reference for the Spring event wiring in the blckvox application. It covers all 15 event types, their publishers, listeners, record fields, and threading models. Blckvox is a Spring Boot event-driven desktop application with no HTTP layer; all inter-component communication flows through `ApplicationEventPublisher`. The diagrams below use Mermaid syntax and are organized from a complete wiring overview down to focused sub-flows and error paths.
 
 ---
 
@@ -88,7 +88,7 @@ flowchart LR
     JSACS -->|publishes| CE
 
     PCC -->|sync| LCM
-    PCC -->|sync| VSS
+    PCC -.->|"@Async(eventExecutor)"| VSS
 
     BOE -->|sync| STM
 
@@ -105,7 +105,7 @@ flowchart LR
     %% ── Transcription event wiring ─────────────────────────────────
     DTO -->|publishes| TC
 
-    TC -->|sync| FM
+    TC -.->|"@Async(eventExecutor)"| FM
     TC -->|sync| SEW
 
     %% ── Vosk partial result wiring ─────────────────────────────────
@@ -115,13 +115,13 @@ flowchart LR
     %% ── Engine watchdog wiring ─────────────────────────────────────
     EEP -->|publishes| EFE
     SEW -->|"publishes (confidence)"| EFE
-    EFE -->|sync| SEW
+    EFE -.->|"@Async(sttExecutor)"| SEW
 
     SEW -->|publishes| ERE
     ERE -->|sync| SEW
 
     %% ── Typing fallback wiring ─────────────────────────────────────
-    TC -->|sync| FM
+    TC -.->|"@Async(eventExecutor)"| FM
     FM -->|delegates| SCTS
     SCTS -->|publishes| TFE
     SCTS -->|publishes| ATFE
@@ -321,15 +321,16 @@ Every event record, its fields, publisher(s), listener(s), and threading model i
 | 3 | `HotkeyPermissionDeniedEvent` | `Instant at` | `HotkeyManager.start()` | `ErrorEventsListener.onHotkeyPermissionDenied()` | Sync |
 | 4 | `HotkeyConflictEvent` | `String key`, `List<String> modifiers`, `Instant at` | `HotkeyManager.detectReservedConflict()` | `ErrorEventsListener.onHotkeyConflict()` | Sync |
 | 5 | `ApplicationStateChangedEvent` | `ApplicationState previous`, `ApplicationState current`, `Instant timestamp` | `ApplicationStateTracker.transitionTo()` | `LiveCaptionManager.onStateChanged()` (conditional), `SystemTrayManager.onStateChanged()` (conditional), `VoskStreamingService.onStateChanged()` (conditional) | Sync (listeners use `Platform.runLater` / `SwingUtilities.invokeLater` internally) |
-| 6 | `PcmChunkCapturedEvent` | `byte[] pcmData`, `int length`, `UUID sessionId` | `JavaSoundAudioCaptureService` (every ~40ms) | `LiveCaptionManager.onPcmChunk()` (conditional), `VoskStreamingService.onPcmChunk()` (conditional) | Sync (LiveCaptionManager uses `Platform.runLater` internally) |
+| 6 | `PcmChunkCapturedEvent` | `byte[] pcmData`, `int length`, `UUID sessionId` | `JavaSoundAudioCaptureService` (every ~40ms) | `LiveCaptionManager.onPcmChunk()` (conditional, sync), `VoskStreamingService.onPcmChunk()` (conditional, `@Async("eventExecutor")`) | Mixed (LiveCaptionManager sync with `Platform.runLater` internally; VoskStreamingService async) |
 | 7 | `BufferOverflowEvent` | `int droppedBytes`, `int bufferCapacity`, `Instant timestamp` | `JavaSoundAudioCaptureService` (via `PcmRingBuffer` callback) | `SystemTrayManager.onBufferOverflow()` (conditional) | Sync (`SwingUtilities.invokeLater` internally) |
 | 8 | `CaptureErrorEvent` | `String reason`, `Instant at` | `JavaSoundAudioCaptureService` | `ErrorEventsListener.onCaptureError()` (sync), `HotkeyRecordingAdapter.onCaptureError()` (`@Async("eventExecutor")`) | Mixed |
-| 9 | `TranscriptionCompletedEvent` | `TranscriptionResult result`, `Instant timestamp`, `String engineUsed` | `DefaultTranscriptionOrchestrator.publishResult()` | `FallbackManager.onTranscription()` (sync), `SttEngineWatchdog.onTranscriptionCompleted()` (conditional, sync) | Sync |
+| 9 | `TranscriptionCompletedEvent` | `TranscriptionResult result`, `Instant timestamp`, `String engineUsed` | `DefaultTranscriptionOrchestrator.publishResult()` | `FallbackManager.onTranscription()` (`@Async("eventExecutor")`), `SttEngineWatchdog.onTranscriptionCompleted()` (conditional, sync) | Mixed |
 | 10 | `VoskPartialResultEvent` | `String text`, `boolean isFinal` | `VoskStreamingService` (conditional) | `LiveCaptionManager.onVoskPartialResult()` (conditional) | Sync (`Platform.runLater` internally) |
-| 11 | `EngineFailureEvent` | `String engine`, `Instant at`, `String message`, `Throwable cause`, `Map<String, String> context` | `EngineEventPublisher.publishFailure()` (utility), `SttEngineWatchdog.onTranscriptionCompleted()` (confidence degradation) | `SttEngineWatchdog.onFailure()` (conditional) | Sync |
+| 11 | `EngineFailureEvent` | `String engine`, `Instant at`, `String message`, `Throwable cause`, `Map<String, String> context` | `EngineEventPublisher.publishFailure()` (utility), `SttEngineWatchdog.onTranscriptionCompleted()` (confidence degradation) | `SttEngineWatchdog.onFailure()` (conditional) | `@Async("sttExecutor")` |
 | 12 | `EngineRecoveredEvent` | `String engine`, `Instant at` | `SttEngineWatchdog.attemptRestart()`, `SttEngineWatchdog.checkAllEnginesDisabled()` | `SttEngineWatchdog.onRecovered()` (self-listening, conditional) | Sync |
 | 13 | `TypingFallbackEvent` | `String tier`, `String reason`, `Instant at` | `StrategyChainTypingService.paste()` | `TypingEventsListener.onFallback()` | Sync |
 | 14 | `AllTypingFallbacksFailedEvent` | `String reason`, `Instant at` | `StrategyChainTypingService.paste()` | `TypingEventsListener.onAllFailed()` | Sync |
+| 15 | `EngineHealthChangedEvent` | `String engine`, `EngineState previousState`, `EngineState currentState`, `Instant timestamp` | `SttEngineWatchdog.updateState()` | `SystemTrayManager.onEngineHealthChanged()` | Sync |
 
 **Conditional beans:** `LiveCaptionManager`, `VoskStreamingService` are active only when `live-caption.enabled=true`. `SystemTrayManager` is active when `tray.enabled=true` (default). `SttEngineWatchdog` is active when `stt.watchdog.enabled=true` (default).
 

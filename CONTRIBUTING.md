@@ -84,12 +84,12 @@ Types: `add`, `feat`, `fix`, `update`, `refactor`, `test`, `docs`
 
 ## Architecture Quick Reference
 
-- Event-driven: Spring `ApplicationEventPublisher` (14 event types).
+- Event-driven: Spring `ApplicationEventPublisher` (15 event types).
 - Dual STT engines: Vosk (JNI, fast) + Whisper (subprocess, accurate).
 - Strategy pattern: reconciliation, hotkey triggers, typing adapters.
 - Thread pools: `sttExecutor` (STT processing) + `eventExecutor` (event handling).
 - See `docs/developer-guide.md` for detailed architecture.
-- See `docs/diagrams/` for visual documentation (~112 diagrams).
+- See `docs/diagrams/` for visual documentation (~107 diagrams).
 
 ## Reporting Issues
 

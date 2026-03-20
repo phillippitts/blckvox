@@ -3,7 +3,7 @@
 This guide helps contributors understand the architecture, patterns, testing strategy, and contribution flow for blckvox.
 
 ## Architecture Overview
-- 2‑tier layering: Presentation → Service (no reverse deps; Data layer planned for Phase 6)
+- 2‑tier layering: Presentation → Service (no reverse deps; database persistence was evaluated but rejected per ADR-002)
 - Event-driven orchestration (Spring ApplicationEvents)
 - Strategy/Factory/Adapter patterns:
   - Strategy: TranscriptReconciler, HotkeyTrigger, TypingAdapter
@@ -28,15 +28,18 @@ See diagrams: `docs/diagrams/architecture-overview.md`.
 ## Configuration Properties (typed)
 - `config.properties.AudioCaptureProperties`
 - `config.properties.AudioValidationProperties`
+- `config.properties.HealthProperties`
 - `config.properties.HotkeyProperties` (+ `TriggerType`)
-- `config.properties.TypingProperties`
-- `config.properties.SttConcurrencyProperties`
-- `config.properties.SttWatchdogProperties`
+- `config.properties.LiveCaptionProperties` (live-caption.enabled, window dimensions, opacity)
 - `config.properties.OrchestrationProperties`
 - `config.properties.ReconciliationProperties`
-- `config.properties.LiveCaptionProperties` (live-caption.enabled, window dimensions, opacity)
+- `config.properties.SttConcurrencyProperties`
+- `config.properties.SttWatchdogProperties`
 - `config.properties.ThreadPoolProperties`
 - `config.properties.TrayProperties`
+- `config.properties.TypingProperties`
+- `config.stt.VoskConfig`
+- `config.stt.WhisperConfig`
 
 ## Event Threading & Responsiveness
 
@@ -153,7 +156,7 @@ All shared test doubles live in `OrchestrationTestDoubles`:
 - `SlowEngine` — introduces configurable delay
 - `FailingEngine` — throws on transcribe()
 
-Additional test doubles are defined within their test classes (e.g., `RecordingEngine`, `StubProcessFactory`).
+Additional test doubles: `StubProcessFactory` and `TestProcess` live in `WhisperTestDoubles.java`, a shared test doubles file. `RecordingEngine` is defined within its test class.
 
 ### Seam Architecture
 | External Dependency | Seam Interface | Test Double |
@@ -163,6 +166,7 @@ Additional test doubles are defined within their test classes (e.g., `RecordingE
 | whisper.cpp (process) | `ProcessFactory` | `StubProcessFactory` with `TestProcess` |
 | Robot API (typing) | `RobotTypingAdapter.RobotFacade` | Fake in unit tests |
 | Clipboard (typing) | `ClipboardTypingAdapter.ClipboardFacade` | Fake in unit tests |
+| Notification (typing) | `NotifyOnlyAdapter` | Third typing tier (notify-only fallback) |
 
 ### Parameterized Tests
 Use `@ParameterizedTest` with `@CsvSource` for boundary value testing:
@@ -183,7 +187,7 @@ See `ThreadPoolPropertiesTest` and `WhisperJsonParserTest` for examples.
 
 ### Coverage Expectations
 - **Minimum gates:** 90% instruction / 80% branch (enforced by `jacocoTestCoverageVerification`)
-- **Current:** ~95% instruction / ~88% branch
+- **Current:** 99.6% instruction / 98.1% branch
 - JaCoCo excludes genuinely untestable classes (JNI, JavaFX, AWT, hardware)
 - Run `./gradlew test jacocoTestReport` to generate report at `build/reports/jacoco/test/html/`
 
@@ -221,22 +225,22 @@ The project uses the following key dependencies:
 
 **STT Engines:**
 - Vosk (`com.alphacephei:vosk:0.3.38`) - Offline speech-to-text engine
-- JNA (`net.java.dev.jna:jna:5.13.0`) - Required by Vosk for native library access
+- JNA (`net.java.dev.jna:jna:5.16.0`) - Required by Vosk for native library access
 - Note: Vosk 0.3.45 has native library issues on macOS; 0.3.38 is stable
 
 **Code Quality:**
 - Checkstyle plugin (`checkstyle`) enforces coding standards
 - Configuration: `config/checkstyle/checkstyle.xml`
 - Build fails on any violations (`maxWarnings = 0`)
-- Checkstyle version: 10.12.0
+- Checkstyle version: 10.21.3
 
 **UI:**
 - JavaFX 21 (`org.openjfx.javafxplugin`) - Live caption overlay window (oscilloscope + captions)
 
 **Other Dependencies:**
 - JNativeHook (`com.github.kwhat:jnativehook:2.2.2`) - Global hotkey support
-- org.json (`org.json:json:20231013`) - JSON parsing for Vosk responses
-- Awaitility (`org.awaitility:awaitility:4.2.0`) - Async testing support
+- org.json (`org.json:json:20250107`) - JSON parsing for Vosk responses
+- Awaitility (`org.awaitility:awaitility:4.2.2`) - Async testing support
 
 ### Build Commands
 ```bash
@@ -248,6 +252,46 @@ The project uses the following key dependencies:
 ./gradlew realBinaryTest        # Tests requiring real binaries/hardware
 ./gradlew bootRun               # Run the application
 ```
+
+### Code Quality & Analysis Tools
+
+**Checkstyle** (already included in `check`):
+- Version 10.21.3, configuration at `config/checkstyle/checkstyle.xml`
+- Build fails on any violations (`maxWarnings = 0`)
+
+**SpotBugs** (already included in `check`):
+- Tool version 4.9.3, plugin version 6.1.7
+- Runs at MAX effort with MEDIUM report level
+- Exclude filter at `config/spotbugs/exclude-filter.xml`
+- Reports at `build/reports/spotbugs/`
+
+**Mutation Testing (PIT):**
+```bash
+./gradlew pitest                # Run PIT mutation testing
+```
+- Uses STRONGER mutators with 80% mutation score threshold
+- Incremental analysis caching for faster re-runs
+- HTML + XML reports at `build/reports/pitest/`
+
+**OWASP Dependency Check:**
+```bash
+./gradlew dependencyCheckAnalyze   # Scan dependencies for known CVEs
+```
+- Fails the build on CVSS >= 7.0
+- Suppression file at `config/owasp/suppression.xml`
+
+**SBOM Generation (CycloneDX):**
+```bash
+./gradlew cyclonedxBom             # Generate Software Bill of Materials (JSON)
+```
+
+**ArchUnit (architectural fitness tests):**
+- Dependency: `com.tngtech.archunit:archunit-junit5:1.4.1`
+- 34 rules across 3 test files:
+  - `ArchitectureRulesTest` — 24 rules (layering, dependency direction, naming conventions)
+  - `CodeHygieneRulesTest` — 4 rules (field injection bans, logging standards)
+  - `BugPreventionRulesTest` — 6 rules (exception handling, thread safety)
+- Run with `./gradlew test` (included in the unit test suite)
 
 ### Running the Application
 ```bash

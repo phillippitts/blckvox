@@ -14,9 +14,9 @@
 If session is lost, start here:
 
 1. **Read:** `docs/IMPLEMENTATION_PLAN.md` (40 tasks, ~45.25 hours)
-2. **Review:** `docs/adr/*.md` (6 architectural decisions)
+2. **Review:** `docs/adr/*.md` (13 architectural decisions)
 3. **Status:** Phases 0-2 complete ✅ (Environment, abstractions, dual STT engines, watchdog)
-4. **Next:** Phase 3 - Audio capture, hotkeys, fallback manager (6 hours)
+4. **Status:** Phases 0-5 complete
 
 ---
 
@@ -44,7 +44,7 @@ If session is lost, start here:
 - ✅ Task 2.7a/b: Engine Watchdog (event-driven auto-restart with budget tracking)
 
 ### Implementation Artifacts
-- **110 tests, 0 failures** (100% success rate)
+- **~1,261 tests, 0 failures** (Phase 2 snapshot was 110; current coverage is 99.6% instruction / 98.1% branch)
 - **Hermetic test infrastructure** with ProcessFactory seam
 - **Event-driven watchdog** with sliding window budget (3 restarts/60min)
 - **Refactored complexity** - SttEngineWatchdog reduced from 166 to 213 lines with better organization
@@ -52,10 +52,10 @@ If session is lost, start here:
 
 ### Documentation (Phase 0 Planning)
 1. **`docs/IMPLEMENTATION_PLAN.md`** - 40 tasks, streamlined Phase 2
-2. **`docs/adr/*.md`** - 6 architectural decisions
+2. **`docs/adr/*.md`** - 13 architectural decisions
 3. **`docs/diagrams/*.md`** - Architecture and data flow diagrams
-4. **`.junie/guidelines.md`** - 2,223 lines development playbook
-5. **`build.gradle`** - 18 dependencies, Checkstyle enforcement
+4. **`.junie/guidelines.md`** - 1,515 lines development playbook
+5. **`build.gradle`** - 14 dependencies, Checkstyle enforcement
 
 ---
 
@@ -199,7 +199,7 @@ If session is lost, start here:
 - Gradle 8.x
 
 ### STT Engines
-- Vosk 0.3.38 (com.alphacephei:vosk:0.3.38, Java API via JNI; runtime dependency: net.java.dev.jna:jna:5.13.0)
+- Vosk 0.3.38 (com.alphacephei:vosk:0.3.38, Java API via JNI; runtime dependency: net.java.dev.jna:jna:5.16.0)
 - Whisper (whisper.cpp native binary)
 
 ### Audio & Hotkeys
@@ -208,21 +208,21 @@ If session is lost, start here:
 - java.awt.Robot (keystroke injection)
 
 ### Database
-- None (current MVP is ephemeral; database planned for Phase 6)
+- None (ephemeral by design; database was evaluated and rejected per ADR-002)
 
 ### Logging
 - Log4j 2 (spring-boot-starter-log4j2)
 - Disruptor 3.4.4 (async appenders)
 
 ### Security
-- OWASP Dependency Check (SCA, planned for Phase 6)
-- Trivy (container scanning, planned for Phase 6)
+- OWASP Dependency Check (SCA, implemented in build.gradle — CVSS ≥ 7.0 fails build)
+- Trivy (container scanning, planned for future containerized deployment)
 
 ### Testing
 - JUnit 5 (Jupiter)
-- Mockito (mocking)
+- Fakes, stubs, and lambdas (no Mockito in most tests)
 - AssertJ (fluent assertions)
-- Awaitility 4.2.0 (async testing)
+- Awaitility 4.2.2 (async testing)
 
 ---
 
@@ -235,19 +235,27 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-log4j2'
 
     // STT
-    implementation 'net.java.dev.jna:jna:5.13.0'
+    implementation 'net.java.dev.jna:jna:5.16.0'
     implementation 'com.alphacephei:vosk:0.3.38'
 
     // Hotkeys
     implementation 'com.github.kwhat:jnativehook:2.2.2'
 
     // Utilities
-    implementation 'org.json:json:20231013'
+    implementation 'org.json:json:20250107'
     implementation 'com.lmax:disruptor:3.4.4'
+
+    // Observability
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'io.micrometer:micrometer-registry-jmx'
+
+    // Annotation Processing
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.awaitility:awaitility:4.2.0'
+    testImplementation 'org.awaitility:awaitility:4.2.2'
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 ```
@@ -415,8 +423,8 @@ ls -lh "$MODELS_DIR"
 ## Testing Strategy
 
 ### Unit Tests
-- JUnit 5 with `@ExtendWith(MockitoExtension.class)`
-- Mockito for mocking dependencies
+- JUnit 5 with fakes, stubs, and lambdas (no Mockito in most tests)
+- Test doubles in `OrchestrationTestDoubles` (FakeEngine, SlowEngine, FailingEngine) and `WhisperTestDoubles`
 - AssertJ for fluent assertions
 - Naming: `shouldDoSomethingWhenCondition()`
 

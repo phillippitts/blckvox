@@ -111,7 +111,11 @@ src/main/java/com/boombapcompile/blckvox/
 ├── config/            # Spring configuration and typed properties
 │   ├── properties/    # AudioValidationProperties, HotkeyProperties, etc.
 │   ├── stt/           # VoskConfig, WhisperConfig, ModelValidationService
-│   └── orchestration/ # Thread pool, event, orchestration config
+│   ├── hotkey/        # Hotkey configuration validation
+│   ├── logging/       # Log4j2 and MDC configuration
+│   ├── orchestration/ # Orchestration and reconciliation wiring
+│   ├── reconcile/     # Reconciliation strategy bean registration
+│   └── (root)         # AudioFormatConfig, MetricsConfig, MetricsEventListener, ThreadPoolConfig
 ├── service/           # Business logic
 │   ├── audio/         # Audio capture, silence detection, PCM events
 │   ├── stt/           # STT engines (Vosk, Whisper), streaming
@@ -120,9 +124,12 @@ src/main/java/com/boombapcompile/blckvox/
 │   ├── fallback/      # Typing adapters and fallback chain
 │   ├── hotkey/        # Hotkey detection and triggers
 │   ├── livecaption/   # JavaFX overlay (oscilloscope + captions)
+│   ├── diagnostics/   # Runtime diagnostic utilities
+│   ├── health/        # Engine health monitoring
+│   ├── validation/    # Audio and model validation
+│   ├── events/        # Centralized error event listener
 │   └── tray/          # System tray icon and menu
 ├── domain/            # Domain records (TranscriptionResult, etc.)
-├── events/            # Centralized error event listener
 ├── exception/         # Custom exceptions
 └── util/              # Utility classes
 ```

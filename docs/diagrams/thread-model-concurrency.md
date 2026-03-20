@@ -72,10 +72,10 @@ sequenceDiagram
     par Parallel Execution
         Executor->>VoskWorker: run voskTask
         VoskWorker->>VoskWorker: acquire semaphore (max 4)
-        VoskWorker->>Lock: synchronized(lock)
+        VoskWorker->>Lock: lock.lock()
         Lock-->>VoskWorker: grant lock
         VoskWorker->>VoskWorker: getModelForTranscription()
-        VoskWorker->>Lock: release lock
+        VoskWorker->>Lock: lock.unlock()
         VoskWorker->>VoskWorker: transcribe (100ms)
         VoskWorker->>VoskWorker: release semaphore
         VoskWorker-->>Main: EngineResult (Vosk)
@@ -147,7 +147,7 @@ stateDiagram-v2
     }
 
     note right of SyncInit
-        Lock: synchronized(lock)
+        Lock: ReentrantLock (lock.lock() / lock.unlock())
         Protects: initialized, closed, model
     end note
 
@@ -383,10 +383,10 @@ flowchart TB
 
 ```mermaid
 graph TB
-    Level1[Level 1: CaptureStateMachine.lock]
-    Level2[Level 2: AbstractSttEngine.lock]
-    Level3[Level 3: VoskStreamingService.recognizerLock]
-    Level4[Level 4: PcmRingBuffer methods]
+    Level1[Level 1: CaptureStateMachine.lock<br/>ReentrantLock]
+    Level2[Level 2: AbstractSttEngine.lock<br/>ReentrantLock + transcriptionLock<br/>ReentrantReadWriteLock]
+    Level3[Level 3: VoskStreamingService.recognizerLock<br/>synchronized blocks — not explicit Lock]
+    Level4[Level 4: PcmRingBuffer methods<br/>synchronized blocks — not explicit Lock]
 
     Level1 --> Level2
     Level2 --> Level3
@@ -453,7 +453,7 @@ flowchart TB
 | `synchronized` | AbstractSttEngine, CaptureStateMachine | Happens-before relationship established |
 | `volatile` | ApplicationStateTracker.state, HotkeyManager.running, LiveCaptionManager.window, SystemTrayManager fields, JavaSoundAudioCaptureService.CaptureSession fields | Safe publication and visibility across threads |
 | `final` fields | All immutable records, AbstractSttEngine.lock | Safe publication guaranteed |
-| `CopyOnWriteArrayList` | HotkeyManager.listeners | Atomic snapshot reads |
+| `volatile` | HotkeyManager.running | Safe publication of running state |
 | `CompletableFuture` | ParallelSttService | Result visibility via ForkJoinPool |
 | `Semaphore` | ConcurrencyGuard | Memory barrier on acquire/release |
 | `Platform.runLater` | LiveCaptionManager → JavaFX | Thread-safe handoff to JavaFX Application Thread |

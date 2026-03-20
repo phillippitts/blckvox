@@ -81,7 +81,7 @@ This plan follows an **MVP-first approach**: build and validate core functionali
   - Max pool size: 4 for burst capacity
   - Queue capacity: 10 (reject further requests during overload)
   - Named threads: `stt-pool-%d` for debugging
-  - Rejection policy: `CallerRunsPolicy` (backpressure, not fail-fast)
+  - Rejection policy: Custom `AbortPolicy` (logs and throws RejectedExecutionException)
   - Idle timeout: 60 seconds (release resources when idle)
 - **Test:** Verify thread pool handles 10 concurrent requests without exhaustion
 - **Commit:** `feat: add optimized thread pool configuration for parallel STT`
@@ -962,7 +962,7 @@ FAIL → Debug before production hardening
 ## References
 
 - **Guidelines:** `.junie/guidelines.md` (2,308 lines)
-- **ADRs:** `docs/adr/*.md` (6 architectural decisions)
+- **ADRs:** `docs/adr/*.md` (13 architectural decisions)
 - **Build Config:** `build.gradle` (90 lines)
 - **Grade:** 98/100 → 99.5/100 (Production-Ready with Streamlined Phase 2 and Enhanced Phase 3)
 

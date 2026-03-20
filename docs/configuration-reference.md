@@ -29,6 +29,7 @@ Complete reference for all configuration properties in blckvox, organized by aud
 - [Engine Watchdog](#engine-watchdog)
 - [Thread Pool Configuration](#thread-pool-configuration)
 - [System Tray Configuration](#system-tray-configuration)
+- [Health Heartbeat](#health-heartbeat)
 
 ### Developer Settings
 - [Vosk Configuration](#vosk-configuration)
@@ -258,6 +259,22 @@ stt.reconciliation.enabled=false
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `tray.enabled` | boolean | `true` | Enable the system tray icon. When `false`, no tray icon is shown. |
+
+---
+
+## Health Heartbeat
+
+`Operator` — Periodic heartbeat file writes for liveness probing by init systems (launchd, systemd).
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `health.heartbeat.enabled` | boolean | `true` | Enables periodic heartbeat file writes for liveness probing. |
+| `health.heartbeat.path` | String | `${java.io.tmpdir}/blckvox-heartbeat` | File path where heartbeat timestamp is written. Resolves to the OS temp directory at runtime. |
+| `health.heartbeat.interval-ms` | long | `30000` | Interval between heartbeat writes in milliseconds. Must be positive. |
+
+**How It Works:**
+- When enabled, a background thread writes the current timestamp to `health.heartbeat.path` every `interval-ms` milliseconds.
+- External monitoring (e.g., a launchd plist or systemd unit) can check the file's modification time to determine liveness.
 
 ---
 

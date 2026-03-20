@@ -61,7 +61,7 @@ sequenceDiagram
     TO->>Recon: reconcile(vosk, whisper)
     Recon-->>TO: TranscriptionResult
 
-    TO-->>FM: TranscriptionCompletedEvent (sync)
+    TO-->>FM: TranscriptionCompletedEvent (async: eventExecutor)
     FM->>TS: paste(text)
     TS->>Robot: type(text)
     Robot->>Robot: clipboard + Meta+V
@@ -198,7 +198,7 @@ The capture orchestrator stops the audio thread and reads buffered data:
 
 ## Step 6: Speech-to-Text Processing
 
-**Thread:** `sttExecutor` pool (core=4, max=8, queue=50)
+**Thread:** `sttExecutor` pool (core=2, max=4, queue=10)
 
 | Item | Detail |
 |------|--------|
@@ -266,7 +266,7 @@ Available reconcilers (selected via `stt.reconciliation.strategy`):
 
 ## Step 8: Result Publication and Text Delivery
 
-**Thread:** Same as transcription thread (synchronous event delivery)
+**Thread:** FallbackManager runs asynchronously on `eventExecutor` pool via `@Async("eventExecutor")`
 
 | Item | Detail |
 |------|--------|
@@ -274,10 +274,10 @@ Available reconcilers (selected via `stt.reconciliation.strategy`):
 | Method | `publishResult()` (line 235) |
 | Action | Publishes `TranscriptionCompletedEvent` |
 
-**Event bridge:** `TranscriptionCompletedEvent` (synchronous delivery to all `@EventListener` methods)
+**Event bridge:** `TranscriptionCompletedEvent` (delivered to `@EventListener` methods; note that `FallbackManager.onTranscription()` runs asynchronously via `@Async("eventExecutor")`)
 
 Three listeners receive this event:
-1. `FallbackManager.onTranscription()` -- delivers text
+1. `FallbackManager.onTranscription()` -- delivers text (async via `@Async("eventExecutor")`)
 2. `DefaultRecordingService.onTranscriptionCompleted()` -- transitions state to IDLE
 3. `SttEngineWatchdog.onTranscriptionCompleted()` -- records confidence
 
@@ -321,7 +321,7 @@ graph LR
     subgraph "audio-capture (daemon)"
         D[Microphone Read Loop]
     end
-    subgraph "sttExecutor (core=4, max=8)"
+    subgraph "sttExecutor (core=2, max=4)"
         E[Vosk Transcription]
         F[Whisper Transcription]
         G[Reconciliation]
@@ -337,7 +337,7 @@ graph LR
     C -->|"transcribe(pcm)"| F
     E --> G
     F --> G
-    G -->|"TranscriptionCompletedEvent (sync)"| I[FallbackManager + Paste]
+    G -->|"TranscriptionCompletedEvent (async: eventExecutor)"| I[FallbackManager + Paste]
     I -->|"restore clipboard"| H
 ```
 
@@ -348,7 +348,7 @@ graph LR
 | 1 | `HotkeyPressedEvent` | `HotkeyManager` | `HotkeyRecordingAdapter` | Yes (`@Async("eventExecutor")`) |
 | 2 | `PcmChunkCapturedEvent` | `JavaSoundAudioCaptureService` | Live caption system | Sync |
 | 3 | `HotkeyReleasedEvent` | `HotkeyManager` | `HotkeyRecordingAdapter` | Yes (`@Async("eventExecutor")`) |
-| 4 | `TranscriptionCompletedEvent` | `DefaultTranscriptionOrchestrator` | `FallbackManager`, `DefaultRecordingService`, `SttEngineWatchdog` | Sync |
+| 4 | `TranscriptionCompletedEvent` | `DefaultTranscriptionOrchestrator` | `FallbackManager` (async via `@Async("eventExecutor")`), `DefaultRecordingService`, `SttEngineWatchdog` | Mixed (FallbackManager async, others sync) |
 | 5 | `TypingFallbackEvent` | `StrategyChainTypingService` | `TypingEventsListener` | Sync |
 
 ## Synchronization Mechanisms

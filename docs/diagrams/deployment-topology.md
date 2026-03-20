@@ -19,7 +19,7 @@ graph TB
             subgraph SpringCtx["Spring ApplicationContext"]
                 direction LR
                 OrchLayer["Orchestration Layer<br/>(HotkeyRecordingAdapter,<br/>ParallelSttService)"]
-                EventBus["ApplicationEventPublisher<br/>(14 event types)"]
+                EventBus["ApplicationEventPublisher<br/>(15 event types)"]
                 Watchdog["SttEngineWatchdog<br/>(auto-restart budget)"]
                 Reconciler["TranscriptReconciler<br/>(overlap / confidence / simple)"]
             end

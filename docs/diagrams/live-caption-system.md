@@ -181,7 +181,7 @@ classDiagram
         -VoskConfig config
         -ApplicationEventPublisher publisher
         -Object recognizerLock
-        -Model model
+        -VoskModelProvider modelProvider
         -Recognizer recognizer
         +onStateChanged(ApplicationStateChangedEvent)
         +onPcmChunk(PcmChunkCapturedEvent)

@@ -8,10 +8,16 @@ The CI pipeline runs on every push to `main` and on all pull requests.
 
 ### What It Does
 
-**Single Job: Build & Test**
+**Job 1: Build & Test**
 - Runs on: Ubuntu (latest), macOS 14 (Apple Silicon), and macOS 15
 - Duration: ~3-4 minutes per platform
-- Executes: `./gradlew clean build -x integrationTest`
+- Executes: `./gradlew clean build jacocoTestCoverageVerification -x integrationTest`
+
+**Job 2: Security Scan (OWASP + SBOM)**
+- Runs on: Ubuntu (latest)
+- Runs after the test job completes (`needs: test`)
+- Executes: OWASP dependency check (`./gradlew dependencyCheckAnalyze`) and CycloneDX SBOM generation (`./gradlew cyclonedxBom`)
+- Uploads security reports (dependency-check, SBOM) with 90-day retention
 
 **What's tested:**
 - ✅ Code compiles on Linux and macOS (Apple Silicon)
@@ -57,9 +63,20 @@ jobs:
       - Checkout code
       - Setup Java 21
       - Setup Gradle (with caching)
-      - Build: ./gradlew clean build -x integrationTest
+      - Build: ./gradlew clean build jacocoTestCoverageVerification -x integrationTest
       - Upload JAR (Ubuntu only)
-      - Upload test reports (on failure)
+      - Upload quality reports (Ubuntu only, always, 30-day retention: JaCoCo, Checkstyle, SpotBugs)
+      - Upload test reports (always, 7-day retention)
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - Checkout code
+      - Setup Java 21
+      - Setup Gradle (with caching)
+      - OWASP Dependency Check: ./gradlew dependencyCheckAnalyze
+      - Generate SBOM: ./gradlew cyclonedxBom
+      - Upload security reports (always, 90-day retention)
 ```
 
 **Key flags**:
@@ -76,7 +93,7 @@ jobs:
 Exactly replicate what CI does:
 
 ```bash
-./gradlew clean build -x integrationTest
+./gradlew clean build jacocoTestCoverageVerification -x integrationTest
 ```
 
 Expected output:
@@ -136,13 +153,19 @@ It's from the global hotkey library shutting down during test cleanup. If tests 
 - **Retention**: 30 days
 - **How to download**: Actions tab → Workflow run → Artifacts section
 
-### Test Reports (On failure only)
+### Test Reports (Always uploaded)
 - **Files**: HTML reports and XML results
 - **Retention**: 7 days
 - **Contents**:
   - `build/reports/tests/test/` - HTML test report
   - `build/test-results/test/` - XML test results
+
+### Quality Reports (Always uploaded, Ubuntu only)
+- **Retention**: 30 days
+- **Contents**:
+  - `build/reports/jacoco/` - JaCoCo coverage reports
   - `build/reports/checkstyle/` - Checkstyle reports
+  - `build/reports/spotbugs/` - SpotBugs reports
 
 ## Performance
 
@@ -181,7 +204,7 @@ This makes subsequent runs **much faster** (no re-downloading dependencies).
 
 ```bash
 # 1. Does it build?
-./gradlew clean build -x integrationTest
+./gradlew clean build jacocoTestCoverageVerification -x integrationTest
 
 # 2. Do integration tests pass? (recommended)
 ./gradlew integrationTest
@@ -207,13 +230,13 @@ Recommended GitHub settings for `main` branch:
 - ✅ Require pull request reviews (at least 1)
 - ✅ Dismiss stale reviews on new commits
 
-## Already Configured (Local Build)
+## Build Quality Tools (Active in CI)
 
-These tools are configured in `build.gradle` and run during local builds, but are **not yet integrated into CI**:
+These tools are configured in `build.gradle` and run automatically in CI:
 
-1. **JaCoCo code coverage** — `./gradlew test jacocoTestReport` generates HTML/XML reports. Current: 95% instruction, 88% branch coverage.
-2. **OWASP dependency-check** — `./gradlew dependencyCheckAnalyze` scans for CVEs. Fails build on CVSS >= 7.0. Suppression file at `config/owasp/suppression.xml`.
-3. **SpotBugs** — `./gradlew spotbugsMain` performs bytecode-level static analysis (effort=MAX, reportLevel=MEDIUM).
+1. **JaCoCo code coverage** — Runs via `jacocoTestCoverageVerification` in the **test** job. Enforces 90% instruction / 80% branch minimums. Current: 99.6% instruction, 98.1% branch coverage. Local: `./gradlew test jacocoTestReport` generates HTML/XML reports.
+2. **OWASP dependency-check** — Runs via `dependencyCheckAnalyze` in the **security-scan** job. Scans for CVEs and fails the build on CVSS >= 7.0. Suppression file at `config/owasp/suppression.xml`.
+3. **SpotBugs** — Runs as part of `build` → `check` in the **test** job. Performs bytecode-level static analysis (effort=MAX, reportLevel=MEDIUM).
 
 ## Future Improvements
 
@@ -226,15 +249,9 @@ These tools are configured in `build.gradle` and run during local builds, but ar
 
 2. **CI coverage reporting**
    - Upload JaCoCo reports to Codecov
-   - Require minimum coverage threshold
    - Track coverage trends
 
-3. **CI security scanning**
-   - Run OWASP/SpotBugs in CI pipeline
-   - Trivy container scanning
-   - Snyk vulnerability scanning
-
-4. **Performance benchmarks**
+3. **Performance benchmarks**
    - JMH benchmarks
    - Track latency trends
    - Alert on regressions

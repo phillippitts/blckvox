@@ -98,7 +98,7 @@ Compared to always running both engines:
 JMX metrics are available via Micrometer. Reconciliation is also observable via INFO-level logs:
 
 ```
-INFO  c.b.b.service.reconcile.impl - Reconciliation complete: strategy=overlap, selectedEngine=whisper, charCount=45
+INFO  c.b.b.service.reconcile.impl - [reconcile] vosk='hello world' (sim=0.85) | whisper='hello world' (sim=0.92) | picked=whisper (threshold=0.6)
 ```
 
 ## Recommendations

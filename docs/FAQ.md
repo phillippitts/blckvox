@@ -323,7 +323,7 @@ Increase `inter-chunk-delay-ms` if chunks are being lost.
 
 ### How fast is transcription?
 
-**Vosk (0.22 model):** 1-2 seconds for 5-second clip
+**Vosk (0.22 model):** ~100-500ms for 5-second clip
 **Whisper (base model):** 1-3 seconds for 5-second clip
 **Reconciliation (both):** 1-3 seconds (parallel execution)
 
@@ -596,7 +596,7 @@ Create profile-specific config:
 
 ### Will Prometheus/Micrometer metrics be available?
 
-Prometheus metrics and Micrometer integration are planned for Phase 6 (Production Hardening). Currently, observability is provided through structured Log4j 2 logging with MDC correlation IDs. See `docs/IMPLEMENTATION_PLAN.md` Phase 6 for details.
+Micrometer JMX metrics are already implemented via `MetricsEventListener`, which publishes counters and timers for transcription events (success, failure, duration). Observability is also provided through structured Log4j 2 logging with MDC correlation IDs and a JMX `HealthMBean` (UP/DEGRADED/DOWN). Prometheus HTTP scraping is not available since the app runs without a web server (`spring.main.web-application-type=none`).
 
 ### Can I run blckvox as a background service?
 

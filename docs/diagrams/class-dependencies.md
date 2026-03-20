@@ -21,22 +21,29 @@ classDiagram
     class AbstractSttEngine {
         <<abstract>>
         #ReentrantLock lock
+        -ReentrantReadWriteLock transcriptionLock
         #boolean initialized
         #boolean closed
+        -TranscriptionGuard guard
         +initialize() final
         +isHealthy() final
         +close() final
         #doInitialize()* abstract
         #doClose()* abstract
         #ensureInitialized() final
+        #acquireGuard() final
+        #releaseGuard() final
+        #acquireTranscriptionLock() final
+        #releaseTranscriptionLock() final
         #handleTranscriptionError() final
     }
 
     class VoskSttEngine {
         -VoskConfig config
-        -Model model
-        -ConcurrencyGuard guard
+        -VoskModelProvider modelProvider
+        -SilenceDetector silenceDetector
         -ApplicationEventPublisher publisher
+        -int silenceGapMs
         +transcribe(byte[]) TranscriptionResult
         #doInitialize()
         #doClose()
@@ -44,11 +51,11 @@ classDiagram
     }
 
     class WhisperSttEngine {
-        -WhisperConfig config
-        -WhisperProcessManager manager
-        -ConcurrencyGuard guard
+        -WhisperConfig cfg
+        -ProcessManager manager
         -ApplicationEventPublisher publisher
         -boolean jsonMode
+        -int silenceGapMs
         +transcribe(byte[]) TranscriptionResult
         #doInitialize()
         #doClose()
@@ -62,9 +69,12 @@ classDiagram
     AbstractSttEngine <|-- VoskSttEngine
     AbstractSttEngine <|-- WhisperSttEngine
 
-    VoskSttEngine --> ConcurrencyGuard : uses
-    WhisperSttEngine --> ConcurrencyGuard : uses
-    WhisperSttEngine --> WhisperProcessManager : delegates to
+    AbstractSttEngine --> TranscriptionGuard : uses
+    TranscriptionGuard <|.. ConcurrencyGuard
+    TranscriptionGuard <|.. DynamicConcurrencyGuard
+    VoskSttEngine --> VoskModelProvider : uses
+    VoskSttEngine --> SilenceDetector : uses
+    WhisperSttEngine --> ProcessManager : delegates to
 ```
 
 ## Reconciliation Strategy Pattern
@@ -225,7 +235,7 @@ classDiagram
     class VoskStreamingService {
         -VoskConfig config
         -ApplicationEventPublisher publisher
-        -Model model
+        -VoskModelProvider modelProvider
         -Recognizer recognizer
         +onStateChanged(ApplicationStateChangedEvent)
         +onPcmChunk(PcmChunkCapturedEvent)
@@ -369,7 +379,7 @@ flowchart LR
 | PcmRingBuffer | Thread-safe | Synchronized methods |
 | ConcurrencyGuard | Thread-safe | Semaphore for bounded concurrency |
 | DefaultParallelSttService | Thread-safe | CompletableFuture with bounded executor |
-| HotkeyManager | Thread-safe | CopyOnWriteArrayList for listeners |
+| HotkeyManager | Thread-safe | Receives a single `Consumer<NormalizedKeyEvent>` callback; uses `volatile boolean running` for thread safety |
 | All Reconcilers | Thread-safe | Stateless (no shared mutable state) |
 | FallbackManager | Thread-safe | Stateless operations |
 | VoskStreamingService | Thread-safe | synchronized(recognizerLock) for recognizer access |

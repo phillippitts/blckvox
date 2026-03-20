@@ -36,11 +36,15 @@ This runbook helps diagnose and resolve Vosk/Whisper failures in blckvox.
 
 ## Metrics to Monitor
 
-> **Note:** Micrometer metrics are planned for Phase 6. Currently, the following are observable via INFO-level log events:
+Micrometer JMX metrics are already implemented via `MetricsEventListener`, which records:
 
-- Engine failure/success counts (per engine)
-- Engine latency (per engine)
-- Reconciliation strategy used and selected engine
+- Engine failure counts (per engine)
+- Engine restart counts (per engine)
+- Typing fallback events
+- Transcription confidence scores
+- Capture state changes
+
+These metrics are also observable via INFO-level log events.
 
 ## Escalation
 - Enable DEBUG for whisper/vosk packages temporarily to capture more detail (avoid logging text at INFO)

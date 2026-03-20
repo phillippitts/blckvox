@@ -42,7 +42,7 @@ Use **Log4j 2** instead of Logback.
 - ❌ **Potential CVE history**: Log4Shell (CVE-2021-44228) requires vigilance
 
 ### Mitigation
-- Pin Log4j version explicitly (current: 2.24.1 via Spring Boot 3.5.6)
+- Log4j2 version managed by Spring Boot BOM (not explicitly pinned; currently 2.24.3 via Spring Boot 3.5.6)
 - OWASP Dependency Check scans for vulnerabilities weekly
 - Audit log uses synchronous appender (data integrity)
 - MDC filter clears ThreadContext after requests (prevent leaks)
