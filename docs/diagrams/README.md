@@ -205,11 +205,26 @@ This directory contains comprehensive visual documentation for the blckvox proje
 
 ---
 
+### [Code Path Walkthrough](code-path-walkthrough.md)
+**Purpose:** Trace the complete execution flow from hotkey press to typed text through actual class names, method calls, and Spring events
+
+**Contains:**
+- Full sequence diagram (hotkey press through text delivery)
+- Step-by-step code walkthrough with class names, file paths, and line numbers
+- Threading model for each step (JNativeHook, eventExecutor, audio-capture, sttExecutor)
+- Spring event bridges between steps
+- Synchronization mechanisms summary table
+- Typing fallback chain detail
+
+**Best for:** Onboarding developers, understanding the end-to-end code path, debugging specific steps in the pipeline
+
+---
+
 ### [Conditional Bean Loading](conditional-bean-loading.md)
 **Purpose:** Visualize how @ConditionalOnProperty controls bean instantiation
 
 **Contains:**
-- Conditional bean loading flowchart (all 10 conditional beans)
+- Conditional bean loading flowchart (all 11 conditional beans)
 - Bean presence matrix across 5 configuration profiles
 - Optional injection pattern (SystemTrayManager, OrchestrationConfig)
 - Live caption bean cluster
@@ -285,6 +300,7 @@ mmdc -i architecture-overview.md -o architecture-overview.svg
 | **Developer** | Error Handling | [exception-flow.md](exception-flow.md) |
 | **Developer** | Async Threading | [async-threading-model.md](async-threading-model.md) |
 | **Developer** | Conditional Beans | [conditional-bean-loading.md](conditional-bean-loading.md) |
+| **Developer** | Code Path Walkthrough | [code-path-walkthrough.md](code-path-walkthrough.md) |
 | **User** | Onboarding | [user-journey.md](user-journey.md) |
 | **User** | Troubleshooting | [troubleshooting-guide.md](troubleshooting-guide.md) |
 | **All** | Overview | [architecture-overview.md](architecture-overview.md) |
@@ -306,9 +322,10 @@ mmdc -i architecture-overview.md -o architecture-overview.svg
 - **7 diagrams** in exception-flow.md
 - **6 diagrams** in async-threading-model.md
 - **6 diagrams** in conditional-bean-loading.md
+- **2 diagrams** in code-path-walkthrough.md
 - **3 diagrams** in deployment-topology.md
 
-**Total: ~107 diagrams** across 15 documentation files
+**Total: ~109 diagrams** across 16 documentation files
 
 ## Recommended Reading Order
 
@@ -316,15 +333,16 @@ mmdc -i architecture-overview.md -o architecture-overview.svg
 1. [Architecture Overview](architecture-overview.md) - Start here
 2. [Event Flow & Listener Map](event-flow-map.md) - Understand event-driven wiring
 3. [Data Flow Diagram](data-flow-diagram.md) - Understand the happy path
-4. [Class Dependencies](class-dependencies.md) - Dive into code structure
-5. [Bean Configuration Graph](bean-configuration-graph.md) - Spring wiring
-6. [Feature Toggle Matrix](feature-toggle-matrix.md) - Configuration profiles
-7. [Startup & Shutdown Lifecycle](startup-lifecycle.md) - Initialization order
-8. [Live Caption System](live-caption-system.md) - Real-time UI overlay
-9. [Exception Flow & Recovery](exception-flow.md) - Error handling paths
-10. [Async Threading Model](async-threading-model.md) - Deep threading dive
-11. [Conditional Bean Loading](conditional-bean-loading.md) - Feature flag beans
-12. [Thread Model & Concurrency](thread-model-concurrency.md) - Master threading (advanced)
+4. [Code Path Walkthrough](code-path-walkthrough.md) - Trace the code-level execution flow
+5. [Class Dependencies](class-dependencies.md) - Dive into code structure
+6. [Bean Configuration Graph](bean-configuration-graph.md) - Spring wiring
+7. [Feature Toggle Matrix](feature-toggle-matrix.md) - Configuration profiles
+8. [Startup & Shutdown Lifecycle](startup-lifecycle.md) - Initialization order
+9. [Live Caption System](live-caption-system.md) - Real-time UI overlay
+10. [Exception Flow & Recovery](exception-flow.md) - Error handling paths
+11. [Async Threading Model](async-threading-model.md) - Deep threading dive
+12. [Conditional Bean Loading](conditional-bean-loading.md) - Feature flag beans
+13. [Thread Model & Concurrency](thread-model-concurrency.md) - Master threading (advanced)
 
 ### For New Users
 1. [User Journey Map](user-journey.md) - What to expect

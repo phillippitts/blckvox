@@ -162,7 +162,7 @@ Settings for production tuning, monitoring, and reliability.
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `stt.orchestration.primary-engine` | String | `vosk` | Primary engine preference. Options: `vosk` (fast, lower accuracy) or `whisper` (slower, higher accuracy). Falls back to secondary if primary is unhealthy. |
-| `stt.parallel.timeout-ms` | int | `120000` | Timeout in milliseconds for parallel dual-engine transcription (reconciliation mode only). |
+| `stt.parallel.timeout-ms` | int | `120000` | Timeout in milliseconds for parallel dual-engine transcription (reconciliation mode only). (Java default via @Value: 10000; shipped default: 120000) |
 | `stt.orchestration.silence-gap-ms` | int | `1000` | Silence gap threshold in milliseconds. If silence within audio exceeds this, a paragraph break (newline) is inserted. Set to 0 to disable. |
 | `stt.orchestration.silence-threshold` | int | `200` | RMS amplitude threshold for silence detection (0-32767 for 16-bit PCM). Lower = captures quieter speech. |
 | `stt.orchestration.max-recording-duration-seconds` | int | `120` | Maximum recording duration in seconds. Auto-cancels stale recordings as a safety net. Set to 0 to disable. |
@@ -311,7 +311,7 @@ Settings for engine internals, reconciliation algorithms, and debugging.
 | `stt.whisper.threads` | int | `4` | Number of CPU threads for Whisper processing. |
 | `stt.whisper.max-stdout-bytes` | int | `1048576` | Maximum stdout buffer size (1MB). Protects against malicious model output. |
 | `stt.whisper.text-mode-confidence` | double | `0.85` | Default confidence score assigned when Whisper runs in `text` output mode and produces no per-token confidence data (0.0-1.0). Has no effect when `stt.whisper.output=json`. |
-| `stt.whisper.output` | String | `json` | Output format: `text` (plain text) or `json` (structured with tokens). JSON mode enables advanced reconciliation and pause detection. Note: read via `@Value` annotation in WhisperProcessManager. (Java default via @Value: `text`; shipped default: `json`) |
+| `stt.whisper.output` | String | `json` | Output format: `text` (plain text) or `json` (structured with tokens). JSON mode enables advanced reconciliation and pause detection. Note: read via `@Value` annotation in WhisperSttEngine and WhisperProcessManager. (Java default via @Value: `text`; shipped default: `json`) |
 
 **Supported Models:**
 - `ggml-tiny.en.bin` (75MB, fastest, lowest accuracy)

@@ -14,6 +14,12 @@ graph TB
         KeyListener[NativeKeyListener]
     end
 
+    subgraph EventExecutor["eventExecutor Thread Pool"]
+        direction LR
+        EventWorker1[Event Worker 1<br/>HotkeyRecordingAdapter]
+        EventWorker2[Event Worker 2<br/>VoskStreamingService]
+    end
+
     subgraph SttExecutor["sttExecutor Thread Pool"]
         direction LR
         Thread1[Worker Thread 1<br/>Vosk Engine]
@@ -38,10 +44,12 @@ graph TB
     end
 
     HotkeyThread -->|HotkeyPressed Event| EventBus
-    EventBus -->|@Async eventExecutor| SttExecutor
+    EventBus -->|@Async eventExecutor| EventExecutor
+    EventExecutor -->|submit to sttExecutor| SttExecutor
     AudioThread -->|Write PCM| RingBuffer
     MainThread -->|Read PCM| RingBuffer
     AudioThread -->|Publish| PcmEvent
+    PcmEvent -->|@Async eventExecutor| EventExecutor
     PcmEvent -->|Platform.runLater| JavaFXThread
 
     Thread1 -.->|Log Events| AsyncLogging
@@ -49,6 +57,7 @@ graph TB
 
     style MainThread fill:#e1f5ff
     style HotkeyThread fill:#fff4e1
+    style EventExecutor fill:#fff4e1
     style SttExecutor fill:#c8e6c9
     style AsyncLogging fill:#f3e5f5
     style AudioThread fill:#ffe0b2
@@ -491,4 +500,4 @@ flowchart LR
 6. **Idempotent Initialization**: Multiple `initialize()` calls are safe (synchronized check)
 7. **Graceful Timeout**: Partial results returned if one engine completes before timeout
 8. **JavaFX Thread Safety**: All `LiveCaptionWindow` mutations go through `Platform.runLater()` — never called from Spring event threads directly
-9. **Streaming Recognizer Isolation**: `VoskStreamingService` manages its own `Model` and `Recognizer`, separate from `VoskSttEngine`
+9. **Streaming Recognizer Isolation**: `VoskStreamingService` shares the `VoskModelProvider` `Model` with `VoskSttEngine` but manages its own `Recognizer` per streaming session

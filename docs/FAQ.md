@@ -20,14 +20,16 @@ Common questions and answers about blckvox.
 
 ### What is blckvox?
 
-blckvox is an offline voice dictation application for macOS that converts speech to text using push-to-talk hotkeys. Unlike cloud-based solutions, all processing happens locally on your machine, ensuring complete privacy.
+blckvox is an offline voice dictation application for macOS that converts speech to text using configurable hotkeys. Unlike cloud-based solutions, all processing happens locally on your machine, ensuring complete privacy.
 
 ### How does it work?
 
-1. Press and hold a configured hotkey (e.g., Right ⌘)
+1. Press a configured hotkey (e.g., Right ⌘) to start recording
 2. Speak into your microphone
-3. Release the hotkey
+3. Press the hotkey again to stop
 4. The transcribed text is automatically typed into your active application
+
+> **Note:** The shipped configuration uses click-to-toggle mode (`hotkey.toggle-mode=true`). Push-to-talk mode (hold to record, release to stop) is available via `hotkey.toggle-mode=false`.
 
 ### What makes it different from macOS built-in dictation?
 
@@ -396,9 +398,9 @@ stt.whisper.threads=8  # Match your CPU core count
 
 **Idle:** <1% CPU, ~200MB RAM
 
-**Transcribing (Vosk small model):**
+**Transcribing (Vosk, vosk-model-en-us-0.22):**
 - CPU: 50-100% (1 core)
-- RAM: ~300MB
+- RAM: ~2.0GB (JVM + native model)
 
 **Transcribing (Whisper base model):**
 - CPU: 200-400% (multi-core)
@@ -406,7 +408,7 @@ stt.whisper.threads=8  # Match your CPU core count
 
 **Reconciliation (both engines):**
 - CPU: 300-500% (multi-core)
-- RAM: ~700MB
+- RAM: ~2.5GB (JVM + Vosk model + Whisper subprocess)
 
 ---
 
@@ -441,11 +443,11 @@ TranscriptionException: Both engines failed or timed out
 
 **Error: `Whisper transcription failed: timeout`**
 ```
-TranscriptionException: Whisper timeout after 10000ms
+TranscriptionException: Timeout after 120s
 ```
-**Fix:** Increase timeout:
+**Fix:** Increase timeout (default is 120s):
 ```properties
-stt.whisper.timeout-seconds=20
+stt.whisper.timeout-seconds=180
 ```
 
 ### Microphone not working

@@ -58,25 +58,28 @@ sequenceDiagram
 
     opt stt.watchdog.enabled = true (default: true)
         Ctx->>SEW: @PostConstruct initializeEngines()
-        loop For each SttEngine bean
-            SEW->>SEW: engine.initialize()
-            Note right of SEW: On exception: mark engine<br/>DISABLED (graceful degradation)
+        SEW->>SEW: Determine primary engine from orchestrationProperties.getPrimaryEngine()
+        SEW->>SEW: primaryEngine.initialize()
+        Note right of SEW: On exception: mark primary engine<br/>DISABLED (graceful degradation)
+        loop For each remaining (non-primary) SttEngine bean
+            SEW->>SEW: Log "Engine {} deferred for lazy initialization"
+            Note right of SEW: Non-primary engines are NOT<br/>eagerly initialized
         end
-        SEW-->>Ctx: OK (engines HEALTHY or DISABLED)
+        SEW-->>Ctx: OK (primary engine HEALTHY or DISABLED; others deferred)
     end
 
     Note over Ctx: Phase 2 — SmartLifecycle.start()<br/>(ascending phase order:<br/>lower phase starts first)
-
-    Ctx->>HM: start() [phase = 0]
-    HM->>HM: hook.register() — JNativeHook global key listener
-    Note right of HM: On SecurityException:<br/>publishes HotkeyPermissionDeniedEvent<br/>(does not crash app)
-    HM-->>Ctx: Running
 
     opt live-caption.enabled = true
         Ctx->>JFXL: start() [phase = Integer.MAX_VALUE - 1]
         JFXL->>JFXL: Platform.startup()
         JFXL-->>Ctx: Running
     end
+
+    Ctx->>HM: start() [phase = Integer.MAX_VALUE]
+    HM->>HM: hook.register() — JNativeHook global key listener
+    Note right of HM: On SecurityException:<br/>publishes HotkeyPermissionDeniedEvent<br/>(does not crash app)
+    HM-->>Ctx: Running
 
     opt tray.enabled = true (default: true)
         Ctx->>STM: start() [phase = Integer.MAX_VALUE]
@@ -156,17 +159,17 @@ Spring SmartLifecycle starts components in ascending phase order (lower phase va
 flowchart LR
     subgraph STARTUP ["Startup Order (ascending phase)"]
         direction LR
-        S1["1. HotkeyManager<br/>phase = 0<br/>(default)"]
-        S2["2. JavaFxLifecycle<br/>phase = Integer.MAX_VALUE - 1<br/>(2,147,483,646)<br/>CONDITIONAL: live-caption.enabled=true"]
-        S3["3. SystemTrayManager<br/>phase = Integer.MAX_VALUE<br/>(2,147,483,647)<br/>CONDITIONAL: tray.enabled=true"]
+        S1["1. JavaFxLifecycle<br/>phase = Integer.MAX_VALUE - 1<br/>(2,147,483,646)<br/>CONDITIONAL: live-caption.enabled=true"]
+        S2["2. HotkeyManager<br/>phase = Integer.MAX_VALUE<br/>(default: no getPhase() override)"]
+        S3["3. SystemTrayManager<br/>phase = Integer.MAX_VALUE<br/>(2,147,483,647)<br/>CONDITIONAL: tray.enabled=true<br/>(tied with HotkeyManager)"]
         S1 --> S2 --> S3
     end
 
     subgraph SHUTDOWN ["Shutdown Order (descending phase)"]
         direction LR
-        D1["1. SystemTrayManager<br/>phase = Integer.MAX_VALUE<br/>stops FIRST"]
-        D2["2. JavaFxLifecycle<br/>phase = Integer.MAX_VALUE - 1<br/>stops SECOND"]
-        D3["3. HotkeyManager<br/>phase = 0<br/>stops LAST"]
+        D1["1. HotkeyManager<br/>phase = Integer.MAX_VALUE<br/>stops FIRST (tied with STM)"]
+        D2["2. SystemTrayManager<br/>phase = Integer.MAX_VALUE<br/>stops FIRST (tied with HM)"]
+        D3["3. JavaFxLifecycle<br/>phase = Integer.MAX_VALUE - 1<br/>stops LAST"]
         D1 --> D2 --> D3
     end
 
@@ -183,21 +186,21 @@ block-beta
     end
     block:row1:4
         columns 4
-        r1a["HotkeyManager"] r1b["0 (default)"] r1c["1st (earliest)"] r1d["3rd (latest)"]
+        r1a["JavaFxLifecycle"] r1b["MAX_VALUE - 1"] r1c["1st (earliest)"] r1d["3rd (latest)"]
     end
     block:row2:4
         columns 4
-        r2a["JavaFxLifecycle"] r2b["MAX_VALUE - 1"] r2c["2nd"] r2d["2nd"]
+        r2a["HotkeyManager"] r2b["Integer.MAX_VALUE (default)"] r2c["2nd (tied with STM)"] r2d["1st (tied with STM)"]
     end
     block:row3:4
         columns 4
-        r3a["SystemTrayManager"] r3b["MAX_VALUE"] r3c["3rd (latest)"] r3d["1st (earliest)"]
+        r3a["SystemTrayManager"] r3b["MAX_VALUE"] r3c["2nd (tied with HM)"] r3d["1st (tied with HM)"]
     end
 ```
 
 The ordering ensures:
-- **Startup**: The global hotkey listener registers first (phase 0). Then JavaFX platform initializes (phase MAX_VALUE - 1). Finally, the system tray icon is created (phase MAX_VALUE), which may reference the JavaFX-backed live caption manager.
-- **Shutdown**: The reverse order ensures the tray icon is removed first, then JavaFX exits, and finally the native key hook is unregistered.
+- **Startup**: JavaFX platform initializes first (phase MAX_VALUE - 1). Then HotkeyManager and SystemTrayManager start together (both at phase MAX_VALUE, tied). The system tray icon creation may reference the JavaFX-backed live caption manager, which is already running.
+- **Shutdown**: HotkeyManager and SystemTrayManager stop first (both at phase MAX_VALUE, tied). Then JavaFX exits last (phase MAX_VALUE - 1).
 
 ---
 
@@ -232,7 +235,7 @@ sequenceDiagram
         JFXL-->>Ctx: JavaFX platform stopped
     end
 
-    Ctx->>HM: stop() [phase = 0]
+    Ctx->>HM: stop() [phase = Integer.MAX_VALUE]
     HM->>HM: hook.unregister()
     HM-->>Ctx: Native hook unregistered
 

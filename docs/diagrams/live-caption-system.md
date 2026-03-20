@@ -285,11 +285,11 @@ graph TB
     subgraph AudioThread["Audio Capture Thread"]
         Capture[doCapture loop]
         Publish[publishEvent<br/>PcmChunkCapturedEvent]
+        LCMListener[LiveCaptionManager<br/>onPcmChunk / onPartial<br/>sync @EventListener]
     end
 
-    subgraph SpringThread["Spring Event Thread"]
-        VoskListener[VoskStreamingService<br/>onPcmChunk]
-        LCMListener[LiveCaptionManager<br/>onPcmChunk / onPartial]
+    subgraph EventPool["eventExecutor Thread Pool"]
+        VoskListener[VoskStreamingService<br/>onPcmChunk<br/>@Async eventExecutor]
     end
 
     subgraph JavaFXThread["JavaFX Application Thread"]
@@ -299,8 +299,8 @@ graph TB
     end
 
     Capture --> Publish
-    Publish --> VoskListener
-    Publish --> LCMListener
+    Publish -->|@Async dispatch| VoskListener
+    Publish -->|sync on capture thread| LCMListener
     VoskListener -->|publishEvent| LCMListener
 
     LCMListener -->|Platform.runLater| UpdateWave
@@ -308,7 +308,7 @@ graph TB
     LCMListener -->|Platform.runLater| ShowHide
 
     style AudioThread fill:#ffe0b2
-    style SpringThread fill:#e1f5ff
+    style EventPool fill:#fff4e1
     style JavaFXThread fill:#c8e6c9
 ```
 

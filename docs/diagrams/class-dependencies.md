@@ -171,7 +171,7 @@ classDiagram
     class RecordingService {
         <<interface>>
         +startRecording() boolean
-        +stopRecording()
+        +stopRecording() boolean
         +cancelRecording()
         +toggleRecording() boolean
     }
@@ -180,7 +180,7 @@ classDiagram
         <<interface>>
         +startCapture() UUID
         +stopCapture(UUID) byte[]
-        +cancelCapture()
+        +cancelCapture(UUID)
     }
 
     class TranscriptionOrchestrator {
@@ -237,8 +237,10 @@ classDiagram
         -ApplicationEventPublisher publisher
         -VoskModelProvider modelProvider
         -Recognizer recognizer
+        -Object recognizerLock
         +onStateChanged(ApplicationStateChangedEvent)
         +onPcmChunk(PcmChunkCapturedEvent)
+        +shutdown()
     }
 
     class PcmChunkCapturedEvent {
@@ -434,6 +436,7 @@ classDiagram
         +String language
         +int threads
         +int maxStdoutBytes
+        +double textModeConfidence
     }
 ```
 

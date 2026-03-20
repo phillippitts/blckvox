@@ -58,21 +58,29 @@ public class HotkeyRecordingAdapter {
     @Async("eventExecutor")
     public void onHotkeyPressed(HotkeyPressedEvent evt) {
         if (hotkeyProps.isToggleMode()) {
-            // Atomic toggle: starts if idle, stops if recording
-            recordingService.toggleRecording();
+            // Atomic toggle: starts if idle, stops if recording — no TOCTOU gap
+            if (recordingService.toggleRecording()) {
+                LOG.info("Toggle mode: toggled capture at {}", evt.at());
+            } else {
+                LOG.warn("Toggle recording failed");
+            }
             return;
         }
-        // Push-to-talk: press starts recording
-        recordingService.startRecording();
+        // Push-to-talk: press starts
+        if (recordingService.startRecording()) {
+            LOG.info("Capture session started at {}", evt.at());
+        } else {
+            LOG.debug("Capture already active, ignoring press");
+        }
     }
 
     @EventListener
     @Async("eventExecutor")
     public void onHotkeyReleased(HotkeyReleasedEvent evt) {
         if (hotkeyProps.isToggleMode()) {
-            return; // release ignored in toggle mode
+            LOG.debug("Toggle mode: ignoring release event");
+            return;
         }
-        // Push-to-talk: release stops recording → triggers transcription + paste
         recordingService.stopRecording();
     }
 }

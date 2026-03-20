@@ -26,7 +26,7 @@ graph TB
 
             subgraph VoskJNI["Vosk JNI (in-process)"]
                 VoskLib["libvosk.dylib<br/>(native library)"]
-                VoskModel["Vosk Model<br/>(loaded into JVM heap)"]
+                VoskModel["Vosk Model<br/>(loaded via JNI, native memory)"]
             end
 
             subgraph ThreadPools["Thread Pools"]
@@ -190,7 +190,7 @@ sequenceDiagram
 | Component | Memory | CPU | Disk |
 |-----------|--------|-----|------|
 | **JVM + Spring Boot** | ~200MB heap (Xms=512m, Xmx=2g) | idle: <1% | blckvox.jar (~30MB) |
-| **Vosk model** | ~1.8GB (loaded into JVM via JNI) | per-transcription: 1 core | 1.8GB on disk |
+| **Vosk model** | ~1.8GB (native/off-heap memory via JNI) | per-transcription: 1 core | 1.8GB on disk |
 | **Whisper model** | loaded by subprocess (not JVM heap) | per-transcription: 4 cores (configurable) | 142MB on disk |
 | **whisper.cpp process** | ~300MB peak (per instance) | 4 threads default (`stt.whisper.threads`) | temp WAV files (transient) |
 | **Log files** | - | - | ~10MB/day (100MB max per file, 30-day retention) |

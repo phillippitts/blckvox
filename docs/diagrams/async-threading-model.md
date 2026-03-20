@@ -143,6 +143,7 @@ graph TB
             S8["VoskStreamingService<br/>.onStateChanged()"]
             S9["SystemTrayManager<br/>.onStateChanged()"]
             S10["SystemTrayManager<br/>.onBufferOverflow()"]
+            S11["SystemTrayManager<br/>.onEngineHealthChanged()"]
             S12["SttEngineWatchdog<br/>.onTranscriptionCompleted()"]
             S14["SttEngineWatchdog<br/>.onRecovered()"]
             S15["TypingEventsListener<br/>.onFallback()"]
@@ -188,9 +189,9 @@ graph TB
     subgraph SttExecutorPool["sttExecutor (ThreadPoolTaskExecutor)"]
         direction TB
         SttBean["@Bean name = 'sttExecutor'<br/>ThreadPoolConfig.java:59"]
-        SttCore["corePoolSize: 2"]
-        SttMax["maxPoolSize: 4"]
-        SttQueue["queueCapacity: 10"]
+        SttCore["corePoolSize: 2 (configured; Java default: 4)"]
+        SttMax["maxPoolSize: 4 (configured; Java default: 8)"]
+        SttQueue["queueCapacity: 10 (configured; Java default: 50)"]
         SttPrefix["threadNamePrefix: 'stt-pool-'"]
         SttReject["rejectionPolicy:<br/>Custom AbortPolicy (logs and throws RejectedExecutionException)"]
         SttShutdown["waitForTasksToCompleteOnShutdown: true<br/>awaitTerminationSeconds: 30"]
@@ -199,9 +200,9 @@ graph TB
     subgraph EventExecutorPool["eventExecutor (ThreadPoolTaskExecutor)"]
         direction TB
         EvtBean["@Bean name = 'eventExecutor'<br/>ThreadPoolConfig.java:105"]
-        EvtCore["corePoolSize: 2"]
-        EvtMax["maxPoolSize: 4"]
-        EvtQueue["queueCapacity: 10"]
+        EvtCore["corePoolSize: 2 (configured; Java default: 4)"]
+        EvtMax["maxPoolSize: 4 (configured; Java default: 8)"]
+        EvtQueue["queueCapacity: 10 (configured; Java default: 50)"]
         EvtPrefix["threadNamePrefix: 'event-pool-'"]
         EvtReject["rejectionPolicy:<br/>DiscardOldestPolicy<br/>(custom lambda)"]
         EvtShutdown["waitForTasksToCompleteOnShutdown: true<br/>awaitTerminationSeconds: 30"]
@@ -449,14 +450,14 @@ sequenceDiagram
         Audio->>Audio: TargetDataLine.read(buffer)
         Audio->>Spring: publishEvent(PcmChunkCapturedEvent)
 
-        Note over Spring: Sync listeners fire on audio capture thread
-
+        Note over Spring: Sync listener fires on audio capture thread
         Spring->>Audio: LiveCaptionManager.onPcmChunk()
         Audio->>FX: Platform.runLater(updateWaveform)
 
-        Spring->>Audio: VoskStreamingService.onPcmChunk()
-        Audio->>Audio: recognizer.acceptWaveForm()
-        Audio->>Spring: publishEvent(VoskPartialResultEvent)
+        Note over Spring: @Async listener dispatched to eventExecutor
+        Spring->>EP: VoskStreamingService.onPcmChunk() [@Async eventExecutor]
+        EP->>EP: recognizer.acceptWaveForm()
+        EP->>Spring: publishEvent(VoskPartialResultEvent)
         Spring->>Audio: LiveCaptionManager.onVoskPartialResult()
         Audio->>FX: Platform.runLater(updateCaption)
 
@@ -501,8 +502,8 @@ sequenceDiagram
 
     rect rgb(200, 230, 201)
         Note right of EP: PHASE 6: Text Delivery
-        Note over Spring: Sync listeners fire on event-pool-1 thread
-        Spring->>EP: FallbackManager.onTranscription()
+        Note over Spring: @Async dispatches FallbackManager to eventExecutor
+        Spring->>EP: FallbackManager.onTranscription() [@Async eventExecutor]
         EP->>EP: TypingService.paste(text)
         EP->>EP: Robot.keyPress/keyRelease (Cmd+V)
         EP->>Log: LOG.info("[paste] engine=..., chars=...")

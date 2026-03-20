@@ -156,7 +156,7 @@ flowchart TD
     VoskOOM -->|Yes| CloseApps[Close other apps<br/>Free memory]
 
     WhisperLog --> Timeout{Timeout error?}
-    Timeout -->|Yes| IncTimeout[Increase timeout:<br/>stt.whisper.timeout-seconds=120]
+    Timeout -->|Yes| IncTimeout[Increase timeout:<br/>stt.whisper.timeout-seconds=180]
     Timeout -->|No| WhisperBin{Binary found<br/>and executable?}
     WhisperBin -->|No| RebuildWhisper[./build-whisper.sh]
 
@@ -270,7 +270,7 @@ flowchart TD
     VerySlow --> WhisperTimeout{Whisper<br/>timing out?}
     WhisperTimeout -->|Yes| LongAudio{Audio >30s?}
     LongAudio -->|Yes| ShorterClips[Speak in shorter clips<br/>Max recommended: 30s]
-    LongAudio -->|No| IncTO[Increase timeout:<br/>stt.whisper.timeout-seconds=120]
+    LongAudio -->|No| IncTO[Increase timeout:<br/>stt.whisper.timeout-seconds=180]
     WhisperTimeout -->|No| BothRun{Both engines<br/>running?}
 
     MedSlow --> BothRun
@@ -323,7 +323,7 @@ flowchart TD
 | Wrong transcription | Background noise | Move to quiet environment |
 | Missing punctuation | Vosk-only mode | Enable reconciliation: `stt.reconciliation.enabled=true` |
 | 5+ second transcription | Both engines always run | `stt.reconciliation.enabled=true` |
-| Whisper timeout | Long audio or slow CPU | `stt.whisper.timeout-seconds=120` |
+| Whisper timeout | Long audio or slow CPU | `stt.whisper.timeout-seconds=180` |
 
 ## Diagnostic Commands
 

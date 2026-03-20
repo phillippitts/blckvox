@@ -33,6 +33,7 @@ stt.whisper.threads=4
 stt.whisper.max-stdout-bytes=1048576
 # Output mode: text | json  (default json)
 stt.whisper.output=json
+stt.whisper.text-mode-confidence=0.85
 ```
 
 ### Orchestration & Parallel
@@ -42,6 +43,9 @@ stt.parallel.timeout-ms=120000
 
 # Primary engine for single-engine routing
 stt.orchestration.primary-engine=vosk  # vosk | whisper
+
+# Maximum recording duration (seconds); 0 = unlimited
+stt.orchestration.max-recording-duration-seconds=120
 
 # Automatic paragraph breaks: insert newline when silence within audio exceeds this (ms); 0 = disabled
 stt.orchestration.silence-gap-ms=1000
@@ -69,6 +73,12 @@ stt.concurrency.vosk-max=4
 stt.concurrency.whisper-max=2
 stt.concurrency.acquire-timeout-ms=1000
 
+# Dynamic scaling
+stt.concurrency.dynamic-scaling-enabled=false
+stt.concurrency.cpu-threshold-high=0.80
+stt.concurrency.memory-threshold-high=0.85
+stt.concurrency.scaling-interval-ms=5000
+
 # Event-driven watchdog
 stt.watchdog.enabled=true
 stt.watchdog.window-minutes=60
@@ -84,6 +94,8 @@ stt.watchdog.confidence-min-samples=5
 stt.watchdog.backoff-base-delay-ms=1000
 stt.watchdog.backoff-multiplier=2.0
 stt.watchdog.backoff-max-delay-ms=60000
+stt.watchdog.health-summary-interval-millis=60000
+stt.watchdog.confidence-grace-transcriptions=5
 ```
 
 ### Hotkeys
@@ -92,7 +104,7 @@ hotkey.type=double-tap               # single-key | double-tap | modifier-combo
 hotkey.key=RIGHT_META
 # hotkey.modifiers=META,SHIFT        # required for modifier-combo
 # hotkey.threshold-ms=300            # for double-tap (100-1000ms)
-# hotkey.toggle-mode=true            # true for click-to-toggle (default)
+# hotkey.toggle-mode=true            # true for click-to-toggle (shipped config; Java default is false)
 # hotkey.reserved=META+TAB,META+L    # OS-reserved examples
 ```
 
@@ -102,6 +114,7 @@ typing.chunk-size=800
 typing.inter-chunk-delay-ms=30
 typing.focus-delay-ms=100
 typing.restore-clipboard=true
+typing.clipboard-restore-delay-ms=200
 typing.clipboard-only-fallback=false
 typing.normalize-newlines=LF         # LF | CRLF | NONE
 typing.trim-trailing-newline=true
@@ -124,7 +137,7 @@ Runtime metrics are available via JMX (JConsole/VisualVM). Key metrics:
 | `blckvox.engine.restart` | Counter | Engine restart count by engine |
 | `blckvox.typing.fallback` | Counter | Typing fallback count by tier |
 | `blckvox.typing.count` | Counter | Successful transcriptions delivered for typing, by engine |
-| `blckvox.reconciliation.confidence` | DistributionSummary | Confidence scores by engine (excludes failed and silent results) |
+| `blckvox.reconciliation.confidence` | DistributionSummary | Confidence scores by engine (records all non-negative confidence values) |
 | `blckvox.capture.active` | Gauge | Whether audio capture is currently active (1=active, 0=idle) |
 | `blckvox.event.executor.discard` | Counter | Event executor task discards due to queue saturation |
 

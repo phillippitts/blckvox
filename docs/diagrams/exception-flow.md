@@ -96,7 +96,7 @@ flowchart TB
     TE -->|caught by| Recon
     IAE -->|caught by| CapOrch
     MNFE -->|caught by| Spring
-    ISTE -->|caught by| RecSvc
+    ISTE -->|"guarded by pre-check (never thrown in practice)"| RecSvc
 ```
 
 ---

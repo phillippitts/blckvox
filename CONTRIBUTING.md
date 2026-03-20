@@ -89,7 +89,7 @@ Types: `add`, `feat`, `fix`, `update`, `refactor`, `test`, `docs`
 - Strategy pattern: reconciliation, hotkey triggers, typing adapters.
 - Thread pools: `sttExecutor` (STT processing) + `eventExecutor` (event handling).
 - See `docs/developer-guide.md` for detailed architecture.
-- See `docs/diagrams/` for visual documentation (~107 diagrams).
+- See `docs/diagrams/` for visual documentation (~109 diagrams).
 
 ## Reporting Issues
 

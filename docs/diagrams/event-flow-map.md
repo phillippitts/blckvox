@@ -48,6 +48,7 @@ flowchart LR
         EEP[EngineEventPublisher]
         EFE{{EngineFailureEvent}}
         ERE{{EngineRecoveredEvent}}
+        EHCE{{EngineHealthChangedEvent}}
         SEW[SttEngineWatchdog]
     end
 
@@ -120,6 +121,9 @@ flowchart LR
     SEW -->|publishes| ERE
     ERE -->|sync| SEW
 
+    SEW -->|publishes| EHCE
+    EHCE -->|sync| STM
+
     %% ── Typing fallback wiring ─────────────────────────────────────
     TC -.->|"@Async(eventExecutor)"| FM
     FM -->|delegates| SCTS
@@ -134,7 +138,7 @@ flowchart LR
     classDef publisher fill:#ddeeff,stroke:#336,stroke-width:1px
     classDef listener fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
 
-    class HP,HR,HPD,HC,ASC,PCC,BOE,CE,TC,VPR,EFE,ERE,TFE,ATFE event
+    class HP,HR,HPD,HC,ASC,PCC,BOE,CE,TC,VPR,EFE,ERE,EHCE,TFE,ATFE event
     class HM,JSACS,AST,DTO,VSS,EEP,SCTS publisher
     class HRA,EEL,LCM,STM,SEW,FM,TEL listener
 ```
@@ -219,7 +223,7 @@ sequenceDiagram
 
     RS ->> DTO: transcribe(pcm)
     DTO ->> DTO: Silence check, engine selection, STT execution
-    DTO -->> FM: TranscriptionCompletedEvent [sync]
+    DTO -->> FM: TranscriptionCompletedEvent [async eventExecutor]
     DTO -->> SEW: TranscriptionCompletedEvent [sync]
     Note over SEW: Records confidence for engine health
 
@@ -360,7 +364,7 @@ sequenceDiagram
     FX ->> LCW: new LiveCaptionWindow(props) + show()
 
     loop Every ~40ms during RECORDING state
-        JSACS -->> VSS: PcmChunkCapturedEvent [sync]
+        JSACS -->> VSS: PcmChunkCapturedEvent [async eventExecutor]
         VSS ->> VSS: recognizer.acceptWaveForm(pcmData)
 
         JSACS -->> LCM: PcmChunkCapturedEvent [sync]

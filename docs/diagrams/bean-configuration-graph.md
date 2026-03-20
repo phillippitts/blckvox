@@ -21,8 +21,8 @@ flowchart TB
     %% ── ThreadPoolConfig ──────────────────────────────────────────────
     subgraph ThreadPoolConfig["ThreadPoolConfig"]
         direction TB
-        sttExecutor["<b>sttExecutor()</b><br/>ThreadPoolTaskExecutor<br/>core=2, max=4, queue=10<br/>prefix: stt-pool-<br/>rejection: AbortPolicy<br/>MDC TaskDecorator"]
-        eventExecutor["<b>eventExecutor()</b><br/>ThreadPoolTaskExecutor<br/>core=2, max=4, queue=10<br/>prefix: event-pool-<br/>rejection: DiscardOldestPolicy<br/>MDC TaskDecorator"]
+        sttExecutor["<b>sttExecutor()</b><br/>ThreadPoolTaskExecutor<br/>core=2, max=4, queue=10<br/>(configured; Java default: 4/8/50)<br/>prefix: stt-pool-<br/>rejection: AbortPolicy<br/>MDC TaskDecorator"]
+        eventExecutor["<b>eventExecutor()</b><br/>ThreadPoolTaskExecutor<br/>core=2, max=4, queue=10<br/>(configured; Java default: 4/8/50)<br/>prefix: event-pool-<br/>rejection: DiscardOldestPolicy<br/>MDC TaskDecorator"]
     end
 
     %% ── OrchestrationConfig ───────────────────────────────────────────

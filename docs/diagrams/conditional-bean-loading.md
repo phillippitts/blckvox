@@ -101,6 +101,12 @@ flowchart TD
     REC_CHECK -- "true" --> REC_DUAL
     REC_CHECK -- "true" --> REC_STRAT
     REC_CHECK -- "true" --> REC_SINGLE_NO
+    REC_CHECK -- "true" --> REC_DEPS
+
+    %% ── ReconciliationDependencies ─────────────────────────────
+    REC_DEPS["ReconciliationDependencies\n@Component"]:::created
+    REC_DEPS_NO["ReconciliationDependencies\nSKIPPED"]:::skipped
+    REC_CHECK -- "false / missing" --> REC_DEPS_NO
 
     %% ── Styles ───────────────────────────────────────────────
     classDef created fill:#2d6a2d,stroke:#1a4a1a,color:#ffffff
@@ -139,6 +145,7 @@ A checkmark means the bean is present in the application context; an "X" means i
 | **transcriptionOrchestrator** (single) | no | yes | no | yes | no |
 | **reconciledTranscriptionOrchestrator** (dual) | yes | no | yes | no | yes |
 | **transcriptReconciler** | yes | no | yes | no | yes |
+| **ReconciliationDependencies** | yes | no | yes | no | yes |
 
 > **Note:** ConcurrencyScaler is disabled by default (`dynamic-scaling-enabled=false`).
 > It must be explicitly set to `true` to activate. The "Default (all on)" column reflects
@@ -229,15 +236,15 @@ liveCaptionManager.ifPresent(manager -> {
 ### Code Pattern: OrchestrationConfig
 
 ```java
-// Constructor injection with @Autowired(required = false)
+// Constructor injection with @Autowired(required = false) for optional beans
 public OrchestrationConfig(AudioCaptureService captureService,
-                           SttEngine voskSttEngine,
-                           SttEngine whisperSttEngine,
-                           SttEngineWatchdog watchdog,
+                           List<SttEngine> sttEngines,
+                           @Autowired(required = false) SttEngineWatchdog watchdog,
                            OrchestrationProperties orchestrationProperties,
                            HotkeyProperties hotkeyProperties,
                            ApplicationEventPublisher publisher,
                            TranscriptionMetricsPublisher metricsPublisher,
+                           SilenceDetector silenceDetector,
                            @Autowired(required = false)
                            ReconciliationDependencies reconciliationDeps) {
     this.reconciliationDeps = reconciliationDeps; // may be null

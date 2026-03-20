@@ -3,7 +3,7 @@
 > **Note:** This is historical planning context from early project phases. Some details may not match the current implementation. For current architecture, see the [Architecture Overview](diagrams/architecture-overview.md).
 
 **Date:** 2025-10-17 (Updated)
-**Status:** Phases 0-2 Complete (Environment, Core Abstractions, STT Engine Integration)
+**Status:** Phases 0-5 Complete
 **Implementation Duration:** Phase 0-1 complete, Phase 2 complete (9 tasks, ~5.75 hours)
 **Grade:** 90/100 (Production-Ready MVP, observability deferred to Phase 6)
 
@@ -13,7 +13,7 @@
 
 If session is lost, start here:
 
-1. **Read:** `docs/IMPLEMENTATION_PLAN.md` (40 tasks, ~45.25 hours)
+1. **Read:** `docs/IMPLEMENTATION_PLAN.md` (49 tasks, ~51.5 hours)
 2. **Review:** `docs/adr/*.md` (13 architectural decisions)
 3. **Status:** Phases 0-2 complete ✅ (Environment, abstractions, dual STT engines, watchdog)
 4. **Status:** Phases 0-5 complete
@@ -47,7 +47,7 @@ If session is lost, start here:
 - **~1,261 tests, 0 failures** (Phase 2 snapshot was 110; current coverage is 99.6% instruction / 98.1% branch)
 - **Hermetic test infrastructure** with ProcessFactory seam
 - **Event-driven watchdog** with sliding window budget (3 restarts/60min)
-- **Refactored complexity** - SttEngineWatchdog reduced from 166 to 213 lines with better organization
+- **Refactored complexity** - SttEngineWatchdog expanded from 166 to 213 lines with better separation of concerns
 - **Production-ready logging** - PII-safe, structured, never logs full transcriptions at INFO
 
 ### Documentation (Phase 0 Planning)
@@ -55,7 +55,7 @@ If session is lost, start here:
 2. **`docs/adr/*.md`** - 13 architectural decisions
 3. **`docs/diagrams/*.md`** - Architecture and data flow diagrams
 4. **`.junie/guidelines.md`** - 1,515 lines development playbook
-5. **`build.gradle`** - 14 dependencies, Checkstyle enforcement
+5. **`build.gradle`** - 14 dependencies, Checkstyle, SpotBugs, JaCoCo, OWASP, PIT, CycloneDX
 
 ---
 
