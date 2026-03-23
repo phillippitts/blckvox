@@ -13,7 +13,7 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "live-caption")
 @Validated
 public record LiveCaptionProperties(
-        @DefaultValue("false")
+        @DefaultValue("true")
         boolean enabled,
 
         @DefaultValue("600")

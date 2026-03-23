@@ -12,11 +12,11 @@ import org.springframework.validation.annotation.Validated;
 public record ReconciliationProperties(
 
         // Enable reconciled path in orchestrator.
-        @DefaultValue("false")
+        @DefaultValue("true")
         boolean enabled,
 
         // Strategy to use when enabled.
-        @DefaultValue("SIMPLE")
+        @DefaultValue("OVERLAP")
         @NotNull
         Strategy strategy,
 

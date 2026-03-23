@@ -11,4 +11,8 @@
     <!-- Allow many parameters for reconciledHotkeyRecordingAdapter bean method (Spring DI) -->
     <suppress checks="ParameterNumber"
               files="OrchestrationConfig\.java"/>
+
+    <!-- Registry is 59 hardcoded data entries; factory methods exceed MethodLength -->
+    <suppress checks="MethodLength"
+              files="PropertyMetadataRegistry\.java"/>
 </suppressions>

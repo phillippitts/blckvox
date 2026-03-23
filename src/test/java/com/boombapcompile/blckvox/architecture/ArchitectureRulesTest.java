@@ -172,6 +172,25 @@ class ArchitectureRulesTest {
     }
 
     @Nested
+    @DisplayName("Settings Isolation")
+    class SettingsIsolation {
+
+        @Test
+        @DisplayName("Settings service should not depend on STT, audio, hotkey, or livecaption")
+        void settingsShouldNotDependOnUnrelatedPackages() {
+            noClasses()
+                    .that().resideInAPackage(BASE + ".service.settings..")
+                    .should().dependOnClassesThat()
+                    .resideInAnyPackage(
+                            BASE + ".service.stt..",
+                            BASE + ".service.audio..",
+                            BASE + ".service.hotkey..",
+                            BASE + ".service.livecaption..")
+                    .check(appClasses);
+        }
+    }
+
+    @Nested
     @DisplayName("Config Boundaries")
     class ConfigBoundaries {
 

@@ -191,6 +191,9 @@ def jacocoExclusions = [
     '**/whisper/WhisperProcessManager.class',
     // Default constructor only
     '**/whisper/ProcessStreamHandler.class',
+    // JavaFX settings UI (requires FX thread)
+    '**/settings/ConfigurationWindow.class',
+    '**/settings/PropertyFieldFactory.class',
 ]
 
 jacocoTestReport {
@@ -270,6 +273,9 @@ pitest {
         'com.boombapcompile.blckvox.service.stt.util.SystemResourceMonitor',
         'com.boombapcompile.blckvox.service.stt.whisper.WhisperProcessManager',
         'com.boombapcompile.blckvox.service.stt.whisper.ProcessStreamHandler',
+        'com.boombapcompile.blckvox.service.settings.ConfigurationWindow',
+        'com.boombapcompile.blckvox.service.settings.PropertyFieldFactory',
+        'com.boombapcompile.blckvox.service.settings.PropertyMetadataRegistry',
     ]
 
     // Exclude integration/hardware test classes from mutation runs

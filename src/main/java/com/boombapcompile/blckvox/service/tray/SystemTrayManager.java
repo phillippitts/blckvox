@@ -16,6 +16,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import com.boombapcompile.blckvox.service.livecaption.LiveCaptionManager;
+import com.boombapcompile.blckvox.service.settings.ConfigurationService;
 
 import javax.swing.SwingUtilities;
 import java.awt.AWTException;
@@ -51,18 +52,22 @@ public class SystemTrayManager implements SmartLifecycle {
     private final RecordingService recordingService;
     private final ApplicationContext applicationContext;
     private final Optional<LiveCaptionManager> liveCaptionManager;
+    private final ConfigurationService configurationService;
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     private volatile TrayIcon trayIcon;
     private volatile MenuItem statusItem;
     private volatile MenuItem toggleItem;
+    private volatile com.boombapcompile.blckvox.service.settings.ConfigurationWindow settingsWindow;
 
     public SystemTrayManager(RecordingService recordingService,
                              ApplicationContext applicationContext,
-                             Optional<LiveCaptionManager> liveCaptionManager) {
+                             Optional<LiveCaptionManager> liveCaptionManager,
+                             ConfigurationService configurationService) {
         this.recordingService = recordingService;
         this.applicationContext = applicationContext;
         this.liveCaptionManager = liveCaptionManager;
+        this.configurationService = configurationService;
     }
 
     @Override
@@ -100,6 +105,13 @@ public class SystemTrayManager implements SmartLifecycle {
 
             popup.addSeparator();
 
+            if (isJavaFxAvailable()) {
+                MenuItem settingsItem = new MenuItem("Settings...");
+                settingsItem.addActionListener(e -> onSettingsClicked());
+                popup.add(settingsItem);
+                popup.addSeparator();
+            }
+
             MenuItem quitItem = new MenuItem("Quit");
             quitItem.addActionListener(e -> onQuitClicked());
             popup.add(quitItem);
@@ -133,6 +145,40 @@ public class SystemTrayManager implements SmartLifecycle {
                 }
             }
         });
+    }
+
+    private void onSettingsClicked() {
+        try {
+            javafx.application.Platform.runLater(() -> {
+                if (settingsWindow == null) {
+                    settingsWindow = new com.boombapcompile.blckvox.service.settings
+                            .ConfigurationWindow(configurationService);
+                }
+                settingsWindow.show();
+            });
+        } catch (IllegalStateException e) {
+            LOG.warn("Cannot open settings: JavaFX platform not running");
+        }
+    }
+
+    private static boolean isJavaFxAvailable() {
+        try {
+            Class.forName("javafx.application.Platform");
+            return javafx.application.Platform.isFxApplicationThread()
+                    || isJavaFxPlatformRunning();
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+    }
+
+    private static boolean isJavaFxPlatformRunning() {
+        try {
+            // If Platform.runLater doesn't throw, FX is running
+            javafx.application.Platform.runLater(() -> { });
+            return true;
+        } catch (IllegalStateException e) {
+            return false;
+        }
     }
 
     private void onQuitClicked() {

@@ -12,6 +12,7 @@ import com.boombapcompile.blckvox.config.properties.SttWatchdogProperties;
 import com.boombapcompile.blckvox.config.properties.ThreadPoolProperties;
 import com.boombapcompile.blckvox.config.properties.TrayProperties;
 import com.boombapcompile.blckvox.config.properties.TypingProperties;
+import com.boombapcompile.blckvox.config.settings.SettingsProperties;
 import com.boombapcompile.blckvox.config.stt.VoskConfig;
 import com.boombapcompile.blckvox.config.stt.WhisperConfig;
 import org.springframework.boot.SpringApplication;
@@ -34,7 +35,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         ReconciliationProperties.class,
         TrayProperties.class,
         LiveCaptionProperties.class,
-        ThreadPoolProperties.class
+        ThreadPoolProperties.class,
+        SettingsProperties.class
 })
 @EnableScheduling
 public class BlckvoxApplication {

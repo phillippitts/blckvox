@@ -4,6 +4,7 @@ import com.boombapcompile.blckvox.service.audio.capture.BufferOverflowEvent;
 import com.boombapcompile.blckvox.service.orchestration.ApplicationState;
 import com.boombapcompile.blckvox.service.orchestration.RecordingService;
 import com.boombapcompile.blckvox.service.orchestration.event.ApplicationStateChangedEvent;
+import com.boombapcompile.blckvox.service.settings.ConfigurationService;
 import org.junit.jupiter.api.Test;
 import com.boombapcompile.blckvox.service.livecaption.LiveCaptionManager;
 import org.springframework.context.ApplicationContext;
@@ -44,7 +45,7 @@ class SystemTrayManagerTest {
     void lifecycleTracksRunningState() {
         RecordingService rs = mock(RecordingService.class);
         ApplicationContext ctx = mock(ApplicationContext.class);
-        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty());
+        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty(), mock(ConfigurationService.class));
 
         assertThat(mgr.isRunning()).isFalse();
     }
@@ -53,7 +54,7 @@ class SystemTrayManagerTest {
     void stateChangeEventDoesNotThrowWhenTrayNotInitialized() {
         RecordingService rs = mock(RecordingService.class);
         ApplicationContext ctx = mock(ApplicationContext.class);
-        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty());
+        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty(), mock(ConfigurationService.class));
 
         // Should be a no-op, not throw
         mgr.onStateChanged(new ApplicationStateChangedEvent(
@@ -64,7 +65,7 @@ class SystemTrayManagerTest {
     void getPhaseReturnsMaxValue() {
         RecordingService rs = mock(RecordingService.class);
         ApplicationContext ctx = mock(ApplicationContext.class);
-        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty());
+        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty(), mock(ConfigurationService.class));
 
         assertThat(mgr.getPhase()).isEqualTo(Integer.MAX_VALUE);
     }
@@ -73,7 +74,7 @@ class SystemTrayManagerTest {
     void bufferOverflowDoesNotThrowWhenTrayNotInitialized() {
         RecordingService rs = mock(RecordingService.class);
         ApplicationContext ctx = mock(ApplicationContext.class);
-        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty());
+        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty(), mock(ConfigurationService.class));
 
         // trayIcon is null because start() was never called
         assertThatCode(() -> mgr.onBufferOverflow(
@@ -85,7 +86,7 @@ class SystemTrayManagerTest {
     void stopDoesNotThrowWhenNotRunning() {
         RecordingService rs = mock(RecordingService.class);
         ApplicationContext ctx = mock(ApplicationContext.class);
-        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty());
+        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty(), mock(ConfigurationService.class));
 
         // stop() without start() should be safe
         assertThatCode(mgr::stop).doesNotThrowAnyException();
@@ -96,7 +97,7 @@ class SystemTrayManagerTest {
     void startOnHeadlessEnvironmentDoesNotThrow() {
         RecordingService rs = mock(RecordingService.class);
         ApplicationContext ctx = mock(ApplicationContext.class);
-        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty());
+        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty(), mock(ConfigurationService.class));
 
         // start() should not throw regardless of whether SystemTray is supported
         assertThatCode(mgr::start).doesNotThrowAnyException();
@@ -111,7 +112,7 @@ class SystemTrayManagerTest {
     void onStateChangedAllStatesDoNotThrowWithNullTray() {
         RecordingService rs = mock(RecordingService.class);
         ApplicationContext ctx = mock(ApplicationContext.class);
-        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty());
+        SystemTrayManager mgr = new SystemTrayManager(rs, ctx, Optional.empty(), mock(ConfigurationService.class));
 
         // trayIcon is null because start() was never called;
         // all state transitions should be no-ops
@@ -138,7 +139,7 @@ class SystemTrayManagerTest {
         RecordingService rs = mock(RecordingService.class);
         ApplicationContext ctx = mock(ApplicationContext.class);
 
-        assertThatCode(() -> new SystemTrayManager(rs, ctx, Optional.empty()))
+        assertThatCode(() -> new SystemTrayManager(rs, ctx, Optional.empty(), mock(ConfigurationService.class)))
                 .doesNotThrowAnyException();
     }
 
@@ -148,7 +149,7 @@ class SystemTrayManagerTest {
         ApplicationContext ctx = mock(ApplicationContext.class);
         LiveCaptionManager lcm = mock(LiveCaptionManager.class);
 
-        assertThatCode(() -> new SystemTrayManager(rs, ctx, Optional.of(lcm)))
+        assertThatCode(() -> new SystemTrayManager(rs, ctx, Optional.of(lcm), mock(ConfigurationService.class)))
                 .doesNotThrowAnyException();
     }
 }

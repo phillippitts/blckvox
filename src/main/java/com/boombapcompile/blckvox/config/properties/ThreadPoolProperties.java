@@ -35,13 +35,13 @@ public record ThreadPoolProperties(
      * STT executor pool configuration.
      */
     public record SttPoolProperties(
-            @DefaultValue("4") @Min(1)
+            @DefaultValue("2") @Min(1)
             int corePoolSize,
 
-            @DefaultValue("8") @Min(1)
+            @DefaultValue("4") @Min(1)
             int maxPoolSize,
 
-            @DefaultValue("50") @Min(1)
+            @DefaultValue("10") @Min(1)
             int queueCapacity,
 
             @DefaultValue("60") @Min(0)

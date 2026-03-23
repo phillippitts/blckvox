@@ -43,7 +43,7 @@ public record HotkeyProperties(
 
         // Toggle mode: if true, first hotkey press starts recording, second press stops and transcribes.
         // If false (default), uses push-to-talk: press starts recording, release stops and transcribes.
-        @DefaultValue("false")
+        @DefaultValue("true")
         boolean toggleMode
 ) {
 

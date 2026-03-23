@@ -81,4 +81,30 @@
         <Class name="com.boombapcompile.blckvox.config.ThreadPoolConfig"/>
         <Bug pattern="EI_EXPOSE_REP2"/>
     </Match>
+
+    <!-- Settings UI: JavaFX classes (excluded from JaCoCo/Pitest) -->
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.settings.ConfigurationWindow"/>
+    </Match>
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.settings.PropertyFieldFactory"/>
+    </Match>
+
+    <!-- EI_EXPOSE_REP2: ConfigurationService stores Spring-injected collaborators;
+         defensive copying DI beans is meaningless. -->
+    <Match>
+        <Class name="com.boombapcompile.blckvox.service.settings.ConfigurationService"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- EI_EXPOSE_REP/EI_EXPOSE_REP2: PropertyMetadata records and sealed SaveResult;
+         records intentionally expose fields. enumValues uses List.copyOf for safety. -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+        <Or>
+            <Class name="com.boombapcompile.blckvox.service.settings.PropertyMetadata$Constraints"/>
+            <Class name="com.boombapcompile.blckvox.service.settings.PropertyMetadata$SaveResult$IoFailure"/>
+            <Class name="com.boombapcompile.blckvox.service.settings.PropertyMetadata$SaveResult$ValidationFailure"/>
+        </Or>
+    </Match>
 </FindBugsFilter>
