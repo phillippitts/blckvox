@@ -272,7 +272,7 @@ class DefaultReconciliationServiceTest {
     }
 
     @Test
-    void shouldAlwaysReconcileWhenThresholdIsZero() {
+    void shouldNeverReconcileWhenThresholdIsZero() {
         ReconciliationProperties zeroThreshold = new ReconciliationProperties(
                 true, Strategy.SIMPLE, 0.6, 0.0);
         EngineResult voskResult = new EngineResult("vosk", 0.99,

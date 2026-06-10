@@ -38,8 +38,8 @@ stt.whisper.output=json   # default
 - Range: 0.0 to 1.0 (default: 0.7)
 - **Lower values** (e.g., 0.5): More dual-engine runs, better accuracy, higher resource usage
 - **Higher values** (e.g., 0.9): Fewer dual-engine runs, faster response, lower resource usage
-- **0.0**: Always run dual-engine (same as old behavior)
-- **1.0**: Never upgrade to dual-engine (single-engine only)
+- **0.0**: Never upgrade to dual-engine (single-engine only)
+- **1.0**: Always run dual-engine (same as old behavior)
 
 Recommended values:
 - **0.7** (default): Balanced - upgrades when Vosk is uncertain

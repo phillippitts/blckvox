@@ -28,7 +28,7 @@ public record ReconciliationProperties(
 
         // Confidence threshold for smart reconciliation (0..1).
         // If Vosk confidence < this threshold, run Whisper too and reconcile.
-        // Set to 0.0 to always run dual-engine, 1.0 to never upgrade to dual-engine.
+        // Set to 1.0 to always run dual-engine, 0.0 to never upgrade to dual-engine.
         @DefaultValue("0.7")
         @Min(0)
         @Max(1)
