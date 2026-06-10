@@ -43,6 +43,9 @@ jobs:
 
       - name: Build with Gradle (unit tests + coverage gates)
         run: ./gradlew clean build jacocoTestCoverageVerification -x integrationTest
+        env:
+          TRAY_ENABLED: false
+          LIVE_CAPTION_ENABLED: false
 
       - name: Upload build artifacts
         if: success() && matrix.os == 'ubuntu-latest'
