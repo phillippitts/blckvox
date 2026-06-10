@@ -53,7 +53,7 @@ These are the settings you'll most commonly adjust for daily use.
 | `hotkey.key` | String | `RIGHT_META` | Primary key for hotkey. Examples: `RIGHT_META` (Command on macOS), `M`, `SPACE`, `F13`. |
 | `hotkey.modifiers` | String | (empty) | Comma-separated modifiers. Required for `modifier-combo`, optional for `single-key` and `double-tap`. Options: `SHIFT`, `CTRL`, `ALT`, `META`, `LEFT_META`, `RIGHT_META`. |
 | `hotkey.threshold-ms` | int | `300` | For `double-tap`, this is the maximum time between taps (100-1000ms recommended). For other types, it's the minimum hold duration. |
-| `hotkey.toggle-mode` | boolean | `true` | Toggle mode: `true` = click once to start recording, click again to stop and transcribe. `false` = push-to-talk (press to start, release to stop). (Java class default: false) |
+| `hotkey.toggle-mode` | boolean | `true` | Toggle mode: `true` = click once to start recording, click again to stop and transcribe. `false` = push-to-talk (press to start, release to stop). |
 | `hotkey.reserved` | String | (empty) | Comma-separated list of OS shortcuts to warn about. Platform-aware validation. |
 
 **Example - Single Key (Right Command on macOS):**
@@ -116,7 +116,7 @@ typing.clipboard-only-fallback=true
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `live-caption.enabled` | boolean | `true` | Enable the live caption overlay. When `false`, no JavaFX initialization occurs. Zero overhead when disabled. (Java class default: false) |
+| `live-caption.enabled` | boolean | `true` | Enable the live caption overlay. When `false`, no JavaFX initialization occurs. Zero overhead when disabled. |
 | `live-caption.window-width` | int | `600` | Width of the overlay window in pixels. |
 | `live-caption.window-height` | int | `250` | Height of the overlay window in pixels. |
 | `live-caption.window-opacity` | double | `0.85` | Window opacity (0.0 = fully transparent, 1.0 = fully opaque). |
@@ -234,9 +234,9 @@ stt.reconciliation.enabled=false
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `threadpool.stt.core-pool-size` | int | `2` | Core threads for STT engine execution. (Java class default: 4) |
-| `threadpool.stt.max-pool-size` | int | `4` | Maximum threads for burst STT capacity. (Java class default: 8) |
-| `threadpool.stt.queue-capacity` | int | `10` | Bounded queue size for STT tasks. (Java class default: 50) |
+| `threadpool.stt.core-pool-size` | int | `2` | Core threads for STT engine execution. |
+| `threadpool.stt.max-pool-size` | int | `4` | Maximum threads for burst STT capacity. |
+| `threadpool.stt.queue-capacity` | int | `10` | Bounded queue size for STT tasks. |
 | `threadpool.stt.keep-alive-seconds` | int | `60` | Idle thread timeout before termination. |
 | `threadpool.stt.thread-name-prefix` | String | `stt-pool-` | Thread name prefix for debugging. |
 | `threadpool.event.core-pool-size` | int | `2` | Core threads for async event handling. |
@@ -326,8 +326,8 @@ Settings for engine internals, reconciliation algorithms, and debugging.
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `stt.reconciliation.enabled` | boolean | `true` | Enable dual-engine reconciliation. When `true`, runs both engines in parallel and reconciles results. (Java class default: false) |
-| `stt.reconciliation.strategy` | String | `overlap` | Reconciliation strategy. Options: `simple` (prefer primary), `confidence` (select by confidence score), `overlap` (Jaccard word overlap). (Java class default: SIMPLE) |
+| `stt.reconciliation.enabled` | boolean | `true` | Enable dual-engine reconciliation. When `true`, runs both engines in parallel and reconciles results. |
+| `stt.reconciliation.strategy` | String | `overlap` | Reconciliation strategy. Options: `simple` (prefer primary), `confidence` (select by confidence score), `overlap` (Jaccard word overlap). |
 | `stt.reconciliation.overlap-threshold` | double | `0.6` | Minimum Jaccard similarity threshold for `overlap` strategy (0.0 to 1.0). |
 | `stt.reconciliation.confidence-threshold` | double | `0.7` | Vosk confidence threshold for smart dual-engine escalation (0.0-1.0). When Vosk confidence falls below this value, Whisper is invoked and results are reconciled. Lower = more dual-engine usage (higher accuracy, more resources). Higher = more single-engine usage (faster, fewer resources). |
 
