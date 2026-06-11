@@ -325,7 +325,8 @@ class JavaSoundAudioCaptureServiceTest {
         JavaSoundAudioCaptureService svc = new JavaSoundAudioCaptureService(props, validator, publisher, provider);
 
         UUID id = svc.startSession();
-        await().atMost(Duration.ofSeconds(2)).until(() -> chunks.get() >= 3);
+        // Test doubles return 320 bytes per read, need 6 chunks (1920 bytes = 60ms) for 50ms minimum
+        await().atMost(Duration.ofSeconds(2)).until(() -> chunks.get() >= 6);
         svc.stopSession(id);
         byte[] pcm = svc.readAll(id);
 
@@ -355,7 +356,8 @@ class JavaSoundAudioCaptureServiceTest {
         JavaSoundAudioCaptureService svc = new JavaSoundAudioCaptureService(props, validator, publisher, provider);
 
         UUID id = svc.startSession();
-        await().atMost(Duration.ofSeconds(2)).until(() -> chunks.get() >= 3);
+        // Test doubles return 320 bytes per read, need 6 chunks (1920 bytes = 60ms) for 50ms minimum
+        await().atMost(Duration.ofSeconds(2)).until(() -> chunks.get() >= 6);
         svc.stopSession(id);
         byte[] pcm = svc.readAll(id);
 
