@@ -43,6 +43,6 @@
 
 ## blckvox Domain Terms
 - **Reconciliation** - Process of selecting final text when Vosk and Whisper disagree
-- **Fallback Manager** - System that gracefully degrades when Accessibility permission denied
+- **Fallback Manager** - Manages the 3-tier typing fallback chain (Robot → Clipboard → Notify) for graceful degradation
 - **PcmRingBuffer** - Thread-safe ring buffer for captured microphone audio
 - **Model Validation** - Startup check ensuring STT models are present and loadable
