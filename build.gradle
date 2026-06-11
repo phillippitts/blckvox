@@ -158,6 +158,9 @@ dependencyCheck {
         assemblyEnabled = false
         nodeEnabled = false
     }
+    nvd {
+        apiKey = System.getenv('NVD_API_KEY') ?: ''
+    }
 }
 
 // Shared exclusion list for JaCoCo (genuinely untestable: JNI, JavaFX, AWT, hardware)
