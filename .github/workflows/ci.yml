@@ -98,9 +98,13 @@ jobs:
 
       - name: OWASP Dependency Check
         run: ./gradlew dependencyCheckAnalyze
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME }}
 
       - name: Generate SBOM (CycloneDX)
         run: ./gradlew cyclonedxBom
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME }}
 
       - name: Upload security reports
         if: always()
