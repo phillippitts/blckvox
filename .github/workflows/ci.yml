@@ -44,9 +44,8 @@ jobs:
       - name: Build with Gradle (unit tests + coverage gates)
         run: ./gradlew clean build jacocoTestCoverageVerification -x integrationTest
         env:
-          JAVA_HOME: ${{ env.JAVA_HOME }}
-          TRAY_ENABLED: false
-          LIVE_CAPTION_ENABLED: false
+          TRAY_ENABLED: 'false'
+          LIVE_CAPTION_ENABLED: 'false'
 
       - name: Upload build artifacts
         if: success() && matrix.os == 'ubuntu-latest'
@@ -98,13 +97,9 @@ jobs:
 
       - name: OWASP Dependency Check
         run: ./gradlew dependencyCheckAnalyze
-        env:
-          JAVA_HOME: ${{ env.JAVA_HOME }}
 
       - name: Generate SBOM (CycloneDX)
         run: ./gradlew cyclonedxBom
-        env:
-          JAVA_HOME: ${{ env.JAVA_HOME }}
 
       - name: Upload security reports
         if: always()
