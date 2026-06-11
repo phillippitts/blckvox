@@ -44,6 +44,7 @@ jobs:
       - name: Build with Gradle (unit tests + coverage gates)
         run: ./gradlew clean build jacocoTestCoverageVerification -x integrationTest
         env:
+          JAVA_HOME: ${{ env.JAVA_HOME }}
           TRAY_ENABLED: false
           LIVE_CAPTION_ENABLED: false
 
