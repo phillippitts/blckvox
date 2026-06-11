@@ -455,7 +455,10 @@ class JavaSoundAudioCaptureServiceTest {
         JavaSoundAudioCaptureService svc = new JavaSoundAudioCaptureService(props, validator, publisher, provider);
 
         UUID id = svc.startSession();
-        await().atMost(Duration.ofSeconds(2)).until(() -> chunks.get() >= 3);
+        // ThrowingCloseDataLine.read() returns 320 bytes per call, not the full 640 bytesPerChunk.
+        // To get 50ms minimum audio (1600 bytes @ 32kB/s), need at least 5 chunks (5*320=1600).
+        // Wait for 6 chunks (1920 bytes = 60ms) to have margin above the 50ms minimum.
+        await().atMost(Duration.ofSeconds(2)).until(() -> chunks.get() >= 6);
         svc.stopSession(id);
         byte[] pcm = svc.readAll(id);
 
